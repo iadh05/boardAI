@@ -154,3 +154,36 @@ describe('Canvas — arrows', () => {
     expect(store.getState().board.edges[0]).toMatchObject({ label: 'events', mode: 'async' });
   });
 });
+
+describe('Canvas — zones', () => {
+  const withVpc: Board = {
+    ...boardWithTwoNodes,
+    zones: [
+      { id: 'vpc', label: 'VPC', position: { x: -40, y: -40 }, size: { width: 520, height: 160 } },
+    ],
+  };
+
+  it('draws the zones of the board', () => {
+    renderCanvas(withVpc);
+    expect(node('Zone: VPC')).toHaveTextContent('VPC');
+  });
+
+  it('deleting a zone keeps the boxes that were in it', async () => {
+    const store = renderCanvas(withVpc);
+
+    fireEvent.click(within(node('Zone: VPC')).getByText('VPC'));
+    await userEvent.keyboard('{Delete}');
+
+    expect(store.getState().board.zones).toEqual([]);
+    expect(store.getState().board.nodes).toHaveLength(2);
+  });
+
+  it('renaming a zone saves it in the store', async () => {
+    const store = renderCanvas(withVpc);
+
+    fireEvent.doubleClick(node('Zone: VPC'));
+    await userEvent.keyboard('eu-west-1{Enter}');
+
+    expect(store.getState().board.zones?.[0]?.label).toBe('eu-west-1');
+  });
+});
