@@ -77,6 +77,31 @@ export const BoardEdgeSchema = z.object({
 });
 export type BoardEdge = z.infer<typeof BoardEdgeSchema>;
 
+/** Every box is drawn at this size; zone membership is computed with it (ADR-005). */
+export const NODE_SIZE = { width: 176, height: 60 } as const;
+
+/** A zone must be able to hold at least one box, with a little room for its title. */
+export const MIN_ZONE_SIZE = { width: 200, height: 100 } as const;
+
+export const ZoneSizeSchema = z.object({
+  width: z.number().min(MIN_ZONE_SIZE.width),
+  height: z.number().min(MIN_ZONE_SIZE.height),
+});
+export type ZoneSize = z.infer<typeof ZoneSizeSchema>;
+
+/**
+ * A zone groups boxes: VPC, region, subnet, "3rd party"… It is a shape of its own; which boxes it
+ * holds comes from position (ADR-005), so there is no parent pointer to keep in sync.
+ */
+export const ZoneSchema = z.object({
+  id: IdSchema,
+  label: z.string().max(MAX_LABEL_LENGTH).regex(SINGLE_LINE, SINGLE_LINE_MESSAGE),
+  /** Top-left corner. */
+  position: PositionSchema,
+  size: ZoneSizeSchema,
+});
+export type Zone = z.infer<typeof ZoneSchema>;
+
 /**
  * A board must be a valid graph, not just valid pieces: unique ids, every edge between two
  * existing, different nodes, at most one edge per direction. The board ops (M1-06) keep these
@@ -86,6 +111,8 @@ export const BoardSchema = z
   .object({
     nodes: z.array(BoardNodeSchema),
     edges: z.array(BoardEdgeSchema),
+    /** Absent on boards made before zones existed: same as none. */
+    zones: z.array(ZoneSchema).optional(),
   })
   .superRefine((board, ctx) => {
     const nodeIds = new Set<string>();
@@ -133,6 +160,18 @@ export const BoardSchema = z
         });
       }
       connections.add(connection);
+    });
+
+    const zoneIds = new Set<string>();
+    board.zones?.forEach((zone, index) => {
+      if (zoneIds.has(zone.id)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['zones', index, 'id'],
+          message: `Duplicate zone id "${zone.id}"`,
+        });
+      }
+      zoneIds.add(zone.id);
     });
   });
 export type Board = z.infer<typeof BoardSchema>;

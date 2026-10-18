@@ -32,7 +32,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-D4 | The app uses the package | diagram | M | done |
 | M1-D5a | Edge meaning in the domain (label, sync/async) | diagram | S | done |
 | M1-D5b | Edit an arrow: label + Async toggle | diagram | S | todo |
-| M1-D6a | Zones in the domain (VPC, region…) | diagram | M | todo |
+| M1-D6a | Zones in the domain (VPC, region…) | diagram | M | done |
 | M1-D6b | Zones on the diagram | diagram | M | todo |
 | M1-UX1 | UX polish from the M1a pass | diagram | M | done |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | todo |
@@ -559,13 +559,17 @@ Inserted after M1a (2026-10-18): the board read like a flowchart, not an archite
 - [ ] Package: `editingEdgeId`, `onEdgeEditStart`, `onEdgeLabelCommit`, `onEdgeDashedChange` — generic names (`dashed`), the app maps them to sync/async.
 
 ## M1-D6a — Zones in the domain
-**Status:** todo · **Size:** M · **Depends on:** M1-D5a · **Decision:** [ADR-005](../docs/decisions.md)
+**Status:** done · **Size:** M · **Depends on:** M1-D5a · **Decision:** [ADR-005](../docs/decisions.md)
 
 **Tests first**
-- [ ] `Zone`: id, label, rectangle; at least a minimum size; one line label.
-- [ ] Ops: `addZone`, `renameZone`, `moveZone` (moves the boxes inside it too), `resizeZone`, `removeZone` (boxes stay).
-- [ ] `zonesOf(board, nodeId)`: which zones contain a box (by its rectangle), innermost first; nested zones work.
-- [ ] `BoardSchema` gets `zones` (default empty); the chat request accepts them.
+- [x] `Zone`: id, label, rectangle; at least a minimum size; one line label.
+- [x] Ops: `addZone`, `renameZone`, `moveZone` (moves the boxes inside it too), `resizeZone`, `removeZone` (boxes stay).
+- [x] `zonesOf(board, nodeId)`: which zones contain a box (by its rectangle), innermost first; nested zones work.
+- [x] `BoardSchema` gets `zones` (default empty); the chat request accepts them.
+
+**Notes**
+- The domain owns `NODE_SIZE` (176×60): membership needs the box size. An app test checks it equals the diagram package's size.
+- The chat request accepts at most 50 zones.
 
 ## M1-D6b — Zones on the diagram
 **Status:** todo · **Size:** M · **Depends on:** M1-D6a, M1-D5b

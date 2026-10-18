@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ChatEventSchema, ChatRequestSchema, MAX_CHAT_BOARD_NODES } from './chat.ts';
+import {
+  ChatEventSchema,
+  ChatRequestSchema,
+  MAX_CHAT_BOARD_NODES,
+  MAX_CHAT_BOARD_ZONES,
+} from './chat.ts';
 
 const board = { nodes: [], edges: [] };
 
@@ -49,6 +54,27 @@ describe('ChatRequestSchema board size', () => {
       position: { x: i, y: 0 },
     }));
     const request = { board: { nodes, edges: [] }, messages: [{ role: 'user', content: 'hi' }] };
+    expect(ChatRequestSchema.safeParse(request).success).toBe(false);
+  });
+});
+
+describe('ChatRequestSchema — zones', () => {
+  const zone = (i: number) => ({
+    id: `z${i}`,
+    label: 'VPC',
+    position: { x: i * 10, y: 0 },
+    size: { width: 400, height: 200 },
+  });
+  const ask = { role: 'user', content: 'review' } as const;
+
+  it('accepts a board with zones', () => {
+    const request = { board: { nodes: [], edges: [], zones: [zone(1)] }, messages: [ask] };
+    expect(ChatRequestSchema.safeParse(request).success).toBe(true);
+  });
+
+  it('rejects more zones than the chat limit', () => {
+    const zones = Array.from({ length: MAX_CHAT_BOARD_ZONES + 1 }, (_, i) => zone(i));
+    const request = { board: { nodes: [], edges: [], zones }, messages: [ask] };
     expect(ChatRequestSchema.safeParse(request).success).toBe(false);
   });
 });

@@ -23,13 +23,17 @@ export type ChatMessage = z.infer<typeof ChatMessageSchema>;
  */
 export const MAX_CHAT_BOARD_NODES = 150;
 export const MAX_CHAT_BOARD_EDGES = 300;
+export const MAX_CHAT_BOARD_ZONES = 50;
 
 /** POST /api/chat body. */
 export const ChatRequestSchema = z.object({
   board: BoardSchema.refine(
-    (b) => b.nodes.length <= MAX_CHAT_BOARD_NODES && b.edges.length <= MAX_CHAT_BOARD_EDGES,
+    (b) =>
+      b.nodes.length <= MAX_CHAT_BOARD_NODES &&
+      b.edges.length <= MAX_CHAT_BOARD_EDGES &&
+      (b.zones?.length ?? 0) <= MAX_CHAT_BOARD_ZONES,
     {
-      message: `The board is too large for the assistant (max ${MAX_CHAT_BOARD_NODES} nodes, ${MAX_CHAT_BOARD_EDGES} edges)`,
+      message: `The board is too large for the assistant (max ${MAX_CHAT_BOARD_NODES} nodes, ${MAX_CHAT_BOARD_EDGES} edges, ${MAX_CHAT_BOARD_ZONES} zones)`,
     },
   ),
   messages: z.array(ChatMessageSchema).min(1).max(MAX_MESSAGES),
