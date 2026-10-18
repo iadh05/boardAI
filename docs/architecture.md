@@ -451,7 +451,10 @@ flowchart LR
 
 | Job | Runs | Notes |
 |---|---|---|
-| `checks` | `pnpm install --frozen-lockfile` → `pnpm lint` → `pnpm typecheck` | Boundary rules fail here |
+| `lint` | `pnpm lint` | Boundary rules fail here |
+| `format` | `pnpm format:check` | Prettier |
+| `typecheck` | `pnpm typecheck` | `tsc` in every package |
+| `commitlint` | every commit in the PR + the PR title | Conventional Commits; the title becomes the squash commit on `main` |
 | `unit` | `pnpm test:coverage` | Coverage report uploaded as an artifact; per-package coverage thresholds fail the job |
 | `security` | `pnpm audit --audit-level=high` + `dependency-review-action` on PRs | Vulnerable or GPL/AGPL dependencies fail the job |
 | `codeql` (own workflow) | CodeQL `security-and-quality` on TypeScript and workflow files | Also weekly; results in Security → Code scanning |

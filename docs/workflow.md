@@ -11,6 +11,10 @@ One ticket = one branch = one pull request. Pipeline overview: [architecture.md 
 ## 2. Build it (TDD)
 
 - Red → green → refactor. Commit at each green: `test(domain): M1-05 …`, `feat(domain): M1-05 …`, `refactor(domain): M1-05 …`.
+- Git hooks (Lefthook, installed by `pnpm install`) run automatically:
+  - **on commit:** Prettier + ESLint `--fix` on the staged files; commitlint on the message (Conventional Commits).
+  - **on push:** `pnpm typecheck` + `pnpm test`.
+  - `--no-verify` skips them in an emergency — CI runs the same checks anyway.
 - Follow [rules/](rules/). If a rule gets in the way, don't silently break it — raise it in the PR.
 
 ## 3. Self-review before opening the PR
@@ -27,9 +31,9 @@ Then read your own diff top to bottom (`git diff main...`) as if someone else wr
 
 ## 4. Open the PR
 
-- Title: `M1-05: board types and zod schemas`.
+- Title in Conventional Commits form, with the ticket id: `feat(domain): M1-05 board types and zod schemas`. The squash merge uses the PR title as the commit on `main`, so CI's `commitlint` job checks it.
 - Fill the template (`.github/pull_request_template.md`): what, why, how to test, screenshots for UI.
-- CI runs: `checks`, `unit`, `e2e`. **Red CI = not ready for review.** Fix first.
+- CI runs: `lint`, `format`, `typecheck`, `unit`, `security`, `commitlint`, `codeql` (and `e2e` from M1-03b). **Red CI = not ready for review.** Fix first.
 
 ## 5. Review
 
@@ -67,11 +71,12 @@ Example: `blocking: removeNode leaves edges pointing at the deleted node — add
 ## 7. Merge
 
 - Squash merge when: CI green, every thread answered, acceptance criteria ticked.
-- Delete the branch. Set the ticket to `done`.
+- GitHub deletes the branch automatically after the merge. Locally: `git switch main && git pull && git branch -D <branch>`. Set the ticket to `done`.
+- **Stacked PRs** (a PR whose base is another PR's branch): after the lower PR is squash-merged, GitHub retargets the upper PR to `main`, but its branch still contains the lower PR's original commits. Rebase it onto `main` — `git rebase --onto main <old-base-branch> <branch>` — and push with `--force-with-lease`. This is the one accepted force-push during review.
 
 ## 8. Repository settings (one-time, on GitHub)
 
-- Branch protection on `main`: require a pull request; require status checks `checks`, `unit`, `security`, `codeql`, `e2e`; block force-push; require branches to be up to date.
+- Branch protection on `main`: require a pull request; require status checks `lint`, `format`, `typecheck`, `unit`, `security`, `commitlint`, `codeql` (+ `e2e` from M1-03b); block force-push; require branches to be up to date.
+- ✅ Done 2026-10-18: squash merge only, squash commit = PR title + commit messages, branches deleted automatically after merge.
 - Code security: Dependabot alerts + Dependabot security updates on; secret scanning + push protection on (already enabled).
 - Approvals: GitHub doesn't count approving your own PR, so while solo, rely on required checks + the self/AI review above.
-- Merge button: allow **squash merge** only; auto-delete head branches.

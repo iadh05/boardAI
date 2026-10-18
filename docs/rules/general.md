@@ -59,5 +59,6 @@ Apply everywhere: `apps/*` and `packages/*`. Frontend and backend specifics: [fr
 - Branch per ticket: `m1-05-board-types`.
 - Commits: [Conventional Commits](https://www.conventionalcommits.org) with the ticket id — `feat(domain): M1-05 add board schemas`, `test(agent): M1-18 loop stops after max rounds`, `fix(review): rename prop per review`.
 - MUST: small PRs — one ticket per PR; if a ticket's diff passes ~400 lines, split the ticket.
-- MUST: `main` only changes through a green PR; squash merge.
+- MUST: `main` only changes through a green PR; squash merge. The PR title follows the same commit format (it becomes the commit on `main`).
+- Enforced by commitlint: locally by the Lefthook `commit-msg` hook, in CI by the `commitlint` job.
 - Process details: [workflow.md](../workflow.md).
