@@ -21,7 +21,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-06 | domain: board operations | M1a | M | done |
 | M1-07 | domain: agent ops, `applyOps`, API contract | M1a | M | done |
 | M1-08 | board module: `boardStore` (Zustand) | M1a | M | done |
-| M1-09 | canvas pod: React Flow + `toFlow` | M1a | M | todo |
+| M1-09 | canvas pod: React Flow + `toFlow` | M1a | M | done |
 | M1-10 | toolbar pod | M1a | S | todo |
 | M1-11 | node pod: SystemNode + editable label | M1a | M | todo |
 | M1-12 | Connect and delete | M1a | M | todo |
@@ -372,22 +372,28 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-09 — canvas pod: React Flow + `toFlow`
-**Status:** todo · **Size:** M · **Depends on:** M1-08
+**Status:** done · **Size:** M · **Depends on:** M1-08
 
 **Learning goal:** controlled React Flow; mappers between your model and a library's; why `nodeTypes` lives outside components.
 
-**Tests first**
-- [ ] `toFlow`: board nodes → `type: 'system'`; proposal nodes → `type: 'ghost'`; edges get an arrow marker; proposal edges dashed.
+**Tests first** (19 tests)
+- [x] `toFlow`: board nodes → `type: 'system'` with kind + label; edges get an arrow; a pending proposal is previewed with `applyOps` → `ghost` nodes (not draggable/selectable/connectable) where Accept would put them, dashed `is-proposed` edges; a stale proposal shows no ghosts.
+- [x] `mergeFlowNodes` / `canvasChanges` / `commitNodeChanges`: store data + canvas-only state (selection, size, an ongoing drag); only drags, selection and measuring are applied locally; positions reach the store when a drag ends.
+- [x] `Canvas` (jsdom with React Flow's test stubs): renders the board, ghost nodes for a proposal, zoom controls; Backspace doesn't hide a node.
 
 **Tasks**
-- [ ] `pods/canvas/mappers/toFlow.ts`.
-- [ ] `pods/canvas/components/Canvas.tsx`: `<ReactFlow>` fed from the store via selectors, with `Background`, `Controls`, `MiniMap`.
-- [ ] Spike: 100 generated nodes, drag one; fix jank if any (commit on drag stop / memoise); learning-log entry.
+- [x] `pods/canvas/mappers/toFlow.ts`, `pods/canvas/lib/nodeChanges.ts`, `pods/canvas/components/Canvas.tsx` (dots background, controls, minimap, `fitView`).
+- [x] Minimal `SystemNode` / `GhostNode` in the node pod (M1-11 and M1-23 finish them); `nodeTypes` defined once at module level.
+- [x] Shared flow types in `modules/board/lib/flowTypes.ts`.
+- [x] Spike: 100 generated nodes (+ 99 edges), dragged one.
 
 **Acceptance criteria**
-- [ ] Pan, zoom, minimap; `fitView` on load; smooth drag at 100 nodes.
-- [ ] `grep -r xyflow packages/` finds nothing.
+- [x] Pan, zoom, minimap; `fitView` on load; smooth drag at 100 nodes — **measured: 60 fps** (frames 16.4 ms avg, 16.8 ms p95, 17 ms max over a 60-frame scripted drag), no console errors.
+- [x] `grep -r xyflow packages/` finds nothing.
 
+**Notes**
+- **Drag design:** the canvas keeps its own copy of the nodes, merged from the store with React's "adjust state when a prop changes" pattern (no effect). During a drag only the canvas moves the node; the store gets one update when the drag ends. In M2 this is where live drags from other users will need thought.
+- **Review (/code-review, 5 findings, all fixed):** Backspace hid a node the store still had (React Flow's built-in delete) → off until M1-12 and add/remove changes ignored by the canvas; canvas ↔ node pods imported each other → types promoted to the module; a store update mid-drag snapped the node back; edges looked interactive but weren't wired; proposed arrow heads now match the dashed line.
 ---
 
 ## M1-10 — toolbar pod

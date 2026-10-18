@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-09 canvas (React Flow)
+**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-10 toolbar
 
 ## Done
 
@@ -22,14 +22,15 @@
 | M1-06 | Pure board operations + `Result` type, property-based test | #12 |
 | M1-07 | AI operations, all-or-nothing `applyOps`, chat API contract | #13 |
 | M1-08 | Board store (Zustand factory), `showProposal`, `createId` | #14 |
+| M1-09 | React Flow canvas from the store, ghost-node preview, 60 fps with 100 nodes | #15 |
 
 ## In progress
 
-- **M1-09** — canvas pod: React Flow + `toFlow` mapper.
+- **M1-10** — toolbar pod: add nodes by kind.
 
 ## Next
 
-M1-10…M1-13 board UI (M1a) → M1-14… AI reviewer (M1b).
+M1-11…M1-13 board UI (M1a) → M1-14… AI reviewer (M1b).
 
 ## Planned reviews
 
