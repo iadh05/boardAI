@@ -12,6 +12,8 @@ export type { CardProps } from './molecules/Card.tsx';
 export { IconButton } from './molecules/IconButton.tsx';
 export type { IconButtonProps } from './molecules/IconButton.tsx';
 export { TextField } from './molecules/TextField.tsx';
+export { ToolButton } from './molecules/ToolButton.tsx';
+export type { ToolButtonProps } from './molecules/ToolButton.tsx';
 export type { TextFieldProps } from './molecules/TextField.tsx';
 export { Panel } from './organisms/Panel.tsx';
 export type { PanelProps } from './organisms/Panel.tsx';

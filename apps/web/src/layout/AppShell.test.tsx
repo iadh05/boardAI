@@ -22,4 +22,11 @@ describe('AppShell', () => {
       'chat content',
     );
   });
+
+  it('puts the canvas first, so on a phone (stacked) the diagram comes before the panel', () => {
+    render(<AppShell canvas={<p>canvas</p>} sidePanel={<p>chat</p>} />);
+    const main = screen.getByRole('main');
+    const aside = screen.getByRole('complementary', { name: 'Assistant' });
+    expect(main.compareDocumentPosition(aside) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

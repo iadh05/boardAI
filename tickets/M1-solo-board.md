@@ -31,6 +31,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-D3 | Orthogonal routing with libavoid | diagram | M | done |
 | M1-D4 | The app uses the package | diagram | M | done |
 | M1-D5 | Edge meaning in the domain | diagram | S | todo |
+| M1-UX1 | UX polish from the M1a pass | diagram | M | done |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | todo |
 | M1-14b | Nginx edge proxy | M1b | M | todo |
 | M1-15 | Spike: Qwen tool call end to end | M1b | S | todo |
@@ -545,6 +546,29 @@ Inserted after M1a (2026-10-18): the board read like a flowchart, not an archite
 **Tasks**
 - [ ] `BoardEdge` gets `label?` and `mode: 'sync' | 'async'` (zod, ops, `applyOps`); async drawn dashed.
 - [ ] Edit an edge's label in place.
+
+---
+
+## M1-UX1 — UX polish from the M1a pass
+**Status:** done · **Size:** M · **Depends on:** M1-D4
+
+First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — findings in [docs/checkpoints/M1a.md](../docs/checkpoints/M1a.md#ux-pass-after-the-diagram-package). Each fix starts with a failing test.
+
+**Tasks**
+- [x] Phone: the canvas disappeared (the assistant panel took the whole width). Narrow screens stack canvas above a short assistant panel. *(Desktop is the target; this only keeps a shared link from looking broken.)*
+- [x] Toolbar icons had no visible names: each button shows its name under the icon.
+- [x] New nodes piled up 24 px apart: place each one in the nearest free slot around the view centre (no overlap).
+- [x] Empty board gave no hint: show "Add a component from the toolbar to start your design".
+- [x] Snap to a grid, so boxes line up and arrows run straight.
+- [x] Minimap only once the board is big enough to need it.
+- [x] Dragging an arrow onto a box it can't connect to gave no feedback: the arrow turns red.
+- [x] New boxes stay inside what the user sees (after pan/zoom, or on a narrow view).
+- [x] Hint on how to connect, until the first arrow (the dots only show on hover).
+- [x] Toolbar before the zoom controls in Tab order.
+
+**Later (not in this ticket)**
+- A visible delete action on a selected box (today: Delete/Backspace only).
+- Arrow keys inside the toolbar (one tab stop) — A5 accessibility.
 
 ---
 

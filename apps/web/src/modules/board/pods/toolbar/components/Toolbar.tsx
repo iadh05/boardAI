@@ -1,6 +1,6 @@
-import { DiagramPanel, useDiagramViewport } from '@designroom/diagram';
+import { DiagramPanel, NODE_SIZE, useDiagramViewport } from '@designroom/diagram';
 import { KIND_DEFAULT_LABEL, type NodeKind } from '@designroom/domain';
-import { IconButton } from '../../../../../core/ui/index.ts';
+import { ToolButton } from '../../../../../core/ui/index.ts';
 import { KIND_ICON, TOOLBAR_KINDS } from '../../../lib/kindAppearance.ts';
 import type { useBoardStore } from '../../../store/boardStore.ts';
 import { spawnPosition } from '../lib/spawnPosition.ts';
@@ -17,7 +17,10 @@ export function Toolbar({ store }: ToolbarProps) {
   const viewport = useDiagramViewport();
 
   const add = (kind: NodeKind) => {
-    const id = addNode(kind, spawnPosition(store.getState().board, viewport.center()));
+    const id = addNode(
+      kind,
+      spawnPosition(store.getState().board, viewport.center(), NODE_SIZE, viewport.bounds()),
+    );
     // A Custom node is only as good as its label: ask for it straight away.
     if (id && kind === 'custom') startEditing(id);
   };
@@ -30,11 +33,11 @@ export function Toolbar({ store }: ToolbarProps) {
         className="flex flex-wrap gap-1 rounded-lg border border-line bg-surface p-1 shadow-sm"
       >
         {TOOLBAR_KINDS.map((kind) => (
-          <IconButton
+          <ToolButton
             key={kind}
             icon={KIND_ICON[kind]}
+            caption={KIND_DEFAULT_LABEL[kind]}
             label={`Add ${KIND_DEFAULT_LABEL[kind]}`}
-            variant="ghost"
             onClick={() => add(kind)}
           />
         ))}

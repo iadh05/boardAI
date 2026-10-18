@@ -335,3 +335,30 @@ describe('Diagram — node styling', () => {
     expect(box('Proposed: Postgres')).toHaveClass('dr-node', 'is-ghost');
   });
 });
+
+describe('Diagram — options', () => {
+  it('shows a minimap by default', () => {
+    render(<Harness />);
+    expect(screen.getByLabelText(/mini map/i)).toBeInTheDocument();
+  });
+
+  it('can hide the minimap (e.g. while the diagram is small)', () => {
+    render(<Harness minimap={false} />);
+    expect(screen.queryByLabelText(/mini map/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('Diagram — keyboard order', () => {
+  it('panels (e.g. a toolbar) come before the zoom controls when tabbing', () => {
+    render(
+      <Harness>
+        <DiagramPanel position="top-left">
+          <button type="button">Tool</button>
+        </DiagramPanel>
+      </Harness>,
+    );
+    const tool = screen.getByRole('button', { name: 'Tool' });
+    const zoomIn = screen.getByRole('button', { name: /zoom in/i });
+    expect(tool.compareDocumentPosition(zoomIn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});

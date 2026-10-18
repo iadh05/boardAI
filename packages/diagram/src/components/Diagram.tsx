@@ -58,6 +58,10 @@ export type DiagramProps = {
    * arrows until then, or if it can't load). `null`: always simple arrows.
    */
   router?: DiagramRouter | null;
+  /** Grid that boxes snap to while dragged, in px (boxes line up, so arrows run straight). `null`: free. */
+  snapGrid?: number | null;
+  /** Show the overview map (bottom right). */
+  minimap?: boolean;
   /** Panels drawn over the diagram (see DiagramPanel). */
   children?: ReactNode;
 };
@@ -91,6 +95,8 @@ function DiagramCanvas({
   onLabelCommit,
   onEditEnd,
   router,
+  snapGrid = 20,
+  minimap = true,
   children,
 }: DiagramProps) {
   // useMemo: keeps the mapped arrays stable while the props are, so the merge below runs only
@@ -172,15 +178,18 @@ function DiagramCanvas({
           }}
           onKeyDown={onKeyDown}
           deleteKeyCode={DELETE_KEYS}
+          snapToGrid={snapGrid !== null}
+          snapGrid={snapGrid === null ? undefined : [snapGrid, snapGrid]}
           // On an empty diagram the fit happens when the first node appears; without a cap it zooms to 2×.
           fitView
           fitViewOptions={FIT_VIEW}
           aria-label={ariaLabel}
         >
-          <Background variant={BackgroundVariant.Dots} gap={16} />
-          <Controls />
-          <MiniMap pannable zoomable />
+          {/* Panels first: they come before the zoom controls when tabbing. */}
           {children}
+          <Background variant={BackgroundVariant.Dots} gap={snapGrid ?? 20} />
+          <Controls />
+          {minimap && <MiniMap pannable zoomable />}
         </ReactFlow>
       </RoutesContext>
     </DiagramContext>

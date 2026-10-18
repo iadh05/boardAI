@@ -38,3 +38,40 @@ The same flows run on every PR in `apps/web/e2e/board-editing.spec.ts`.
   - Anything else you felt was in the way?
 
 **Your verdict:** _…_
+
+## UX pass after the diagram package
+
+**Date:** 2026-10-18 · walked every journey at 1280×800, at phone size (390×844) and with the keyboard.
+
+**Works well:** shapes per kind read like an architecture diagram; arrows route at right angles around boxes; renaming, Custom naming and deleting all feel direct.
+
+| # | Finding | Severity | Ticket |
+|---|---|---|---|
+| 1 | On a phone the canvas is gone: the assistant panel takes the whole width | High | M1-UX1 |
+| 2 | Toolbar icons have no visible names (Globe = CDN? Network = load balancer?) | High | M1-UX1 |
+| 3 | New nodes pile up 24 px apart; every one has to be dragged out | Medium | M1-UX1 |
+| 4 | Empty board: no hint of what to do | Medium | M1-UX1 |
+| 5 | Boxes slightly misaligned give arrows small jogs | Low | M1-UX1 (snap to grid) |
+| 6 | Minimap is an empty white box on a small board | Low | M1-UX1 |
+| 7 | Dragging an arrow onto a box it can't connect to: no feedback | Low | M1-UX1 |
+| 8 | No visible way to delete (keyboard only) | Low | later |
+| 9 | Toolbar is 10 tab stops (no arrow keys) | Low | A5 |
+
+### Journeys after M1-UX1 (2026-10-18)
+
+Tested by hand in the browser (clicks, typing, keyboard) and with Playwright driving a real mouse for drags. Target: **desktop**.
+
+| # | Journey | Result |
+|---|---|---|
+| 1 | Open the app | ✅ empty board says how to start |
+| 2 | Add each of the 10 kinds | ✅ named buttons; boxes land in free, visible slots, on the grid |
+| 3 | Name a Custom box | ✅ opens in edit mode · ⚠️ typing *instantly* after the click can lose the first letters (editor opens one frame later) |
+| 4 | Rename (double-click, or Enter on a focused box) | ✅ |
+| 5 | Move a box | ✅ snaps to a 20 px grid, arrows follow |
+| 6 | Connect two boxes | ✅ hint until the first arrow; right-angle routes around boxes |
+| 7 | Refused arrow (to itself, duplicate) | ✅ the line turns red; nothing is added |
+| 8 | Delete a box (with its arrows) / an arrow | ✅ Delete or Backspace · ⚠️ no visible delete action yet |
+| 9 | Pan, zoom, fit view | ✅ |
+| 10 | Keyboard only | ✅ toolbar first in Tab order, Enter renames, Delete deletes · ⚠️ toolbar is 10 tab stops; arrows can't be drawn by keyboard (A5) |
+| 11 | AI proposal: ghosts, Accept/Reject | ⏳ not testable yet: there is no chat until M1b |
+| 12 | Phone | Not a target: only "not broken" (stacked layout) |

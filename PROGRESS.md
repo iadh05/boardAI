@@ -30,7 +30,7 @@
 ## In progress
 
 - **M1-13** — waiting on your structure-review verdict (docs/checkpoints/M1a.md).
-- **Diagram package (M1-D1…D5)** — the canvas moves into `@designroom/diagram` (React Flow + libavoid), [ADR-004](docs/decisions.md). D-1 done (#20), D-2 `<Diagram>` (#21), D-3 libavoid routing (#22), D-4 the app uses it (#23).
+- **Diagram package (M1-D1…D5)** — the canvas moves into `@designroom/diagram` (React Flow + libavoid), [ADR-004](docs/decisions.md). D-1 done (#20), D-2 `<Diagram>` (#21), D-3 libavoid routing (#22), D-4 the app uses it (#23). UX polish after a manual pass (#24).
 
 ## Next
 

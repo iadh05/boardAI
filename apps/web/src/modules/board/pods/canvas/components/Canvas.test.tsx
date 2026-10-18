@@ -1,5 +1,5 @@
 import { createNode, MAX_LABEL_LENGTH, type Board } from '@designroom/domain';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { createBoardStore } from '../../../store/boardStore.ts';
@@ -56,6 +56,26 @@ describe('Canvas — drawing the board', () => {
     expect(node('Proposed: Redis')).toHaveTextContent(/proposed/i);
   });
 
+  it('an empty board says how to start', () => {
+    renderCanvas({ nodes: [], edges: [] });
+    expect(screen.getByText(/add a component from the toolbar/i)).toBeInTheDocument();
+  });
+
+  it('the hint goes away once there is something on the board', () => {
+    renderCanvas(boardWithTwoNodes);
+    expect(screen.queryByText(/add a component from the toolbar/i)).not.toBeInTheDocument();
+  });
+
+  it('with boxes but no arrows yet, says how to connect them', () => {
+    renderCanvas({ ...boardWithTwoNodes, edges: [] });
+    expect(screen.getByText(/drag from a dot on the side of a box/i)).toBeInTheDocument();
+  });
+
+  it('the connect hint goes away once there is an arrow', () => {
+    renderCanvas(boardWithTwoNodes);
+    expect(screen.queryByText(/drag from a dot on the side of a box/i)).not.toBeInTheDocument();
+  });
+
   it('has zoom controls', () => {
     renderCanvas(boardWithTwoNodes);
     expect(screen.getByRole('button', { name: /zoom in/i })).toBeInTheDocument();
@@ -78,7 +98,7 @@ describe('Canvas — deleting through the store', () => {
 
   it('the Delete key works too', async () => {
     const store = renderCanvas(boardWithTwoNodes);
-    fireEvent.click(screen.getByText('Database'));
+    fireEvent.click(within(node('Database')).getByText('Database'));
     await userEvent.keyboard('{Delete}');
     expect(store.getState().board.nodes.map((n) => n.id)).toEqual(['api']);
   });
