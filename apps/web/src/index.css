@@ -1,1 +1,24 @@
 @import 'tailwindcss';
+
+/*
+ * Design tokens (docs/rules/frontend.md — "colours, spacing and radii come from the theme").
+ * Components use the semantic names (bg-accent, text-muted, border-line…), never raw colours,
+ * so changing the look means changing this block only.
+ */
+@theme {
+  --color-accent: oklch(0.51 0.2 265);
+  --color-accent-hover: oklch(0.45 0.2 265);
+  --color-accent-contrast: oklch(0.99 0 0);
+
+  --color-danger: oklch(0.55 0.21 27);
+
+  --color-canvas: oklch(0.98 0.003 250);
+  --color-surface: oklch(1 0 0);
+  --color-surface-hover: oklch(0.96 0.005 250);
+  --color-line: oklch(0.91 0.008 250);
+
+  --color-ink: oklch(0.22 0.02 260);
+  --color-muted: oklch(0.55 0.02 260);
+
+  --color-focus: oklch(0.62 0.19 265);
+}
