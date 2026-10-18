@@ -22,6 +22,14 @@
   --color-muted: oklch(0.55 0.02 260);
 
   --color-focus: oklch(0.62 0.19 265);
+
+  /* Node kinds, by family (see modules/board/lib/kindAppearance.ts). */
+  --color-kind-edge: oklch(0.58 0.13 230);
+  --color-kind-network: oklch(0.55 0.18 300);
+  --color-kind-compute: oklch(0.51 0.2 265);
+  --color-kind-cache: oklch(0.68 0.16 70);
+  --color-kind-data: oklch(0.56 0.13 160);
+  --color-kind-messaging: oklch(0.62 0.17 40);
 }
 
 /* Edges the AI proposes (see toFlow): dashed until accepted. */
