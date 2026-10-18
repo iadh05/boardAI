@@ -17,7 +17,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-03 | Web shell: Vite + React + Tailwind + providers | setup | S | done |
 | M1-03b | Playwright + smoke test in CI | setup | M | done |
 | M1-04 | `core/ui` kit: atoms + molecules | setup | M | todo |
-| M1-05 | domain: board types + zod | M1a | S | todo |
+| M1-05 | domain: board types + zod | M1a | S | done |
 | M1-06 | domain: board operations | M1a | M | todo |
 | M1-07 | domain: agent ops, `applyOps`, API contract | M1a | M | todo |
 | M1-08 | board module: `boardStore` (Zustand) | M1a | M | todo |
@@ -268,22 +268,29 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 # M1a — Board
 
 ## M1-05 — domain: board types + zod
-**Status:** todo · **Size:** S · **Depends on:** M1-01
+**Status:** done · **Size:** S · **Depends on:** M1-01
 
 **Learning goal:** one zod schema → a TS type (`z.infer`) and a runtime check.
 
-**Tests first**
-- [ ] A valid board parses.
-- [ ] Unknown `kind` rejected; `custom` accepted.
-- [ ] Missing label / non-number position rejected.
+**Tests first** (`packages/domain/src/board/board.test.ts`, 11 tests — red, then green)
+- [x] A valid board parses; an empty board parses; a board without `edges` is rejected.
+- [x] Unknown `kind` rejected; every known kind and `custom` accepted.
+- [x] Missing label / label over 100 chars / non-number or infinite position / empty id rejected.
+- [x] An edge without a target is rejected.
+- [x] `KIND_DEFAULT_LABEL` has a non-empty label for every kind.
 
 **Tasks**
-- [ ] `domain/board`: `KNOWN_KINDS`, `NodeKind`, `BoardNode`, `BoardEdge`, `Board` (architecture §4.1).
-- [ ] `KIND_DEFAULT_LABEL: Record<NodeKind, string>`.
+- [x] `domain/board`: `KNOWN_KINDS`, `NODE_KINDS` (known + `custom`), `NodeKindSchema`, `PositionSchema`, `BoardNodeSchema`, `BoardEdgeSchema`, `BoardSchema`; types via `z.infer`.
+- [x] `KIND_DEFAULT_LABEL: Record<NodeKind, string>`.
 
 **Acceptance criteria**
-- [ ] `domain` depends only on `zod`.
+- [x] `domain` depends only on `zod` (zod 4).
 
+**Notes**
+- Labels are capped at 100 characters (`MAX_LABEL_LENGTH`): short names on a diagram, and it keeps what we send to the LLM small.
+- `z.object` (not strict): unknown keys are stripped rather than rejected, so extra fields from a client never reach the domain.
+- Repo-wide lint tweak: `no-unused-vars` with `ignoreRestSiblings`, so `const { removed, ...rest } = obj` is allowed.
+- **Review (/code-review, 6 findings, all fixed):** the board schema now checks the *graph*, not just the pieces — unique node and edge ids, no edge to a missing node, no self-loop, no duplicate connection (`superRefine`, with messages naming the bad edge); labels reject line breaks/control characters (a newline could forge lines in the board text sent to the AI); ids are 1–64 chars without whitespace; NaN position tested; test uses `NODE_KINDS`; barrel is `export *`. 21 tests.
 ---
 
 ## M1-06 — domain: board operations
