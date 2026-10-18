@@ -13,6 +13,7 @@ const ARCHITECTURE_RULES = new Set([
   'boundaries/dependencies',
   '@typescript-eslint/no-restricted-imports',
   'designroom/no-banned-names',
+  'no-restricted-syntax',
 ]);
 
 const violationsByFile = new Map<string, string[]>();
@@ -111,5 +112,24 @@ describe('naming rules', () => {
     ['apps/web/src/modules/board/shared/thing.ts', 'no shared/ folder'],
   ])('%s is rejected (%s)', (fixture) => {
     expect(violationsOf(fixture)).toEqual(['designroom/no-banned-names']);
+  });
+});
+
+describe('e2e spec rules (docs/rules/e2e.md)', () => {
+  it('rejects importing @playwright/test directly in a spec', () => {
+    expect(violationsOf('apps/web/e2e/badPlaywrightImport.spec.ts')).toEqual([
+      '@typescript-eslint/no-restricted-imports',
+    ]);
+  });
+
+  it.each([
+    ['apps/web/e2e/badSleep.spec.ts', 'no fixed sleeps'],
+    ['apps/web/e2e/badDescribeOnly.spec.ts', 'no .only of any kind'],
+  ])('%s is rejected (%s)', (fixture) => {
+    expect(violationsOf(fixture)).toEqual(['no-restricted-syntax']);
+  });
+
+  it('allows a spec that uses the fixtures', () => {
+    expect(violationsOf('apps/web/e2e/okUsesFixtures.spec.ts')).toEqual([]);
   });
 });
