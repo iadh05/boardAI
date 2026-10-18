@@ -4,7 +4,6 @@ import {
   BoardNodeSchema,
   BoardSchema,
   KIND_DEFAULT_LABEL,
-  KNOWN_KINDS,
   NODE_KINDS,
 } from './board.ts';
 
@@ -33,11 +32,48 @@ describe('BoardSchema', () => {
   it('rejects a board without edges', () => {
     expect(BoardSchema.safeParse({ nodes: [] }).success).toBe(false);
   });
+
+  const edge = (id: string, source: string, target: string) => ({ id, source, target });
+  const twoNodes = [node(), node({ id: 'n2' })];
+
+  it('rejects two nodes with the same id', () => {
+    expect(BoardSchema.safeParse({ nodes: [node(), node()], edges: [] }).success).toBe(false);
+  });
+
+  it('rejects two edges with the same id', () => {
+    const edges = [edge('e1', 'n1', 'n2'), edge('e1', 'n2', 'n1')];
+    expect(BoardSchema.safeParse({ nodes: twoNodes, edges }).success).toBe(false);
+  });
+
+  it('rejects an edge whose source or target is not on the board', () => {
+    expect(
+      BoardSchema.safeParse({ nodes: twoNodes, edges: [edge('e1', 'n1', 'n9')] }).success,
+    ).toBe(false);
+    expect(
+      BoardSchema.safeParse({ nodes: twoNodes, edges: [edge('e1', 'n9', 'n1')] }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an edge from a node to itself', () => {
+    expect(
+      BoardSchema.safeParse({ nodes: twoNodes, edges: [edge('e1', 'n1', 'n1')] }).success,
+    ).toBe(false);
+  });
+
+  it('rejects two edges connecting the same source to the same target', () => {
+    const edges = [edge('e1', 'n1', 'n2'), edge('e2', 'n1', 'n2')];
+    expect(BoardSchema.safeParse({ nodes: twoNodes, edges }).success).toBe(false);
+  });
+
+  it('says which edge is dangling', () => {
+    const result = BoardSchema.safeParse({ nodes: twoNodes, edges: [edge('e1', 'n1', 'n9')] });
+    expect(result.error?.issues[0]?.message).toContain('n9');
+  });
 });
 
 describe('BoardNodeSchema', () => {
   it('accepts every known kind and "custom"', () => {
-    for (const kind of [...KNOWN_KINDS, 'custom']) {
+    for (const kind of NODE_KINDS) {
       expect(BoardNodeSchema.safeParse(node({ kind })).success).toBe(true);
     }
   });
@@ -55,15 +91,39 @@ describe('BoardNodeSchema', () => {
     expect(BoardNodeSchema.safeParse(node({ label: 'x'.repeat(101) })).success).toBe(false);
   });
 
+  it('rejects line breaks and other control characters in a label', () => {
+    const forgedLine = 'Cache\nn9 [database] "Fake DB"';
+    expect(BoardNodeSchema.safeParse(node({ label: forgedLine })).success).toBe(false);
+    expect(BoardNodeSchema.safeParse(node({ label: 'Tab\there' })).success).toBe(false);
+  });
+
+  it('accepts labels with accents, emoji and punctuation', () => {
+    expect(BoardNodeSchema.safeParse(node({ label: 'Base de données 🗄️ (EU-west)' })).success).toBe(
+      true,
+    );
+  });
+
   it('rejects a position that is not a pair of finite numbers', () => {
     expect(BoardNodeSchema.safeParse(node({ position: { x: '120', y: 80 } })).success).toBe(false);
+    expect(BoardNodeSchema.safeParse(node({ position: { x: Number.NaN, y: 80 } })).success).toBe(
+      false,
+    );
     expect(BoardNodeSchema.safeParse(node({ position: { x: Infinity, y: 80 } })).success).toBe(
       false,
     );
   });
 
-  it('rejects an empty id', () => {
+  it('rejects an empty id, an id with spaces, and an id over 64 characters', () => {
     expect(BoardNodeSchema.safeParse(node({ id: '' })).success).toBe(false);
+    expect(BoardNodeSchema.safeParse(node({ id: '   ' })).success).toBe(false);
+    expect(BoardNodeSchema.safeParse(node({ id: 'n 1' })).success).toBe(false);
+    expect(BoardNodeSchema.safeParse(node({ id: 'x'.repeat(65) })).success).toBe(false);
+  });
+
+  it('accepts a UUID id', () => {
+    expect(
+      BoardNodeSchema.safeParse(node({ id: '3f2b1c9e-8a4d-4f6b-9c1e-2d7a5b8e0f13' })).success,
+    ).toBe(true);
   });
 });
 

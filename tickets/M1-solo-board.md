@@ -290,6 +290,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 - Labels are capped at 100 characters (`MAX_LABEL_LENGTH`): short names on a diagram, and it keeps what we send to the LLM small.
 - `z.object` (not strict): unknown keys are stripped rather than rejected, so extra fields from a client never reach the domain.
 - Repo-wide lint tweak: `no-unused-vars` with `ignoreRestSiblings`, so `const { removed, ...rest } = obj` is allowed.
+- **Review (/code-review, 6 findings, all fixed):** the board schema now checks the *graph*, not just the pieces — unique node and edge ids, no edge to a missing node, no self-loop, no duplicate connection (`superRefine`, with messages naming the bad edge); labels reject line breaks/control characters (a newline could forge lines in the board text sent to the AI); ids are 1–64 chars without whitespace; NaN position tested; test uses `NODE_KINDS`; barrel is `export *`. 21 tests.
 ---
 
 ## M1-06 — domain: board operations
