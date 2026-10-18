@@ -5,6 +5,9 @@ import { useBoardStore } from '../../../store/boardStore.ts';
 import { Toolbar } from '../../toolbar/index.ts';
 import { toDiagram } from '../mappers/toDiagram.tsx';
 
+/** The overview map earns its space only once the board outgrows the view. */
+const MINIMAP_FROM = 8;
+
 export type CanvasProps = {
   /** The board store to show; the app's store by default, a test store in tests. */
   store?: typeof useBoardStore;
@@ -27,25 +30,40 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
   const { nodes, edges } = useMemo(() => toDiagram(board, proposal), [board, proposal]);
 
   return (
-    <Diagram
-      nodes={nodes}
-      edges={edges}
-      ariaLabel="Diagram"
-      // The same domain rule twice, on purpose: while dragging, canConnect only lights up the
-      // drop target (UX); on drop, the store's connect checks it again before changing the board.
-      canConnect={(source, target) => canConnect(store.getState().board, source, target).ok}
-      onConnect={(source, target) => {
-        connect(source, target);
-      }}
-      onNodeMove={moveNode}
-      onDelete={removeElements}
-      editingNodeId={editingNodeId}
-      maxLabelLength={MAX_LABEL_LENGTH}
-      onEditStart={startEditing}
-      onLabelCommit={renameNode}
-      onEditEnd={stopEditing}
-    >
-      <Toolbar store={store} />
-    </Diagram>
+    <div className="relative h-full">
+      <Diagram
+        nodes={nodes}
+        edges={edges}
+        ariaLabel="Diagram"
+        // The same domain rule twice, on purpose: while dragging, canConnect only lights up the
+        // drop target (UX); on drop, the store's connect checks it again before changing the board.
+        canConnect={(source, target) => canConnect(store.getState().board, source, target).ok}
+        onConnect={(source, target) => {
+          connect(source, target);
+        }}
+        onNodeMove={moveNode}
+        onDelete={removeElements}
+        editingNodeId={editingNodeId}
+        maxLabelLength={MAX_LABEL_LENGTH}
+        onEditStart={startEditing}
+        onLabelCommit={renameNode}
+        onEditEnd={stopEditing}
+        minimap={nodes.length >= MINIMAP_FROM}
+      >
+        <Toolbar store={store} />
+      </Diagram>
+      {nodes.length === 0 && (
+        // Over the canvas, ignoring the pointer, so it never blocks panning or the toolbar.
+        <p className="pointer-events-none absolute inset-0 flex items-center justify-center p-8 text-center text-sm text-muted">
+          Add a component from the toolbar to start your design.
+        </p>
+      )}
+      {nodes.length >= 2 && edges.length === 0 && (
+        // The connection dots only show on hover: say how to connect until the first arrow.
+        <p className="pointer-events-none absolute inset-x-0 bottom-6 text-center text-sm text-muted">
+          Drag from a dot on the side of a box to another box to connect them.
+        </p>
+      )}
+    </div>
   );
 }

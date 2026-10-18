@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Card } from './Card.tsx';
 import { IconButton } from './IconButton.tsx';
 import { TextField } from './TextField.tsx';
+import { ToolButton } from './ToolButton.tsx';
 
 describe('IconButton', () => {
   it('uses its label as the accessible name (the icon alone says nothing)', () => {
@@ -18,6 +19,20 @@ describe('IconButton', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Add node' }));
 
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+});
+
+describe('ToolButton', () => {
+  it('shows its caption under the icon, so it can be found without hovering', () => {
+    render(<ToolButton icon={Plus} caption="Database" label="Add Database" />);
+    expect(screen.getByRole('button', { name: 'Add Database' })).toHaveTextContent('Database');
+  });
+
+  it('is a button that reports clicks', async () => {
+    const onClick = vi.fn();
+    render(<ToolButton icon={Plus} caption="Database" label="Add Database" onClick={onClick} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Add Database' }));
     expect(onClick).toHaveBeenCalledOnce();
   });
 });
