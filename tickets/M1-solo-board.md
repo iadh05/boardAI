@@ -18,7 +18,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-03b | Playwright + smoke test in CI | setup | M | done |
 | M1-04 | `core/ui` kit: atoms + molecules | setup | M | done |
 | M1-05 | domain: board types + zod | M1a | S | done |
-| M1-06 | domain: board operations | M1a | M | todo |
+| M1-06 | domain: board operations | M1a | M | done |
 | M1-07 | domain: agent ops, `applyOps`, API contract | M1a | M | todo |
 | M1-08 | board module: `boardStore` (Zustand) | M1a | M | todo |
 | M1-09 | canvas pod: React Flow + `toFlow` | M1a | M | todo |
@@ -300,28 +300,33 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-06 — domain: board operations
-**Status:** todo · **Size:** M · **Depends on:** M1-05
+**Status:** done · **Size:** M · **Depends on:** M1-05
 
 **Learning goal:** TDD rhythm; immutability; `Result` instead of exceptions.
 
-**Tests first**
-- [ ] `addNode` rejects a duplicate id.
-- [ ] `removeNode` with 3 attached edges leaves none touching it.
-- [ ] `connect` rejects self-loop, duplicate, unknown source, unknown target.
-- [ ] `renameNode("   ")` → kind's default label.
-- [ ] `changeKind` keeps id, label, position.
-- [ ] Inputs never mutated (freeze them).
+**Tests first** (red → green; 33 example tests + 2 property tests)
+- [x] `addNode` rejects a duplicate id (and a node the schema would reject).
+- [x] `removeNode` with 3 attached edges leaves none touching it; other edges kept.
+- [x] `connect` rejects self-loop, duplicate connection, unknown source, unknown target, duplicate/invalid edge id; the opposite direction is allowed.
+- [x] `renameNode("   ")` → kind's default label; too-long / multi-line labels rejected.
+- [x] `changeKind` keeps id, position and a user-chosen label; a still-default label follows the new kind.
+- [x] Inputs never mutated (deep-frozen boards).
 
 **Tasks**
-- [ ] `addNode`, `removeNode`, `connect`, `removeEdge`, `renameNode`, `changeKind`, `moveNode` → `Result<Board>`.
-- [ ] `createNode(kind, position, id?)`; export the connection rule (`canConnect`) for the UI.
+- [x] `Result<T, Code>` with `ok()` / `fail()` (`packages/domain/src/result.ts`).
+- [x] `addNode`, `removeNode`, `connect`, `removeEdge`, `renameNode`, `changeKind`, `moveNode` → `BoardResult` with typed `BoardErrorCode`s.
+- [x] `createNode(id, kind, position)` and `canConnect` (the UI's `isValidConnection` will use it).
 
 **Acceptance criteria**
-- [ ] 100 % line coverage of the ops.
+- [x] 100 % line coverage of the ops.
 
 **Stretch**
-- [ ] `fast-check` property test: random op sequences never leave a dangling edge.
+- [x] `fast-check` property test: random op sequences never leave an invalid board (checked against `BoardSchema` after **every** step).
 
+**Notes**
+- **Ids are always passed in** (`createNode(id, …)`, `connect(board, edgeId, …)`): the backend rules keep randomness out of the domain, so ops are pure and tests deterministic. The store/agent call `crypto.randomUUID()`.
+- **Property test lesson:** the first version passed even with a planted bug (`removeNode` keeping edges) — random sequences rarely built a connected graph (27 successful connects in 500 runs). Fixed with weighted ops, full-length sequences and a bigger id pool; a second, seeded test now checks the generator reaches connected graphs and removals of connected nodes. With the bug planted, fast-check fails in 40 ms and shrinks to a minimal sequence.
+- **Review (/code-review, 6 findings, all fixed):** node/edge ids are separate namespaces like `BoardSchema` (they weren't), `changeKind` updates a stale default label, malformed source/target reported as `NODE_NOT_FOUND`, `removeNode` keeps other board fields, the statistical reach check is seeded, test helper renamed `unwrap`.
 ---
 
 ## M1-07 — domain: agent ops, `applyOps`, API contract
