@@ -11,6 +11,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-01 | pnpm monorepo + TypeScript + Vitest + ESLint | setup | S | done |
 | M1-01b | CI: checks + unit tests on GitHub Actions | setup | S | doing |
 | M1-01c | Repo workflow: PR template, branch protection | setup | S | todo |
+| M1-01d | Code quality and security checks in CI | setup | S | doing |
 | M1-02 | Boundary lint rules | setup | M | todo |
 | M1-03 | Web shell: Vite + React + Tailwind + providers | setup | S | todo |
 | M1-03b | Playwright + smoke test in CI | setup | M | todo |
@@ -112,6 +113,31 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 **Acceptance criteria**
 - [ ] Pushing directly to `main` is rejected.
 - [ ] Learning log: what the first review caught.
+
+---
+
+## M1-01d — Code quality and security checks in CI
+**Status:** doing · **Size:** S · **Depends on:** M1-01b
+
+**Why:** Lint and tests catch *our* mistakes; these catch insecure patterns, vulnerable dependencies and shrinking test coverage — automatically, on every PR.
+
+**Learning goal:** static analysis (CodeQL), supply-chain security (audit, dependency review, Dependabot), coverage as a quality gate.
+
+**Tasks**
+- [x] `.github/workflows/codeql.yml`: CodeQL for TypeScript and for the workflow files themselves, `security-and-quality` queries, on PRs, pushes to `main` and weekly.
+- [x] `security` job in `ci.yml`: `pnpm audit --audit-level=high`; on PRs, `dependency-review-action` (fails on high-severity vulnerabilities and GPL/AGPL licences).
+- [x] `.github/dependabot.yml`: weekly grouped updates for npm packages and GitHub Actions.
+- [x] Coverage gate in `packages/domain/vitest.config.ts`: 90 % lines/functions/branches/statements — proven by adding an untested function (run failed at 50 % / 0 %).
+- [ ] On GitHub (settings, yours): turn on **Dependabot alerts** and **Dependabot security updates** (Settings → Code security). Secret scanning + push protection are already on.
+- [ ] Add `security` and `codeql` to the required checks when M1-01c sets up branch protection.
+
+**Acceptance criteria**
+- [ ] `codeql`, `security`, `checks`, `unit` all green on the PR.
+- [ ] Code scanning results visible under the repo's Security tab.
+
+**Notes**
+- Every new package with logic gets its own `vitest.config.ts` with thresholds (domain 90 %; set per package).
+- Playwright is **not** here: it needs the web app (M1-03) and lands in M1-03b.
 
 ---
 

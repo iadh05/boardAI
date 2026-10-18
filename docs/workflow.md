@@ -71,6 +71,7 @@ Example: `blocking: removeNode leaves edges pointing at the deleted node — add
 
 ## 8. Repository settings (one-time, on GitHub)
 
-- Branch protection on `main`: require a pull request; require status checks `checks`, `unit`, `e2e`; block force-push; require branches to be up to date.
+- Branch protection on `main`: require a pull request; require status checks `checks`, `unit`, `security`, `codeql`, `e2e`; block force-push; require branches to be up to date.
+- Code security: Dependabot alerts + Dependabot security updates on; secret scanning + push protection on (already enabled).
 - Approvals: GitHub doesn't count approving your own PR, so while solo, rely on required checks + the self/AI review above.
 - Merge button: allow **squash merge** only; auto-delete head branches.

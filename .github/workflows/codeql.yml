@@ -1,0 +1,31 @@
+name: CodeQL
+
+# Static analysis for security bugs and code-quality problems.
+# Results show under Security → Code scanning, and as annotations on PRs.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1' # every Monday: new queries catch new issue types in old code
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: codeql
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write # upload results to code scanning
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript, actions
+          queries: security-and-quality
+      - uses: github/codeql-action/analyze@v4
