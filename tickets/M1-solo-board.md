@@ -240,6 +240,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 **Notes**
 - Vitest now only picks up `src/**/*.test.{ts,tsx}`, so it never runs Playwright's `*.spec.ts`.
 - `e2e/` has its own `tsconfig.json` (Node types); the web `typecheck` script checks both.
+- **E2E rules added** ([docs/rules/e2e.md](../docs/rules/e2e.md)): Page Object Model (`e2e/pages/`, injected through `e2e/fixtures.ts`; locators only in page objects; page objects don't assert), role-based locators, no sleeps, fake LLM only, isolated tests. **Flaky policy:** 0 retries locally, 1 in CI only to record a trace, `failOnFlakyTests` in CI so a test that passes on retry still fails the build; unfixable flake → `test.fixme` + ticket. Lint enforces: specs import from `./fixtures.ts`, no `waitForTimeout`, no `test.only`.
 ---
 
 ## M1-04 — `core/ui` kit: atoms + molecules

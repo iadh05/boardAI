@@ -5,6 +5,7 @@ React + Vite + Tailwind. Structure and reasons: [docs/architecture.md §5](../..
 Follow these rules for every change here (they are also enforced by lint where possible):
 
 @../../docs/rules/frontend.md
+@../../docs/rules/e2e.md
 
 Quick reminders:
 - Business code lives in `src/modules/<module>/pods/<pod>/` (`components/ hooks/ mappers/ lib/ index.ts`); cross a pod or module only through its `index.ts`. Direction: `chat → board`.

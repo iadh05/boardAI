@@ -1,10 +1,14 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 
-test('the app loads with its header, canvas and assistant panel', async ({ page }) => {
-  await page.goto('/');
+test(
+  'the app loads with its header, canvas and assistant panel',
+  { tag: '@smoke' },
+  async ({ app }) => {
+    await app.open();
 
-  await expect(page).toHaveTitle('DesignRoom');
-  await expect(page.getByRole('heading', { level: 1, name: 'DesignRoom' })).toBeVisible();
-  await expect(page.getByRole('main')).toBeVisible();
-  await expect(page.getByRole('complementary', { name: 'Assistant' })).toBeVisible();
-});
+    expect(await app.title()).toBe('DesignRoom');
+    await expect(app.heading).toHaveText('DesignRoom');
+    await expect(app.canvas).toBeVisible();
+    await expect(app.assistantPanel).toBeVisible();
+  },
+);

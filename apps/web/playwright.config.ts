@@ -9,7 +9,10 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: isCI, // a stray test.only must not silently skip the rest in CI
+  // docs/rules/e2e.md — the CI retry only exists to record a trace; a test that needed it is
+  // flaky, and flaky fails the build.
   retries: isCI ? 1 : 0,
+  failOnFlakyTests: isCI,
   reporter: isCI ? [['html', { open: 'never' }], ['github']] : [['list']],
   use: {
     // BASE_URL lets the same tests run through Nginx later (http://localhost:8080).

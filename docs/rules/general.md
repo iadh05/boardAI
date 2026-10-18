@@ -1,6 +1,6 @@
 # General rules
 
-Apply everywhere: `apps/*` and `packages/*`. Frontend and backend specifics: [frontend.md](frontend.md), [backend.md](backend.md). Why things are built this way: [architecture.md](../architecture.md).
+Apply everywhere: `apps/*` and `packages/*`. Frontend and backend specifics: [frontend.md](frontend.md), [backend.md](backend.md), [e2e.md](e2e.md). Why things are built this way: [architecture.md](../architecture.md).
 
 **MUST** = CI or review blocks it. **SHOULD** = default; break it only with a reason in the PR.
 
