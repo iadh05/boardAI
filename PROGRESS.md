@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-D5 edge meaning (labels, sync/async) — or M1b if you want to defer it
+**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-14b Nginx edge proxy
 
 ## Done
 

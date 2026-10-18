@@ -325,6 +325,21 @@ export default tseslint.config(
   ...packageRules,
   appRules,
   {
+    // docs/rules/backend.md — env is read only in core/config.ts (validated at startup).
+    files: ['**/apps/server/src/**/*.ts'],
+    ignores: ['**/apps/server/src/core/config.ts'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'process',
+          property: 'env',
+          message: 'Read env only in core/config.ts (zod-validated at startup).',
+        },
+      ],
+    },
+  },
+  {
     // React in the browser: hooks rules + safe Fast Refresh (docs/rules/frontend.md).
     files: ['apps/web/src/**/*.{ts,tsx}', 'packages/diagram/src/**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser } },

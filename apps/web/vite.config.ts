@@ -7,6 +7,9 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true, // Nginx (M1-14b) forwards to this exact port.
+    // Dev without Nginx: the browser calls /api on the same origin, Vite forwards it to Hono.
+    // Through Nginx (M1-14b), Nginx routes /api itself and this proxy is not used.
+    proxy: { '/api': 'http://localhost:3000' },
   },
   build: {
     rolldownOptions: {
