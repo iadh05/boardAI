@@ -6,6 +6,7 @@ import {
   createNode,
   emptyBoard,
   moveNode,
+  ok,
   removeEdge,
   removeNode,
   renameNode,
@@ -42,6 +43,11 @@ export type BoardActions = {
   /** Returns the new edge's id, or null if refused (self-loop, duplicate…). */
   connect: (source: string, target: string) => string | null;
   removeEdge: (id: string) => void;
+  /**
+   * Removes nodes (with their edges) and edges in one update — what the Delete key does to a
+   * selection. Ids already gone (e.g. edges removed with their node) are skipped, not reported.
+   */
+  removeElements: (nodeIds: readonly string[], edgeIds: readonly string[]) => void;
   renameNode: (id: string, label: string) => void;
   changeKind: (id: string, kind: NodeKind) => void;
   moveNode: (id: string, position: Position) => void;
@@ -95,6 +101,24 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
       },
       removeEdge: (id) => {
         commit(removeEdge(get().board, id));
+      },
+      removeElements: (nodeIds, edgeIds) => {
+        if (nodeIds.length === 0 && edgeIds.length === 0) return;
+        // Ids already gone (an edge removed with its node, a stale selection) are skipped.
+        let result: BoardResult = ok(get().board);
+        for (const id of nodeIds) {
+          if (result.ok && result.value.nodes.some((n) => n.id === id)) {
+            result = removeNode(result.value, id);
+          }
+        }
+        for (const id of edgeIds) {
+          if (result.ok && result.value.edges.some((e) => e.id === id)) {
+            result = removeEdge(result.value, id);
+          }
+        }
+        if (!commit(result)) return;
+        const { editingNodeId } = get();
+        if (editingNodeId !== null && nodeIds.includes(editingNodeId)) set({ editingNodeId: null });
       },
       renameNode: (id, label) => {
         commit(renameNode(get().board, id, label));

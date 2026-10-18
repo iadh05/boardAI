@@ -24,7 +24,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-09 | canvas pod: React Flow + `toFlow` | M1a | M | done |
 | M1-10 | toolbar pod | M1a | S | done |
 | M1-11 | node pod: SystemNode + editable label | M1a | M | done |
-| M1-12 | Connect and delete | M1a | M | todo |
+| M1-12 | Connect and delete | M1a | M | done |
 | M1-13 | ADR-001/002/003 + M1a checkpoint | M1a | S | todo |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | todo |
 | M1-14b | Nginx edge proxy | M1b | M | todo |
@@ -433,17 +433,22 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-12 — Connect and delete
-**Status:** todo · **Size:** M · **Depends on:** M1-11
+**Status:** done · **Size:** M · **Depends on:** M1-11
 
 **Learning goal:** UX validation vs correctness validation — same rule, two places.
 
 **Tasks**
-- [ ] `onConnect` → `connect`; `onNodesChange` (position, remove) and `onEdgesChange` (remove) → store actions; selection stays in React Flow.
-- [ ] `isValidConnection` uses `canConnect` from `domain`.
+- [x] `onConnect` → `connect`; `onNodesChange` (position) → store; removals go through `onDelete` → `removeElements` (one update, no false "edge not found" for edges removed with their node); selection stays in React Flow.
+- [x] `isValidConnection` uses `canConnect` from `domain`.
 
 **Acceptance criteria**
-- [ ] Client→LB→API→Database with arrows downstream.
-- [ ] Deleting a node removes its edges; deleting an edge removes only it; no self-loops or duplicates.
+- [x] Client→LB→API→Database with arrows downstream.
+- [x] Deleting a node removes its edges; deleting an edge removes only it; no self-loops or duplicates.
+
+**Notes**
+- Delete and Backspace both delete; ghosts and proposed edges can't be deleted.
+- Edges are selectable/focusable and named "From A to B".
+- Playwright: draw Client → LB → API → Database; delete an edge, then a node with its edges. Handles use `data-testid` (no accessible role: connecting is mouse-only in React Flow).
 
 ---
 

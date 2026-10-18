@@ -25,7 +25,8 @@ export function SystemNode({ id, data, selected }: NodeProps<SystemFlowNode>) {
         selected ? 'border-accent ring-2 ring-accent/30' : 'border-line'
       }`}
     >
-      <Handle type="target" position={Position.Left} />
+      {/* Test ids: handles have no accessible role — connecting is mouse-only in React Flow. */}
+      <Handle type="target" position={Position.Left} data-testid="connect-in" />
       <span
         className={`flex size-8 shrink-0 items-center justify-center rounded-md ${KIND_TONE[data.kind]}`}
       >
@@ -44,7 +45,7 @@ export function SystemNode({ id, data, selected }: NodeProps<SystemFlowNode>) {
       ) : (
         <span className="truncate font-medium">{data.label}</span>
       )}
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Right} data-testid="connect-out" />
     </div>
   );
 }

@@ -53,9 +53,7 @@ describe('toFlow', () => {
         source: 'api',
         target: 'db',
         markerEnd: { type: MarkerType.ArrowClosed },
-        // Not interactive until M1-12 wires edge selection and deletion through the store.
-        selectable: false,
-        focusable: false,
+        ariaLabel: 'From API to Database',
       },
     ]);
   });
@@ -67,7 +65,12 @@ describe('toFlow', () => {
     expect(ghost).toMatchObject({ type: 'ghost', data: { kind: 'cache', label: 'Redis' } });
     expect(ghost?.position.x).toBeGreaterThan(0); // beside the API, not on top of it
     // Ghosts can't be dragged, selected or connected: they're a preview.
-    expect(ghost).toMatchObject({ draggable: false, selectable: false, connectable: false });
+    expect(ghost).toMatchObject({
+      draggable: false,
+      selectable: false,
+      connectable: false,
+      deletable: false,
+    });
   });
 
   it('shows proposed edges dashed and marks them as proposed', () => {
@@ -78,6 +81,8 @@ describe('toFlow', () => {
       source: 'api',
       target: 'cache',
       className: 'is-proposed',
+      selectable: false,
+      deletable: false,
       // The arrow head is recoloured with the dashed line.
       markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--color-accent)' },
     });
