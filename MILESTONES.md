@@ -13,9 +13,10 @@ Each milestone ends with something you can demo. Do not start the next one until
 - [ ] Monorepo (pnpm workspaces): `apps/web`, `apps/server`, `packages/domain`, `packages/agent`, `packages/ai-gateway`
 - [ ] Lint-enforced boundaries (packages, FE modules/pods, BE modules/layers)
 - [ ] Web: modules + pods structure, `core/ui` atomic kit, Zustand + React Query
-- [ ] CI on GitHub Actions (lint, typecheck, unit, Playwright e2e); protected `main`; PR review workflow
+- [ ] CI on GitHub Actions (lint, typecheck, unit, Playwright e2e); protected `main`; PR review workflow — *all done except Playwright e2e (M1-03b)*
+- [x] Code quality + security in CI: CodeQL, dependency audit + review, Dependabot, coverage gate; git hooks + commitlint
 - [ ] Nginx edge proxy (routing, SSE, rate limit)
-- [ ] Coding rules for FE and BE (`docs/rules/`)
+- [x] Coding rules for FE and BE (`docs/rules/`)
 
 **M1a — Board**
 - [ ] Vite + React + TypeScript + Tailwind app running

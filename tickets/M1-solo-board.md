@@ -9,10 +9,10 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | ID | Title | Part | Size | Status |
 |---|---|---|---|---|
 | M1-01 | pnpm monorepo + TypeScript + Vitest + ESLint | setup | S | done |
-| M1-01b | CI: checks + unit tests on GitHub Actions | setup | S | doing |
-| M1-01c | Repo workflow: PR template, branch protection | setup | S | todo |
-| M1-01d | Code quality and security checks in CI | setup | S | doing |
-| M1-01e | Git hooks (Lefthook), commitlint, split CI checks | setup | S | doing |
+| M1-01b | CI: checks + unit tests on GitHub Actions | setup | S | done |
+| M1-01c | Repo workflow: PR template, branch protection | setup | S | doing |
+| M1-01d | Code quality and security checks in CI | setup | S | done |
+| M1-01e | Git hooks (Lefthook), commitlint, split CI checks | setup | S | done |
 | M1-02 | Boundary lint rules | setup | M | todo |
 | M1-03 | Web shell: Vite + React + Tailwind + providers | setup | S | todo |
 | M1-03b | Playwright + smoke test in CI | setup | M | todo |
@@ -78,7 +78,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-01b — CI: checks + unit tests on GitHub Actions
-**Status:** doing · **Size:** S · **Depends on:** M1-01
+**Status:** done · **Size:** S · **Depends on:** M1-01
 
 **Why:** From the first PR on, nothing merges red.
 
@@ -91,8 +91,10 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 - [x] `concurrency` group so a new push cancels the previous run on the same branch.
 
 **Acceptance criteria**
-- [ ] A PR with a failing test shows a red `unit` check; fixing it turns it green.
-- [ ] Second run is faster than the first (cache hit visible in logs).
+- [ ] A PR with a failing test shows a red `unit` check; fixing it turns it green. *(Not seen in CI yet; the same failure mode was shown locally with the coverage gate. It will show itself the first time a test fails on a PR.)*
+- [ ] Second run is faster than the first (cache hit visible in logs). *(Not measured.)*
+
+> Closed as done on 2026-10-18 with the two observational criteria above left open on purpose: CI has been green on every merged PR (#1–#4) and red when it should be (#2 `security`, #3 cache bug).
 
 **Notes**
 - `checks` also runs `pnpm format:check`.
@@ -101,24 +103,24 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-01c — Repo workflow: PR template, branch protection
-**Status:** todo · **Size:** S · **Depends on:** M1-01b
+**Status:** doing · **Size:** S · **Depends on:** M1-01b
 
 **Learning goal:** how teams protect `main` and run reviews ([docs/workflow.md](../docs/workflow.md)).
 
 **Tasks**
-- [ ] `.github/pull_request_template.md` in place (already drafted).
-- [ ] On GitHub: branch protection on `main` — PR required, status checks `lint`, `format`, `typecheck`, `unit`, `security`, `commitlint`, `codeql` required (add `e2e` after M1-03b), no force-push.
-- [ ] Merge settings: squash only, auto-delete branches.
-- [ ] Open your first real PR with the template; run an AI review on it; answer every comment following workflow §6.
+- [x] `.github/pull_request_template.md` in place (with a **Review** section).
+- [x] On GitHub: branch protection on `main` — status checks `lint`, `format`, `typecheck`, `unit`, `security`, `commitlint`, `codeql` required (add `e2e` after M1-03b), no force-push, no deletion. Done 2026-10-18. *Admins can still bypass (`enforce_admins: false`).*
+- [x] Merge settings: squash only (title = PR title), auto-delete branches, auto-merge allowed.
+- [x] First real PR (#1) with the template and a local AI review (6 findings, all fixed); CodeQL thread on #2 answered and resolved.
 
 **Acceptance criteria**
-- [ ] Pushing directly to `main` is rejected.
+- [ ] Pushing directly to `main` is rejected. *(Only for non-admins today. Decide: turn on `enforce_admins` so even the owner goes through PRs?)*
 - [ ] Learning log: what the first review caught.
 
 ---
 
 ## M1-01d — Code quality and security checks in CI
-**Status:** doing · **Size:** S · **Depends on:** M1-01b
+**Status:** done · **Size:** S · **Depends on:** M1-01b
 
 **Why:** Lint and tests catch *our* mistakes; these catch insecure patterns, vulnerable dependencies and shrinking test coverage — automatically, on every PR.
 
@@ -132,11 +134,11 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 - [x] On GitHub: **Dependabot alerts** + dependency graph enabled (2026-10-18, via `gh api`, with the owner's OK — dependency review needs the graph). Secret scanning + push protection were already on.
 - [ ] Optional: **Dependabot security updates** (auto-PRs for vulnerable packages) in Settings → Code security.
 - [x] CodeQL review finding fixed: third-party `pnpm/action-setup` pinned to a commit SHA; rule added to docs/rules/general.md.
-- [ ] Add `security` and `codeql` to the required checks when M1-01c sets up branch protection.
+- [x] `security` and `codeql` are required checks on `main`.
 
 **Acceptance criteria**
-- [ ] `codeql`, `security`, `checks`, `unit` all green on the PR.
-- [ ] Code scanning results visible under the repo's Security tab.
+- [x] `codeql`, `security`, `checks`, `unit` all green on the PR (#2, merged).
+- [x] Code scanning results visible under the repo's Security tab (CodeQL analyses on `main` and PRs, 0 open alerts).
 
 **Notes**
 - Every new package with logic gets its own `vitest.config.ts` with thresholds (domain 90 %; set per package).
@@ -145,7 +147,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-01e — Git hooks (Lefthook), commitlint, split CI checks
-**Status:** doing · **Size:** S · **Depends on:** M1-01d
+**Status:** done · **Size:** S · **Depends on:** M1-01d
 
 **Why:** Catch formatting, lint and commit-message problems on your machine in seconds, before CI does it in minutes. Make each CI check visible on its own.
 
@@ -163,8 +165,8 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 
 **Acceptance criteria**
 - [x] `git commit -m "added stuff"` is refused by the hook (verified).
-- [ ] All CI checks green on the PR, each listed separately.
-- [ ] A PR whose title isn't Conventional Commits fails `commitlint`.
+- [x] All CI checks green on the PR, each listed separately (#3: 7 checks, merged).
+- [ ] A PR whose title isn't Conventional Commits fails `commitlint`. *(Same command verified locally; not yet seen on a real PR.)*
 
 ---
 
