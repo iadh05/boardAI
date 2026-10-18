@@ -6,7 +6,7 @@ export class BoardRegion {
   readonly labelInput: Locator;
   private readonly diagram: Locator;
 
-  constructor(private readonly page: Page) {
+  constructor(page: Page) {
     this.diagram = page.getByRole('application', { name: 'Diagram' });
     this.nodes = this.diagram.getByRole('group');
     this.labelInput = this.diagram.getByRole('textbox', { name: 'Node label' });
