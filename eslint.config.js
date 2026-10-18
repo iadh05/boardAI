@@ -265,6 +265,8 @@ export default tseslint.config(
       'pnpm-lock.yaml',
       // Deliberately broken code; linted only by tooling/lint's tests.
       'tooling/lint/fixtures/**',
+      // Throwaway spikes (own deps, outside the workspace); never merged to main.
+      'spikes/**',
     ],
   },
   js.configs.recommended,

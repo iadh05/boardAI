@@ -1,0 +1,15 @@
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; font-family: system-ui, sans-serif; }
+.spike-app { display: flex; flex-direction: column; height: 100%; }
+.spike-header, .spike-sub { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+.spike-header button, .spike-sub button { border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; padding: 4px 10px; cursor: pointer; font: inherit; }
+.spike-header button[aria-pressed='true'], .spike-sub button[aria-pressed='true'] { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+.spike-stats { margin-left: auto; color: #475569; font-variant-numeric: tabular-nums; }
+.spike-canvas { position: relative; flex: 1; min-height: 0; }
+.spike-minimap { position: absolute; right: 12px; bottom: 12px; border: 1px solid #e2e8f0; background: #fff; }
+.spike-group { width: 100%; height: 100%; border: 2px dashed #94a3b8; border-radius: 12px; background: rgba(241, 245, 249, 0.6); }
+.spike-group-title { padding: 6px 10px; font: 600 12px system-ui; color: #475569; }
+.spike-edge-label { position: absolute; background: #fff; padding: 1px 4px; border-radius: 4px; font: 600 11px system-ui; color: #0f172a; pointer-events: none; }
+.react-flow__node .spike-handle { width: 9px; height: 9px; background: #fff; border: 1.5px solid #4f46e5; opacity: 0; }
+.react-flow__node:hover .spike-handle { opacity: 1; }
+.react-flow__node-group { padding: 0; border: none; background: transparent; }

@@ -4,3 +4,5 @@ dist
 coverage
 # Docs are hand-formatted for now; revisit when we add a markdown linter.
 *.md
+# Throwaway spikes, never merged.
+spikes

@@ -1,0 +1,24 @@
+{
+  "name": "spike-canvas-engines",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5180 --strictPort"
+  },
+  "dependencies": {
+    "@antv/x6": "3.1.8",
+    "@antv/x6-react-shape": "3.0.1",
+    "@xyflow/react": "12.12.0",
+    "libavoid-js": "0.5.0-beta.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "typescript": "~6.0.3",
+    "vite": "8.3.4"
+  }
+}

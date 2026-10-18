@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@designroom/web", "dev"],
       "port": 5173
+    },
+    {
+      "name": "spike-canvas",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "spikes/canvas", "dev"],
+      "port": 5180
     }
   ]
 }
