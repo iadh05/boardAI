@@ -22,14 +22,26 @@ describe('toFlow', () => {
     const { nodes } = toFlow(board, null);
 
     expect(nodes).toEqual([
-      { id: 'api', type: 'system', position: { x: 0, y: 0 }, data: { kind: 'api', label: 'API' } },
+      {
+        id: 'api',
+        type: 'system',
+        position: { x: 0, y: 0 },
+        data: { kind: 'api', label: 'API' },
+        ariaLabel: 'API',
+      },
       {
         id: 'db',
         type: 'system',
         position: { x: 240, y: 0 },
         data: { kind: 'database', label: 'Database' },
+        ariaLabel: 'Database',
       },
     ]);
+  });
+
+  it('names nodes after their label for screen readers; ghosts say they are proposed', () => {
+    const { nodes } = toFlow(board, proposal);
+    expect(nodes.map((n) => n.ariaLabel)).toEqual(['API', 'Database', 'Proposed: Redis']);
   });
 
   it('gives board edges an arrow head pointing at the target', () => {

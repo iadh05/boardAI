@@ -18,6 +18,8 @@ export const toFlow = (board: Board, proposal: Proposal | null): FlowGraph => {
     type: 'system',
     position: n.position,
     data: { kind: n.kind, label: n.label },
+    // The accessible name of React Flow's node wrapper (role "group").
+    ariaLabel: n.label,
   }));
   const edges: Edge[] = board.edges.map((e) => ({
     id: e.id,
@@ -42,6 +44,7 @@ export const toFlow = (board: Board, proposal: Proposal | null): FlowGraph => {
       type: 'ghost',
       position: n.position,
       data: { kind: n.kind, label: n.label },
+      ariaLabel: `Proposed: ${n.label}`,
       draggable: false,
       selectable: false,
       connectable: false,

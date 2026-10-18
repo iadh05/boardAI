@@ -31,6 +31,8 @@ export type BoardState = {
   proposalError: string | null;
   /** The last editing action that was refused, for the UI to show. */
   lastError: DomainError | null;
+  /** The node whose label is open for editing. Shared by the toolbar (new Custom node) and the node pod. */
+  editingNodeId: string | null;
 };
 
 export type BoardActions = {
@@ -46,6 +48,9 @@ export type BoardActions = {
   setProposal: (proposal: Proposal) => void;
   acceptProposal: () => void;
   rejectProposal: () => void;
+  /** Opens a node's label for editing (one node at a time); ignored for unknown ids. */
+  startEditing: (id: string) => void;
+  stopEditing: () => void;
 };
 
 export type BoardStore = BoardState & BoardActions;
@@ -73,13 +78,16 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
       proposal: null,
       proposalError: null,
       lastError: null,
+      editingNodeId: null,
 
       addNode: (kind, position) => {
         const id = newId();
         return commit(addNode(get().board, createNode(id, kind, position))) ? id : null;
       },
       removeNode: (id) => {
-        commit(removeNode(get().board, id));
+        if (commit(removeNode(get().board, id)) && get().editingNodeId === id) {
+          set({ editingNodeId: null });
+        }
       },
       connect: (source, target) => {
         const id = newId();
@@ -120,6 +128,11 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
         });
       },
       rejectProposal: () => set({ proposal: null, proposalError: null, lastError: null }),
+
+      startEditing: (id) => {
+        if (get().board.nodes.some((n) => n.id === id)) set({ editingNodeId: id });
+      },
+      stopEditing: () => set({ editingNodeId: null }),
     };
   });
 

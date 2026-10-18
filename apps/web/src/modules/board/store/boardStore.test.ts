@@ -207,6 +207,41 @@ describe('boardStore — proposals', () => {
   });
 });
 
+describe('boardStore — label editing', () => {
+  it('nobody is editing at first', () => {
+    expect(state().editingNodeId).toBeNull();
+  });
+
+  it('startEditing marks one node as being edited; stopEditing ends it', () => {
+    const { api } = seedApiAndDb();
+
+    state().startEditing(api);
+    expect(state().editingNodeId).toBe(api);
+
+    state().stopEditing();
+    expect(state().editingNodeId).toBeNull();
+  });
+
+  it('only one node is edited at a time', () => {
+    const { api, db } = seedApiAndDb();
+    state().startEditing(api);
+    state().startEditing(db);
+    expect(state().editingNodeId).toBe(db);
+  });
+
+  it('ignores startEditing for a node that does not exist', () => {
+    state().startEditing('ghost');
+    expect(state().editingNodeId).toBeNull();
+  });
+
+  it('removing the edited node ends the editing', () => {
+    const { api } = seedApiAndDb();
+    state().startEditing(api);
+    state().removeNode(api);
+    expect(state().editingNodeId).toBeNull();
+  });
+});
+
 it('works as a React hook: a component re-renders when its slice changes', () => {
   const { result } = renderHook(() => store((s) => s.board.nodes.length));
   expect(result.current).toBe(0);

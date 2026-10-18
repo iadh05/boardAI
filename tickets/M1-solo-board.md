@@ -23,7 +23,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-08 | board module: `boardStore` (Zustand) | M1a | M | done |
 | M1-09 | canvas pod: React Flow + `toFlow` | M1a | M | done |
 | M1-10 | toolbar pod | M1a | S | done |
-| M1-11 | node pod: SystemNode + editable label | M1a | M | todo |
+| M1-11 | node pod: SystemNode + editable label | M1a | M | done |
 | M1-12 | Connect and delete | M1a | M | todo |
 | M1-13 | ADR-001/002/003 + M1a checkpoint | M1a | S | todo |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | todo |
@@ -410,20 +410,25 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-11 — node pod: SystemNode + editable label
-**Status:** todo · **Size:** M · **Depends on:** M1-10
+**Status:** done · **Size:** M · **Depends on:** M1-10
 
 **Tests first** (React Testing Library)
-- [ ] Double-click → input with text selected; Enter/blur commits; Escape cancels; empty → default label.
+- [x] Double-click → input with text selected; Enter/blur commits; Escape cancels; empty → default label.
 
 **Tasks**
-- [ ] `SystemNode`: icon + colour per kind, label, left target / right source handles, selected outline.
-- [ ] `GhostNode` stub (dashed, semi-transparent) — finished in M1-23.
-- [ ] A new **Custom** node (from the toolbar) opens in label-edit mode (moved from M1-10).
-- [ ] Icon per kind from `modules/board/lib/kindIcon.ts` (added in M1-10).
+- [x] `SystemNode`: icon + colour per kind, label, left target / right source handles, selected outline.
+- [x] `GhostNode` stub (dashed, semi-transparent) — finished in M1-23. *(Already there from M1-09; unchanged.)*
+- [x] A new **Custom** node (from the toolbar) opens in label-edit mode (moved from M1-10).
+- [x] Icon per kind from `modules/board/lib/kindAppearance.ts` (added in M1-10 as `kindIcon.ts`).
 
 **Acceptance criteria**
-- [ ] Kinds distinguishable at a glance; Custom looks generic.
-- [ ] Backspace/Delete in the input edits text, never deletes the node; dragging in the input selects text (`nodrag`).
+- [x] Kinds distinguishable at a glance; Custom looks generic.
+- [x] Backspace/Delete in the input edits text, never deletes the node; dragging in the input selects text (`nodrag`).
+
+**Notes**
+- Renaming also works from the keyboard: Enter on a focused node; focus returns to the node after Enter/Escape.
+- Kind colours are families (edge, network, compute, cache, data, messaging) as `kind-*` theme tokens; the icon tells kinds within a family apart.
+- Playwright: `e2e/board-editing.spec.ts` (name a Custom node, rename by double-click, 3 clicks → 3 nodes).
 
 ---
 
