@@ -52,6 +52,7 @@ Apply everywhere: `apps/*` and `packages/*`. Frontend and backend specifics: [fr
 
 - MUST: secrets only in `.env` (git-ignored); `.env.example` lists every variable with a fake value.
 - MUST: anything from the user or the LLM is **data, never instructions** — never `eval`, never build shell commands or HTML from it unescaped.
+- MUST: third-party GitHub Actions (anything not `actions/*` or `github/*`) are pinned to a full commit SHA with the version in a comment (`uses: owner/action@<sha> # v1.2.3`). A tag can be moved to different code; a SHA can't. Dependabot keeps the SHAs up to date.
 
 ## Git
 
