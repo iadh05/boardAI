@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-06 board operations
+**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-07 agent ops + API contract
 
 ## Done
 
@@ -19,14 +19,15 @@
 | M1-03b | Playwright e2e (production build) + CI job with browser cache | #9 |
 | — | Post-merge review of #6/#7/#9: 7 fixes, e2e made a required check | #10 |
 | M1-04 | `core/ui` kit (atoms, molecules, Panel) + design tokens | #11 |
+| M1-06 | Pure board operations + `Result` type, property-based test | #12 |
 
 ## In progress
 
-- **M1-06** — board operations (pure, immutable, TDD) in `packages/domain`.
+- **M1-07** — agent ops, `applyOps`, API contract (`packages/domain`).
 
 ## Next
 
-M1-07 agent ops + API contract → M1-08…M1-13 board UI (M1a) → M1-14… AI reviewer (M1b).
+M1-08…M1-13 board UI (M1a) → M1-14… AI reviewer (M1b).
 
 ## Waiting on you
 
