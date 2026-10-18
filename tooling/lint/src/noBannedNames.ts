@@ -6,6 +6,21 @@ import type { Rule } from 'eslint';
 const BANNED_FOLDERS = new Set(['shared', 'common', 'misc']);
 const BANNED_FILE = /^(utils|helpers)\.[cm]?[jt]sx?$/;
 
+/**
+ * Banned names in a repo-relative path: `"shared/"` for a folder, `"utils.ts"` for a file.
+ * Used by the ESLint rule (code files) and by repoNames.test.ts (every tracked file).
+ */
+export const bannedNamesIn = (relativePath: string): string[] => {
+  const segments = relativePath.split(/[\\/]/);
+  const fileName = segments.at(-1) ?? '';
+  const banned = segments
+    .slice(0, -1)
+    .filter((segment) => BANNED_FOLDERS.has(segment))
+    .map((folder) => `${folder}/`);
+  if (BANNED_FILE.test(fileName)) banned.push(fileName);
+  return banned;
+};
+
 export const noBannedNames: Rule.RuleModule = {
   meta: {
     type: 'suggestion',
@@ -15,7 +30,7 @@ export const noBannedNames: Rule.RuleModule = {
     },
     messages: {
       folder:
-        'Folder "{{name}}/" is banned: name the folder after what it holds (store/, mappers/, lib/…).',
+        'Folder "{{name}}" is banned: name the folder after what it holds (store/, mappers/, lib/…).',
       file: 'File "{{name}}" is banned: name the file after what it does (placement.ts, kindMeta.ts…).',
     },
     schema: [],
@@ -24,14 +39,9 @@ export const noBannedNames: Rule.RuleModule = {
     return {
       Program(node) {
         // Only look inside the repo, so a folder named "shared" above it doesn't count.
-        const segments = path.relative(context.cwd, context.filename).split(/[\\/]/);
-        const fileName = segments.at(-1) ?? '';
-        const bannedFolder = segments.slice(0, -1).find((segment) => BANNED_FOLDERS.has(segment));
-        if (bannedFolder) {
-          context.report({ node, messageId: 'folder', data: { name: bannedFolder } });
-        }
-        if (BANNED_FILE.test(fileName)) {
-          context.report({ node, messageId: 'file', data: { name: fileName } });
+        for (const name of bannedNamesIn(path.relative(context.cwd, context.filename))) {
+          const messageId = name.endsWith('/') ? 'folder' : 'file';
+          context.report({ node, messageId, data: { name } });
         }
       },
     };
