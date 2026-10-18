@@ -20,7 +20,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-05 | domain: board types + zod | M1a | S | done |
 | M1-06 | domain: board operations | M1a | M | done |
 | M1-07 | domain: agent ops, `applyOps`, API contract | M1a | M | done |
-| M1-08 | board module: `boardStore` (Zustand) | M1a | M | todo |
+| M1-08 | board module: `boardStore` (Zustand) | M1a | M | done |
 | M1-09 | canvas pod: React Flow + `toFlow` | M1a | M | todo |
 | M1-10 | toolbar pod | M1a | S | todo |
 | M1-11 | node pod: SystemNode + editable label | M1a | M | todo |
@@ -351,19 +351,24 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-08 — board module: `boardStore` (Zustand)
-**Status:** todo · **Size:** M · **Depends on:** M1-07, M1-03
+**Status:** done · **Size:** M · **Depends on:** M1-07, M1-03
 
 **Learning goal:** a Zustand store whose actions delegate rules to the domain; testing a store without React.
 
-**Tests first** (via `useBoardStore.getState()`, store reset between tests)
-- [ ] Each action (`addNode`, `removeNode`, `connect`, `rename`, `move`, `setProposal`, `acceptProposal`, `rejectProposal`) gives the expected state.
-- [ ] A failing domain op leaves state unchanged.
-- [ ] `acceptProposal` when ops no longer fit → state unchanged, `proposalError` set.
+**Tests first** (fresh store per test via the factory; 21 tests)
+- [x] Each action (`addNode`, `removeNode`, `connect`, `removeEdge`, `renameNode`, `changeKind`, `moveNode`, `setProposal`, `acceptProposal`, `rejectProposal`) gives the expected state.
+- [x] A failing domain op leaves the board unchanged (same object) and sets `lastError`.
+- [x] `acceptProposal` when ops no longer fit → board unchanged, proposal kept, `proposalError` "out of date"; a proposal that could never apply → "can't be applied".
+- [x] As a React hook: a component re-renders when its selected slice changes.
 
 **Tasks**
-- [ ] `modules/board/store/boardStore.ts`.
-- [ ] `modules/board/index.ts` exports what other modules may use (e.g. `setProposal`, selectors).
+- [x] `modules/board/store/boardStore.ts`: `createBoardStore({ newId, initialBoard? })` + the app's `useBoardStore`.
+- [x] `modules/board/index.ts`: store, types, and `showProposal()` — the one way chat talks to board.
+- [x] `core/lib/ids.ts`: `createId()`.
 
+**Notes**
+- Factory instead of a global store + reset helper: each test builds its own store with predictable ids (frontend rules updated).
+- **Review (/code-review, 6 findings, all fixed):** `crypto.randomUUID` is missing on plain-http LAN addresses (e.g. testing from a phone) → `createId()` falls back to `getRandomValues`; "out of date" only when the board really changed; proposal actions clear stale errors; a real hook re-render test; rule updated; agent must generate ids for new nodes (noted on M1-17).
 ---
 
 ## M1-09 — canvas pod: React Flow + `toFlow`
