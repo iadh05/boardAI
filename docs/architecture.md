@@ -89,7 +89,8 @@ designroom/
 └─ packages/
    ├─ domain/                   # @designroom/domain     — board model, ops, API contracts
    ├─ agent/                    # @designroom/agent      — agent logic
-   └─ ai-gateway/               # @designroom/ai-gateway — the only code that talks to LLM providers
+   ├─ ai-gateway/               # @designroom/ai-gateway — the only code that talks to LLM providers
+   └─ diagram/                  # @designroom/diagram    — the canvas: React Flow + libavoid behind our own API (ADR-004)
 └─ tooling/
    └─ lint/                     # @designroom/lint — local ESLint rules + fixture tests for the architecture rules
 ```
@@ -99,6 +100,7 @@ designroom/
 ```mermaid
 flowchart TD
   web["apps/web"] --> domain
+  web --> diagram["diagram<br/>(React Flow + libavoid)"]
   server["apps/server"] --> domain
   server --> agent
   server --> gw["ai-gateway"]
@@ -111,6 +113,7 @@ flowchart TD
 - `ai-gateway` depends on nothing internal — it knows LLMs, not boards.
 - `agent` uses the gateway's **interface type** only (`import type`); the real gateway is injected by the server. So the agent runs with a fake LLM in tests.
 - `apps/web` never imports `agent` or `ai-gateway`.
+- `diagram` depends on nothing internal: it knows boxes and arrows, not boards (ADR-004). The app maps its concepts onto it.
 
 ## 4. `packages/domain` — the contract
 

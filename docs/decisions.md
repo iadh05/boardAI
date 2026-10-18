@@ -125,3 +125,35 @@ Modules and pods, by preference, for better scalability. Zustand for client stat
   - React Flow renders node components itself, so they reach the store through a small context (`BoardStoreContext`).
   - More folders and `index.ts` files than a flat app.
 - **Revisit:** at the end of M1, decide whether `core/ui` becomes a design-system package and whether some modules become packages (planned in M1-27).
+
+## ADR-004 — The diagram as our own package: React Flow + libavoid behind `@designroom/diagram`
+
+- **Date:** 2026-10-18
+- **Status:** accepted (extends ADR-001: React Flow stays, now behind our own package)
+- **Milestone:** M1
+
+### Context
+
+After M1a the board read like a flowchart, not an architecture diagram (draw.io / AWS style): one box style, handles only left and right, curvy edges, no labels or zones. A spike (`spike/canvas-engines`, `spikes/canvas/README.md`) drew the same architecture board with **React Flow + libavoid-js** and with **AntV X6**.
+
+### Options considered
+
+1. **Keep React Flow as it is:** cheapest, but no routing around boxes, so it never looks like draw.io.
+2. **AntV X6:** the cleanest arrows out of the box (manhattan router), less code, stable and MIT. But it has an imperative API, and its behaviour can only be checked in a real browser: no component tests in jsdom, no routing tests without a browser. Its docs are partly Chinese-only. 167 KB gzip.
+3. **React Flow + libavoid-js (orthogonal routing compiled to wasm):** keeps the store-driven canvas and its tests. libavoid-js ships a Node build, so routing quality can be unit-tested. Risks: libavoid-js is a beta (0.5.0-beta.5) with out-of-date typings; routes need tuning; 184 KB wasm (lazy, cached per version); LGPL.
+4. **Our own canvas:** weeks to months of hit-testing, zoom, routing and accessibility before reaching today's features. The roadmap keeps it for G3.
+5. **Embed draw.io (iframe):** we'd lose our board model, so no AI ghost nodes and no Yjs multiplayer.
+
+**Cross-cutting choice: put the canvas in our own package**, used by the app like a third-party library. The app never imports the engine, so the engine can be swapped later without touching the app (the same idea as `ai-gateway` for LLMs).
+
+### Decision
+
+React Flow + libavoid-js, behind `@designroom/diagram`. We chose it because the project is test-driven: almost all diagram behaviour, routing included, can be tested without a browser, and libavoid's risks stay inside one adapter file with a fallback.
+
+### Consequences
+
+- **The package knows nothing about DesignRoom.** No `@designroom/*` imports (lint-enforced). It speaks boxes, arrows, shapes and zones. Its stylesheet is themed with CSS variables, and React is a peer dependency.
+- **The app maps its concepts onto it:** kind → shape, colour and icon. Store callbacks stay in the board module.
+- **Easier:** draw.io-style look; routing is tested in Node; the engine can be swapped behind a stable API.
+- **Harder:** two libraries kept in sync inside the package (React Flow positions → libavoid obstacles); a wasm to load and cache; route tuning.
+- **Exit condition:** if libavoid's routes still look clearly worse than X6's after about a day of tuning, or the beta breaks, replace the router or engine *inside* the package (X6 is the documented fallback). The app does not change.

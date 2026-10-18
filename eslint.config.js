@@ -15,7 +15,11 @@ const internalPackage = (name, why) => ({ name: `@designroom/${name}`, message: 
 /** Package graph: which @designroom/* package may import which (architecture §3). */
 const packageRules = [
   {
-    files: ['**/packages/domain/src/**/*.ts', '**/packages/ai-gateway/src/**/*.ts'],
+    files: [
+      '**/packages/domain/src/**/*.ts',
+      '**/packages/ai-gateway/src/**/*.ts',
+      '**/packages/diagram/src/**/*.{ts,tsx}',
+    ],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
@@ -24,7 +28,7 @@ const packageRules = [
             {
               group: ['@designroom/*'],
               message:
-                'domain and ai-gateway depend on no other internal package (architecture §3).',
+                'domain, ai-gateway and diagram depend on no other internal package (architecture §3, ADR-004).',
             },
           ],
         },
@@ -315,7 +319,7 @@ export default tseslint.config(
   appRules,
   {
     // React in the browser: hooks rules + safe Fast Refresh (docs/rules/frontend.md).
-    files: ['apps/web/src/**/*.{ts,tsx}'],
+    files: ['apps/web/src/**/*.{ts,tsx}', 'packages/diagram/src/**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser } },
     ...reactHooks.configs.flat['recommended-latest'],
     plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },

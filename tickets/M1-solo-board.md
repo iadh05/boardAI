@@ -26,6 +26,11 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-11 | node pod: SystemNode + editable label | M1a | M | done |
 | M1-12 | Connect and delete | M1a | M | done |
 | M1-13 | ADR-001/002/003 + M1a checkpoint | M1a | S | doing |
+| M1-D1 | ADR-004 + `@designroom/diagram` skeleton | diagram | S | done |
+| M1-D2 | `<Diagram>`: the canvas inside the package | diagram | M | todo |
+| M1-D3 | Orthogonal routing with libavoid | diagram | M | todo |
+| M1-D4 | The app uses the package | diagram | M | todo |
+| M1-D5 | Edge meaning in the domain | diagram | S | todo |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | todo |
 | M1-14b | Nginx edge proxy | M1b | M | todo |
 | M1-15 | Spike: Qwen tool call end to end | M1b | S | todo |
@@ -467,6 +472,62 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 # M1b — AI reviewer
+
+## Diagram package — D-1 … D-5
+
+Inserted after M1a (2026-10-18): the board read like a flowchart, not an architecture diagram. A spike compared React Flow + libavoid with AntV X6 (`spike/canvas-engines`, `spikes/canvas/README.md`). Decision: [ADR-004](../docs/decisions.md). The canvas moves into `@designroom/diagram`, which the app uses like a third-party library.
+
+## M1-D1 — ADR-004 + `@designroom/diagram` skeleton
+**Status:** done · **Size:** S
+
+**Tasks**
+- [x] ADR-004: React Flow + libavoid behind our own package; why not X6; exit condition.
+- [x] `packages/diagram`: package.json (React as peer), tsconfig, Vitest (jsdom) with an 85 % coverage gate.
+- [x] Public vocabulary: `DiagramNode`, `DiagramEdge`, `SHAPES`. No DesignRoom concepts.
+- [x] `Shape`: 8 SVG outlines (rectangle, rounded, cylinder, queue, hexagon, ellipse, device, dashed), test-first.
+- [x] Lint: diagram imports no `@designroom/*` package (fixture test).
+
+## M1-D2 — `<Diagram>`: the canvas inside the package
+**Status:** todo · **Size:** M · **Depends on:** M1-D1
+
+**Tasks**
+- [ ] Controlled `<Diagram nodes edges … />`: store-driven, canvas keeps only selection, drag and measured size (moved from the canvas pod: `mergeFlowNodes`, `canvasChanges`, edges).
+- [ ] Node: `Shape` + icon + label, handles on 4 sides (loose connection mode), accessible name; ghost style.
+- [ ] Edges: labels, dashed, ghost; arrows in the theme colour.
+- [ ] Callbacks: `onNodeMove`, `onConnect` (+ `canConnect`), `onDelete`, label editing (`editingNodeId`, `onEditStart`, `onLabelCommit`, `onEditEnd`) — moved from M1-11/M1-12 with their tests.
+- [ ] `useDiagramViewport()` for children (toolbar): `center()`.
+- [ ] Own stylesheet themed by `--dr-diagram-*` CSS variables (no Tailwind inside the package).
+
+## M1-D3 — Orthogonal routing with libavoid
+**Status:** todo · **Size:** M · **Depends on:** M1-D2
+
+**Tests first** (Vitest in Node — libavoid-js ships a Node build)
+- [ ] No route crosses a node it doesn't connect; routes are orthogonal; parallel routes are nudged apart.
+
+**Tasks**
+- [ ] Typed adapter (`router/avoid.ts`) — the only file that touches libavoid-js; pinned version.
+- [ ] Lazy wasm load on first use; hashed asset, cached once per version.
+- [ ] Fallback to `smoothstep` edges if the wasm can't load.
+- [ ] Label on the longest segment.
+
+## M1-D4 — The app uses the package
+**Status:** todo · **Size:** M · **Depends on:** M1-D3
+
+**Tasks**
+- [ ] Board canvas pod → thin adapter: `toDiagram` (replaces `toFlow`), store callbacks, kind → shape/colour/icon.
+- [ ] Lint: `apps/web` never imports `@xyflow/react` or `libavoid-js` (only the package does).
+- [ ] e2e page objects updated; all journeys green.
+- [ ] Vite `manualChunks`: the diagram engine in its own long-cached chunk.
+- [ ] Remove the old canvas/node code and React Flow from `apps/web`.
+
+## M1-D5 — Edge meaning in the domain
+**Status:** todo · **Size:** S · **Depends on:** M1-D4
+
+**Tasks**
+- [ ] `BoardEdge` gets `label?` and `mode: 'sync' | 'async'` (zod, ops, `applyOps`); async drawn dashed.
+- [ ] Edit an edge's label in place.
+
+---
 
 ## M1-14 — Server skeleton: composition root, core, health
 **Status:** todo · **Size:** M · **Depends on:** M1-02
