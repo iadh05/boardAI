@@ -6,9 +6,10 @@ export class BoardRegion {
   readonly labelInput: Locator;
   private readonly diagram: Locator;
 
-  constructor(page: Page) {
+  constructor(private readonly page: Page) {
     this.diagram = page.getByRole('application', { name: 'Diagram' });
-    this.nodes = this.diagram.getByRole('group');
+    // Nodes and edges are both role "group"; only nodes contain a kind icon.
+    this.nodes = this.diagram.getByRole('group').filter({ has: page.getByRole('img') });
     this.labelInput = this.diagram.getByRole('textbox', { name: 'Node label' });
   }
 
@@ -28,6 +29,35 @@ export class BoardRegion {
   async typeLabel(text: string): Promise<void> {
     await this.labelInput.fill(text);
     await this.labelInput.press('Enter');
+  }
+
+  /** Drags a node by its icon, by (dx, dy) screen pixels. */
+  async move(label: string, dx: number, dy: number): Promise<void> {
+    const box = await this.node(label).getByRole('img').boundingBox();
+    if (!box) throw new Error(`node "${label}" is not on screen`);
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await this.page.mouse.move(x, y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(x + dx, y + dy, { steps: 5 });
+    await this.page.mouse.up();
+  }
+
+  /** Drags from the right handle of one node to the left handle of another. */
+  async connect(from: string, to: string): Promise<void> {
+    await this.node(from)
+      .getByTestId('connect-out')
+      .dragTo(this.node(to).getByTestId('connect-in'));
+  }
+
+  edge(from: string, to: string): Locator {
+    return this.diagram.getByRole('group', { name: `From ${from} to ${to}`, exact: true });
+  }
+
+  /** Selects a node or edge with a click and presses Delete. */
+  async delete(element: Locator): Promise<void> {
+    await element.click();
+    await this.page.keyboard.press('Delete');
   }
 
   async rename(label: string, to: string): Promise<void> {

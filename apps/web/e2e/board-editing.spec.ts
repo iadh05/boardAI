@@ -28,3 +28,42 @@ test('three clicks on a kind give three nodes', async ({ app }) => {
 
   await expect(app.board.node('API')).toHaveCount(3);
 });
+
+test('draw Client → Load Balancer → API → Database', { tag: '@smoke' }, async ({ app }) => {
+  const chain = ['Client', 'Load Balancer', 'API', 'Database'];
+  for (const [i, kind] of chain.entries()) {
+    await app.board.addNode(kind);
+    // Spread them out on a diagonal: new nodes land mid-view, nudged only slightly.
+    await app.board.move(kind, (i - 1.5) * 200, (i - 1.5) * 110);
+  }
+
+  await app.board.connect('Client', 'Load Balancer');
+  await app.board.connect('Load Balancer', 'API');
+  await app.board.connect('API', 'Database');
+
+  await expect(app.board.edge('Client', 'Load Balancer')).toBeVisible();
+  await expect(app.board.edge('Load Balancer', 'API')).toBeVisible();
+  await expect(app.board.edge('API', 'Database')).toBeVisible();
+});
+
+test('deleting a node takes its edges with it; deleting an edge keeps the nodes', async ({
+  app,
+}) => {
+  await app.board.addNode('API');
+  await app.board.move('API', -150, 0);
+  await app.board.addNode('Cache');
+  await app.board.move('Cache', 150, -100);
+  await app.board.addNode('Database');
+  await app.board.move('Database', 150, 100);
+  await app.board.connect('API', 'Cache');
+  await app.board.connect('API', 'Database');
+
+  await app.board.delete(app.board.edge('API', 'Cache'));
+  await expect(app.board.edge('API', 'Cache')).toHaveCount(0);
+  await expect(app.board.nodes).toHaveCount(3);
+
+  await app.board.delete(app.board.node('API'));
+  await expect(app.board.node('API')).toHaveCount(0);
+  await expect(app.board.edge('API', 'Database')).toHaveCount(0);
+  await expect(app.board.nodes).toHaveCount(2);
+});
