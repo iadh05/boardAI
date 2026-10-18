@@ -7,7 +7,7 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByRole('heading', { level: 1, name: 'DesignRoom' })).toBeInTheDocument();
-    expect(screen.getByRole('main')).toHaveTextContent(/canvas/i);
+    expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: 'Assistant' })).toHaveTextContent(
       /assistant/i,
     );

@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@xyflow/react/dist/style.css';
 
 /*
  * Design tokens (docs/rules/frontend.md — "colours, spacing and radii come from the theme").
@@ -21,4 +22,10 @@
   --color-muted: oklch(0.55 0.02 260);
 
   --color-focus: oklch(0.62 0.19 265);
+}
+
+/* Edges the AI proposes (see toFlow): dashed until accepted. */
+.react-flow__edge.is-proposed .react-flow__edge-path {
+  stroke: var(--color-accent);
+  stroke-dasharray: 6 4;
 }
