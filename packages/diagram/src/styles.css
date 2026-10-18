@@ -4,14 +4,17 @@
  */
 @import '@xyflow/react/dist/style.css';
 
-:root {
-  --dr-diagram-accent: #4f46e5;
-  --dr-diagram-edge: #334155;
-  --dr-diagram-node: #64748b;
-  --dr-diagram-text: #0f172a;
-  --dr-diagram-muted: #64748b;
-  --dr-diagram-focus: #6366f1;
-  --dr-diagram-surface: #ffffff;
+/* Defaults in a layer: an app's own (unlayered) values always win, whatever the load order. */
+@layer dr-diagram-defaults {
+  :root {
+    --dr-diagram-accent: #4f46e5;
+    --dr-diagram-edge: #334155;
+    --dr-diagram-node: #64748b;
+    --dr-diagram-text: #0f172a;
+    --dr-diagram-muted: #64748b;
+    --dr-diagram-focus: #6366f1;
+    --dr-diagram-surface: #ffffff;
+  }
 }
 
 .dr-diagram .react-flow__node-box {

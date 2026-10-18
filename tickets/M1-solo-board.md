@@ -29,7 +29,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-D1 | ADR-004 + `@designroom/diagram` skeleton | diagram | S | done |
 | M1-D2 | `<Diagram>`: the canvas inside the package | diagram | M | done |
 | M1-D3 | Orthogonal routing with libavoid | diagram | M | done |
-| M1-D4 | The app uses the package | diagram | M | todo |
+| M1-D4 | The app uses the package | diagram | M | done |
 | M1-D5 | Edge meaning in the domain | diagram | S | todo |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | todo |
 | M1-14b | Nginx edge proxy | M1b | M | todo |
@@ -522,14 +522,22 @@ Inserted after M1a (2026-10-18): the board read like a flowchart, not an archite
 - Package README documents the API, theming and the LGPL notice.
 
 ## M1-D4 — The app uses the package
-**Status:** todo · **Size:** M · **Depends on:** M1-D3
+**Status:** done · **Size:** M · **Depends on:** M1-D3
 
 **Tasks**
-- [ ] Board canvas pod → thin adapter: `toDiagram` (replaces `toFlow`), store callbacks, kind → shape/colour/icon.
-- [ ] Lint: `apps/web` never imports `@xyflow/react` or `libavoid-js` (only the package does).
-- [ ] e2e page objects updated; all journeys green.
-- [ ] Vite `manualChunks`: the diagram engine in its own long-cached chunk.
-- [ ] Remove the old canvas/node code and React Flow from `apps/web`.
+- [x] Board canvas pod → thin adapter: `toDiagram` (replaces `toFlow`), store callbacks, kind → shape/colour/icon.
+- [x] Lint: `apps/web` never imports `@xyflow/react` or `libavoid-js` (only the package does).
+- [x] e2e page objects updated; all journeys green.
+- [x] Vite `manualChunks`: the diagram engine in its own long-cached chunk.
+- [x] Remove the old canvas/node code and React Flow from `apps/web`.
+
+**Notes — what the switch found**
+- A missing space in the node class list (`dr-nodeis-selected`) dropped `position: relative` from selected nodes: their content covered other nodes. Unit test added; classes are now joined from a list.
+- libavoid connection pins are *exclusive* by default: a second arrow from the same side fell back to centre-to-centre. Pins are shared now.
+- Boxes closer than twice the clearance couldn't be routed (libavoid silently joins the centres). Smaller clearance (8 px), and such routes are dropped so the edge falls back to a simple arrow.
+- In jsdom the default router doesn't load (user agent check), so consumers need no mocks.
+- e2e: React Flow ignores a drag's first move; the page object starts drags with a 5 px nudge so nodes land where asked.
+- Engine chunk: `diagram-engine-*.js` 78 KB gzip + `libavoid-*.wasm` 184 KB gzip (lazy).
 
 ## M1-D5 — Edge meaning in the domain
 **Status:** todo · **Size:** S · **Depends on:** M1-D4

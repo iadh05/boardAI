@@ -23,7 +23,10 @@ export function BoxNodeView({ id, data, selected }: NodeProps<BoxNode>) {
 
   return (
     <div
-      className={`dr-node${selected ? 'is-selected' : ''}${data.ghost ? 'is-ghost' : ''}`}
+      // Joined from a list: no space to forget between classes.
+      className={['dr-node', selected && 'is-selected', data.ghost && 'is-ghost']
+        .filter(Boolean)
+        .join(' ')}
       style={NODE_SIZE}
     >
       <Shape shape={data.ghost ? 'dashed' : data.shape} color={color} {...NODE_SIZE} />

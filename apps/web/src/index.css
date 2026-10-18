@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@import '@xyflow/react/dist/style.css';
 
 /*
  * Design tokens (docs/rules/frontend.md — "colours, spacing and radii come from the theme").
@@ -32,8 +31,13 @@
   --color-kind-messaging: oklch(0.62 0.17 40);
 }
 
-/* Edges the AI proposes (see toFlow): dashed until accepted. */
-.react-flow__edge.is-proposed .react-flow__edge-path {
-  stroke: var(--color-accent);
-  stroke-dasharray: 6 4;
+/* @designroom/diagram takes its colours from our tokens (ADR-004). */
+:root {
+  --dr-diagram-accent: var(--color-accent);
+  --dr-diagram-edge: var(--color-ink);
+  --dr-diagram-node: var(--color-muted);
+  --dr-diagram-text: var(--color-ink);
+  --dr-diagram-muted: var(--color-muted);
+  --dr-diagram-focus: var(--color-focus);
+  --dr-diagram-surface: var(--color-surface);
 }

@@ -35,6 +35,13 @@ const crosses = (route: Route, b: RouterBox) =>
     return x1 < b.x + b.width && x2 > b.x && y1 < b.y + b.height && y2 > b.y;
   });
 
+/** Is the point on the outline of the box (not inside it, e.g. its centre)? */
+const onEdge = (p: DiagramPosition | undefined, b: RouterBox | undefined) =>
+  !!p &&
+  !!b &&
+  (((p.x === b.x || p.x === b.x + b.width) && p.y >= b.y && p.y <= b.y + b.height) ||
+    ((p.y === b.y || p.y === b.y + b.height) && p.x >= b.x && p.x <= b.x + b.width));
+
 const first = (route: Route | undefined): DiagramPosition | undefined => route?.[0];
 const last = (route: Route | undefined): DiagramPosition | undefined => route?.at(-1);
 
@@ -90,14 +97,53 @@ describe('createAvoidRouter', () => {
 
     const routes = router.route(boxes, links);
 
+    const byId = new Map(boxes.map((b) => [b.id, b]));
     for (const link of links) {
       const route = routes.get(link.id) ?? [];
       expect(isOrthogonal(route), link.id).toBe(true);
+      expect(onEdge(first(route), byId.get(link.source)), `${link.id} starts on an edge`).toBe(
+        true,
+      );
+      expect(onEdge(last(route), byId.get(link.target)), `${link.id} ends on an edge`).toBe(true);
       for (const other of boxes) {
         if (other.id === link.source || other.id === link.target) continue;
         expect(crosses(route, other), `${link.id} crosses ${other.id}`).toBe(false);
       }
     }
+  });
+
+  it('several arrows can leave the same side: each starts on the edge of the box, none from its centre', () => {
+    const a = box('a', 0, 0);
+    const routes = router.route(
+      [a, box('b', 300, 0), box('c', 300, 200)],
+      [
+        { id: 'e1', source: 'a', target: 'b' },
+        { id: 'e2', source: 'a', target: 'c' },
+      ],
+    );
+
+    for (const id of ['e1', 'e2']) {
+      expect(first(routes.get(id))?.x, id).toBe(a.x + a.width);
+      expect(isOrthogonal(routes.get(id) ?? []), id).toBe(true);
+    }
+  });
+
+  it('routes boxes placed close together (a small gap) from edge to edge', () => {
+    const a = box('a', 0, 0);
+    const b = box('b', 184, 0); // 24 px apart
+    const route = router.route([a, b], [{ id: 'e', source: 'a', target: 'b' }]).get('e');
+
+    expect(first(route)).toEqual({ x: 160, y: 30 });
+    expect(last(route)).toEqual({ x: 184, y: 30 });
+  });
+
+  it('gives no route when boxes are too close to route between (the edge falls back)', () => {
+    // 10 px apart: the clearance zones overlap, and libavoid would silently join the centres.
+    const routes = router.route(
+      [box('a', 0, 0), box('b', 170, 0)],
+      [{ id: 'e', source: 'a', target: 'b' }],
+    );
+    expect(routes.has('e')).toBe(false);
   });
 
   it('skips links whose ends are not on the board', () => {

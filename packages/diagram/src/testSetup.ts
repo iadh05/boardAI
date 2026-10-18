@@ -1,10 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { afterEach, vi } from 'vitest';
-
-// Component tests never load the libavoid wasm: the default router stays "loading", so edges
-// are drawn simply. Routing itself is tested in Node (router/avoid.test.ts).
-vi.mock('./router/loadAvoid.ts', () => ({ loadAvoidRouter: () => new Promise(() => {}) }));
+import { afterEach } from 'vitest';
 
 afterEach(() => {
   cleanup();

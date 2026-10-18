@@ -317,3 +317,21 @@ describe('Diagram — routing', () => {
     expect(edgePath(container)).toMatch(/^M/);
   });
 });
+
+describe('Diagram — node styling', () => {
+  // Classes are the styling contract with styles.css; a broken class list once dropped
+  // `position: relative` from selected nodes, so their content covered other nodes.
+  const box = (name: string) => node(name).firstElementChild;
+
+  it('a selected node keeps its node class and gets the selected one', async () => {
+    render(<Harness />);
+    fireEvent.click(await screen.findByText('Postgres'));
+    expect(box('Postgres')).toHaveClass('dr-node', 'is-selected');
+  });
+
+  it('a ghost node keeps its node class and gets the ghost one', async () => {
+    render(<Harness initialNodes={[{ ...db, ghost: true }]} initialEdges={[]} />);
+    await screen.findByRole('group', { name: 'Proposed: Postgres' });
+    expect(box('Proposed: Postgres')).toHaveClass('dr-node', 'is-ghost');
+  });
+});

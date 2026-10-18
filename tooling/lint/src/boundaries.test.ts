@@ -46,6 +46,10 @@ describe('package dependency rules', () => {
     ['packages/diagram/src/badImportsDomain.ts', 'diagram imports no other internal package'],
     ['packages/agent/src/badValueImport.ts', 'agent may only `import type` from ai-gateway'],
     ['apps/web/src/modules/chat/pods/conversation/badImportsAgent.ts', 'web never imports agent'],
+    [
+      'apps/web/src/modules/board/pods/canvas/badImportsReactFlow.ts',
+      'web never imports the diagram engine',
+    ],
   ])('%s is rejected (%s)', (fixture) => {
     expect(violationsOf(fixture)).toEqual(['@typescript-eslint/no-restricted-imports']);
   });

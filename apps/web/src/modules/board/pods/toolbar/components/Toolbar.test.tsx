@@ -50,3 +50,22 @@ describe('Toolbar', () => {
     expect(new Set(positions).size).toBe(3);
   });
 });
+
+describe('Custom nodes from the toolbar', () => {
+  it('open straight into label editing', async () => {
+    const store = renderBoard();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add Custom' }));
+    await userEvent.keyboard('Payment provider{Enter}');
+
+    expect(store.getState().board.nodes).toMatchObject([
+      { kind: 'custom', label: 'Payment provider' },
+    ]);
+  });
+
+  it('other kinds do not', async () => {
+    renderBoard();
+    await userEvent.click(screen.getByRole('button', { name: 'Add Cache' }));
+    expect(screen.queryByRole('textbox', { name: 'Node label' })).not.toBeInTheDocument();
+  });
+});

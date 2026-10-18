@@ -8,6 +8,23 @@ export default defineConfig({
     port: 5173,
     strictPort: true, // Nginx (M1-14b) forwards to this exact port.
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            // The diagram engine in its own file: it changes only when we upgrade it, so browsers
+            // keep it cached while our own code changes (hashed names + immutable caching, M1-14b).
+            {
+              name: 'diagram-engine',
+              // Module ids use forward slashes on every OS.
+              test: /\/node_modules\/.*\/(@xyflow|libavoid-js|d3-[a-z]+|classcat)\//,
+            },
+          ],
+        },
+      },
+    },
+  },
   test: {
     include: ['src/**/*.test.{ts,tsx}'], // e2e/*.spec.ts belong to Playwright
     environment: 'jsdom',
