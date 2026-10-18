@@ -33,7 +33,7 @@ Then read your own diff top to bottom (`git diff main...`) as if someone else wr
 
 - Title in Conventional Commits form, with the ticket id: `feat(domain): M1-05 board types and zod schemas`. The squash merge uses the PR title as the commit on `main`, so CI's `commitlint` job checks it.
 - Fill the template (`.github/pull_request_template.md`): what, why, how to test, screenshots for UI.
-- CI runs: `lint`, `format`, `typecheck`, `unit`, `security`, `commitlint`, `codeql` (and `e2e` from M1-03b). **Red CI = not ready for review.** Fix first.
+- CI runs: `lint`, `format`, `typecheck`, `unit`, `security`, `commitlint`, `codeql`, `e2e`, `edge` (Nginx smoke test, from M1-14b). **Red CI = not ready for review.** Fix first.
 
 ## 5. Review
 
@@ -76,7 +76,7 @@ Example: `blocking: removeNode leaves edges pointing at the deleted node — add
 
 ## 8. Repository settings (one-time, on GitHub)
 
-- Branch protection on `main`: require a pull request; require status checks `lint`, `format`, `typecheck`, `unit`, `security`, `commitlint`, `codeql` (+ `e2e` from M1-03b); block force-push; require branches to be up to date.
+- Branch protection on `main`: require a pull request; require status checks `lint`, `format`, `typecheck`, `unit`, `security`, `commitlint`, `codeql`, `e2e` (+ `edge` from M1-14b); block force-push; require branches to be up to date.
 - ✅ Done 2026-10-18: squash merge only, squash commit = PR title + commit messages, branches deleted automatically after merge.
 - Code security: Dependabot alerts + Dependabot security updates on; secret scanning + push protection on (already enabled).
 - Approvals: GitHub doesn't count approving your own PR, so while solo, rely on required checks + the self/AI review above.

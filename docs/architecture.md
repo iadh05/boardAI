@@ -463,6 +463,7 @@ flowchart LR
 | `security` | `pnpm audit --audit-level=high` + `dependency-review-action` on PRs | Vulnerable or GPL/AGPL dependencies fail the job |
 | `codeql` (own workflow) | CodeQL `security-and-quality` on TypeScript and workflow files | Also weekly; results in Security → Code scanning |
 | `e2e` | build → start server (`LLM_PROVIDER=fake`) + web preview → `playwright test` (Chromium) | Playwright HTML report + traces uploaded on failure. No GPU, no Ollama, no Docker needed in CI |
+| `edge` | server + Vite + Nginx (`docker compose up -d nginx`) → `infra/nginx/smoke.sh` | Routing, request id in both logs, WebSocket upgrade, 1 MB body limit, 429 on `/api/chat` |
 
 - pnpm store and Playwright browsers cached between runs.
 - Dependabot opens weekly grouped PRs for npm packages and GitHub Actions; GitHub secret scanning + push protection are on (public repo).
