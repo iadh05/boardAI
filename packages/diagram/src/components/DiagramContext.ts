@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createRequiredContext } from './requiredContext.ts';
 
 /**
  * What the node components need from <Diagram>'s props. React Flow renders node components
@@ -11,11 +11,5 @@ export type DiagramContextValue = {
   endEditing: () => void;
 };
 
-export const DiagramContext = createContext<DiagramContextValue>({
-  editingNodeId: null,
-  maxLabelLength: 100,
-  commitLabel: () => {},
-  endEditing: () => {},
-});
-
-export const useDiagramContext = () => useContext(DiagramContext);
+export const [DiagramContext, useDiagramContext] =
+  createRequiredContext<DiagramContextValue>('DiagramContext');

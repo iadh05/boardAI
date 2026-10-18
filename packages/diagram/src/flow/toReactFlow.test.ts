@@ -25,7 +25,7 @@ describe('toReactFlow — nodes', () => {
   });
 
   it('draws a plain rectangle when no shape is given', () => {
-    expect(toReactFlow([api], []).nodes[0]?.data.shape).toBe('rectangle');
+    expect(toReactFlow([api], []).nodes[0]?.data).toMatchObject({ shape: 'rectangle' });
   });
 
   it('makes ghosts read-only and says they are proposed', () => {
@@ -90,5 +90,30 @@ describe('facingSides', () => {
     ['above', at(0, -300), ['top', 'bottom']],
   ] as const)('target %s the source', (_, target, sides) => {
     expect(facingSides(at(0, 0), target)).toEqual(sides);
+  });
+});
+
+describe('toReactFlow — zones', () => {
+  const vpc = {
+    id: 'vpc',
+    label: 'VPC',
+    position: { x: 0, y: 0 },
+    size: { width: 600, height: 300 },
+  };
+
+  it('turns zones into "zone" nodes of their size, named for screen readers, listed first', () => {
+    const { nodes } = toReactFlow([api], [], [vpc]);
+    expect(nodes.map((n) => n.id)).toEqual(['vpc', 'api']);
+    expect(nodes[0]).toMatchObject({
+      type: 'zone',
+      width: 600,
+      height: 300,
+      ariaLabel: 'Zone: VPC',
+      data: { label: 'VPC' },
+    });
+  });
+
+  it('keeps zones under boxes even when selected', () => {
+    expect(toReactFlow([], [], [vpc]).nodes[0]?.zIndex).toBeLessThanOrEqual(-1000);
   });
 });

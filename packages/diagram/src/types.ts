@@ -42,3 +42,12 @@ export type DiagramEdge = {
   /** A proposal: drawn in the accent colour; can't be selected or deleted. */
   ghost?: boolean;
 };
+
+/** A zone groups boxes (VPC, region, "3rd party"…): a titled rectangle drawn behind them. */
+export type DiagramZone = {
+  id: string;
+  label: string;
+  /** Top-left corner, in diagram coordinates. */
+  position: DiagramPosition;
+  size: { width: number; height: number };
+};

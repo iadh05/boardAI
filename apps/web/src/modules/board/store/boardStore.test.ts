@@ -283,6 +283,45 @@ describe('boardStore — arrow label and mode', () => {
   });
 });
 
+describe('boardStore — zones', () => {
+  it('adds a zone (opened for naming), renames, resizes and moves it with what is inside', () => {
+    const api = state().addNode('api', { x: 40, y: 60 }) ?? '';
+    const zone = state().addZone({ x: 0, y: 0 }, { width: 600, height: 300 }) ?? '';
+    expect(state().editingZoneId).toBe(zone);
+
+    state().renameZone(zone, 'VPC');
+    state().stopEditingZone();
+    state().resizeZone(zone, { width: 640, height: 320 });
+    state().moveZone(zone, { x: 100, y: 0 });
+
+    expect(state().board.zones).toEqual([
+      { id: zone, label: 'VPC', position: { x: 100, y: 0 }, size: { width: 640, height: 320 } },
+    ]);
+    expect(state().board.nodes.find((n) => n.id === api)?.position).toEqual({ x: 140, y: 60 });
+    expect(state().editingZoneId).toBeNull();
+  });
+
+  it('startEditingZone opens a known zone, and ignores unknown ids', () => {
+    const zone = state().addZone({ x: 0, y: 0 }, { width: 600, height: 300 }) ?? '';
+    state().stopEditingZone();
+
+    state().startEditingZone('nope');
+    expect(state().editingZoneId).toBeNull();
+    state().startEditingZone(zone);
+    expect(state().editingZoneId).toBe(zone);
+  });
+
+  it('removeElements removes zones too, keeping their boxes', () => {
+    const api = state().addNode('api', { x: 40, y: 60 }) ?? '';
+    const zone = state().addZone({ x: 0, y: 0 }, { width: 600, height: 300 }) ?? '';
+
+    state().removeElements([], [], [zone]);
+
+    expect(state().board.zones).toEqual([]);
+    expect(state().board.nodes.map((n) => n.id)).toEqual([api]);
+  });
+});
+
 describe('boardStore — label editing', () => {
   it('nobody is editing at first', () => {
     expect(state().editingNodeId).toBeNull();

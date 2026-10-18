@@ -59,6 +59,17 @@ describe('toDiagram', () => {
     expect(toDiagram(named, null).edges[0]).toMatchObject({ label: 'events', dashed: true });
   });
 
+  it('passes zones through', () => {
+    const zone = {
+      id: 'vpc',
+      label: 'VPC',
+      position: { x: 0, y: 0 },
+      size: { width: 600, height: 300 },
+    };
+    expect(toDiagram({ ...board, zones: [zone] }, null).zones).toEqual([zone]);
+    expect(toDiagram(board, null).zones).toEqual([]);
+  });
+
   it('shows a proposal as ghosts, exactly where accepting would put them', () => {
     const { nodes, edges } = toDiagram(board, proposal);
     const ghost = nodes.find((n) => n.id === 'cache');

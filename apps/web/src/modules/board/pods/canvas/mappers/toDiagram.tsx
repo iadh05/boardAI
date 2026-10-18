@@ -1,4 +1,4 @@
-import type { DiagramEdge, DiagramNode } from '@designroom/diagram';
+import type { DiagramEdge, DiagramNode, DiagramZone } from '@designroom/diagram';
 import {
   applyOps,
   KIND_DEFAULT_LABEL,
@@ -42,12 +42,14 @@ const toEdge = (e: BoardEdge, ghost: boolean): DiagramEdge => ({
 export const toDiagram = (
   board: Board,
   proposal: Proposal | null,
-): { nodes: DiagramNode[]; edges: DiagramEdge[] } => {
+): { nodes: DiagramNode[]; edges: DiagramEdge[]; zones: DiagramZone[] } => {
   const nodes = board.nodes.map((n) => toNode(n, false));
+  // Same shape on both sides (label, position, size): passed through as they are.
+  const zones: DiagramZone[] = board.zones ?? [];
   const edges = board.edges.map((e) => toEdge(e, false));
 
   const preview = proposal ? applyOps(board, proposal.ops) : null;
-  if (!preview?.ok) return { nodes, edges };
+  if (!preview?.ok) return { nodes, edges, zones };
 
   const existingNodes = new Set(board.nodes.map((n) => n.id));
   const existingEdges = new Set(board.edges.map((e) => e.id));
@@ -59,5 +61,5 @@ export const toDiagram = (
       edges.push(toEdge(e, true));
     }
   }
-  return { nodes, edges };
+  return { nodes, edges, zones };
 };
