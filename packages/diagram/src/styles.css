@@ -123,3 +123,49 @@
   stroke: var(--dr-diagram-danger);
   stroke-width: 2;
 }
+
+/* Editing an arrow: label input + dashed toggle, over the arrow. */
+.dr-edge-label.is-editing {
+  display: flex;
+  pointer-events: all;
+  padding: 4px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+}
+.dr-edge-editor {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.dr-edge-editor .dr-label-input {
+  width: 120px;
+  flex: none;
+}
+.dr-edge-toggle {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--dr-diagram-muted);
+  border-radius: 6px;
+  background: var(--dr-diagram-surface);
+  color: var(--dr-diagram-text);
+  font:
+    600 11px system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+.dr-edge-toggle[aria-pressed='true'] {
+  border-color: var(--dr-diagram-accent);
+  background: var(--dr-diagram-accent);
+  color: var(--dr-diagram-surface);
+}
+.dr-edge-toggle:focus-visible {
+  outline: 2px solid var(--dr-diagram-focus);
+  outline-offset: 2px;
+}
+
+/*
+ * React Flow draws the edge-label layer under the boxes. Labels (and the arrow editor, wider
+ * than the gap between two boxes) must never hide behind a box: put the layer above them.
+ */
+.dr-diagram .react-flow__edgelabel-renderer {
+  z-index: 1001;
+}

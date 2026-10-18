@@ -70,6 +70,7 @@ export const toReactFlow = (
       label: e.label,
       markerEnd: e.ghost ? GHOST_ARROW : ARROW,
       ariaLabel: `From ${source?.label ?? e.source} to ${target?.label ?? e.target}`,
+      data: { dashed: e.dashed === true, ghost: e.ghost === true },
       ...(e.dashed ? { style: { strokeDasharray: DASH } } : {}),
       ...(e.ghost
         ? { className: 'dr-edge-ghost', selectable: false, focusable: false, deletable: false }

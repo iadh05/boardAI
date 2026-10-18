@@ -1,8 +1,8 @@
 import type { Board, Position } from '@designroom/domain';
 
 const GRID = 20;
-/** Space kept between a new box and its neighbours. */
-const GAP = 44;
+/** Space kept between a new box and its neighbours: room for an arrow with its label. */
+const GAP = 96;
 /** How far around the view centre to look for a free slot (rings of slots). */
 const MAX_RING = 6;
 

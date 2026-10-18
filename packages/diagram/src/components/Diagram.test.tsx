@@ -24,6 +24,7 @@ function Harness({ initialNodes = NODES, initialEdges = EDGES, ...spies }: Harne
   const [nodes, setNodes] = useState<DiagramNode[]>([]);
   const [edges, setEdges] = useState<DiagramEdge[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
+  const [editingEdge, setEditingEdge] = useState<string | null>(null);
   // Load after mount: in jsdom React Flow never measures nodes present on the first render.
   // That second render is the point here, so the usual "no setState in an effect" doesn't apply.
   useEffect(() => {
@@ -38,7 +39,25 @@ function Harness({ initialNodes = NODES, initialEdges = EDGES, ...spies }: Harne
         nodes={nodes}
         edges={edges}
         editingNodeId={editing}
+        editingEdgeId={editingEdge}
+        dashedLabel="Async"
         {...spies}
+        onEdgeEditStart={(id) => {
+          spies.onEdgeEditStart?.(id);
+          setEditingEdge(id);
+        }}
+        onEdgeLabelCommit={(id, label) => {
+          spies.onEdgeLabelCommit?.(id, label);
+          setEdges((es) => es.map((e) => (e.id === id ? { ...e, label } : e)));
+        }}
+        onEdgeDashedChange={(id, dashed) => {
+          spies.onEdgeDashedChange?.(id, dashed);
+          setEdges((es) => es.map((e) => (e.id === id ? { ...e, dashed } : e)));
+        }}
+        onEdgeEditEnd={() => {
+          spies.onEdgeEditEnd?.();
+          setEditingEdge(null);
+        }}
         onEditStart={(id) => {
           spies.onEditStart?.(id);
           setEditing(id);
@@ -360,5 +379,77 @@ describe('Diagram — keyboard order', () => {
     const tool = screen.getByRole('button', { name: 'Tool' });
     const zoomIn = screen.getByRole('button', { name: /zoom in/i });
     expect(tool.compareDocumentPosition(zoomIn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe('Diagram — editing an arrow', () => {
+  const arrow = () => screen.findByLabelText('From Orders API to Postgres');
+  const arrowInput = () => screen.getByRole<HTMLInputElement>('textbox', { name: 'Arrow label' });
+
+  it('double-click asks to edit; the label input opens focused', async () => {
+    const onEdgeEditStart = vi.fn();
+    render(
+      <Harness initialEdges={[{ ...link, label: 'SQL' }]} onEdgeEditStart={onEdgeEditStart} />,
+    );
+
+    fireEvent.doubleClick(await arrow());
+
+    expect(onEdgeEditStart).toHaveBeenCalledWith('e1');
+    expect(arrowInput()).toHaveFocus();
+    expect(arrowInput()).toHaveValue('SQL');
+  });
+
+  it('Enter on a focused arrow asks to edit it too', async () => {
+    const onEdgeEditStart = vi.fn();
+    render(<Harness onEdgeEditStart={onEdgeEditStart} />);
+
+    (await arrow()).focus();
+    await userEvent.keyboard('{Enter}');
+
+    expect(onEdgeEditStart).toHaveBeenCalledWith('e1');
+  });
+
+  it('Enter commits the label and ends editing', async () => {
+    const onEdgeLabelCommit = vi.fn();
+    const onEdgeEditEnd = vi.fn();
+    render(<Harness onEdgeLabelCommit={onEdgeLabelCommit} onEdgeEditEnd={onEdgeEditEnd} />);
+    fireEvent.doubleClick(await arrow());
+
+    await userEvent.keyboard('gRPC{Enter}');
+
+    expect(onEdgeLabelCommit).toHaveBeenCalledWith('e1', 'gRPC');
+    expect(onEdgeEditEnd).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('textbox', { name: 'Arrow label' })).not.toBeInTheDocument();
+  });
+
+  it('Escape cancels', async () => {
+    const onEdgeLabelCommit = vi.fn();
+    render(<Harness onEdgeLabelCommit={onEdgeLabelCommit} />);
+    fireEvent.doubleClick(await arrow());
+
+    await userEvent.keyboard('nope{Escape}');
+
+    expect(onEdgeLabelCommit).not.toHaveBeenCalled();
+  });
+
+  it('the Async toggle switches the arrow to dashed and keeps the editor open', async () => {
+    const onEdgeDashedChange = vi.fn();
+    render(<Harness onEdgeDashedChange={onEdgeDashedChange} />);
+    fireEvent.doubleClick(await arrow());
+
+    const toggle = screen.getByRole('button', { name: 'Async' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(toggle);
+
+    expect(onEdgeDashedChange).toHaveBeenCalledWith('e1', true);
+    expect(screen.getByRole('button', { name: 'Async' })).toHaveAttribute('aria-pressed', 'true');
+    expect(arrowInput()).toBeInTheDocument();
+  });
+
+  it('a proposed (ghost) arrow cannot be edited', async () => {
+    const onEdgeEditStart = vi.fn();
+    render(<Harness initialEdges={[{ ...link, ghost: true }]} onEdgeEditStart={onEdgeEditStart} />);
+    fireEvent.doubleClick(await arrow());
+    expect(onEdgeEditStart).not.toHaveBeenCalled();
   });
 });
