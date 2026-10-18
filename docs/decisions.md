@@ -157,3 +157,32 @@ React Flow + libavoid-js, behind `@designroom/diagram`. We chose it because the 
 - **Easier:** draw.io-style look; routing is tested in Node; the engine can be swapped behind a stable API.
 - **Harder:** two libraries kept in sync inside the package (React Flow positions → libavoid obstacles); a wasm to load and cache; route tuning.
 - **Exit condition:** if libavoid's routes still look clearly worse than X6's after about a day of tuning, or the beta breaks, replace the router or engine *inside* the package (X6 is the documented fallback). The app does not change.
+
+## ADR-005 — Zones (VPC, region, …) are shapes; membership comes from position
+
+- **Date:** 2026-10-18
+- **Status:** accepted
+- **Milestone:** M1
+
+### Context
+
+Solution-architecture diagrams group boxes into zones: Region ⊃ VPC ⊃ Subnet, "Backend services", "3rd party". We need them on the board, for people and for the AI ("your database sits outside the VPC"). In M2 the board becomes a shared Yjs document.
+
+### Options considered
+
+1. **Parent pointer** (`node.parentId`, React Flow's model): containment is explicit, and children move with the parent. But positions become relative to the parent, and two people dragging the same box into two zones at once is a re-parenting conflict that Yjs must resolve.
+2. **Zones as their own shapes:** `board.zones: [{ id, label, x, y, width, height }]`, and boxes keep absolute positions. "Is the API in the VPC?" is computed from the rectangles. This is how draw.io's containers behave.
+
+### Decision
+
+Zones are shapes, and membership comes from position.
+
+### Consequences
+
+- **Easier:**
+  - No re-parenting, so in M2 a zone is just another shared shape.
+  - Nested zones are rectangles inside rectangles.
+  - The domain computes `zonesOf(box)` for the UI and the AI.
+- **Harder:**
+  - Moving a zone has to move the boxes inside it: one op (`moveZone`) does both, so it stays one update and one undo step in M2.
+  - A box half-inside a zone needs a rule: it counts as inside when its whole rectangle is.

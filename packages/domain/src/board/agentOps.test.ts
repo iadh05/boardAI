@@ -174,3 +174,37 @@ describe('ProposalSchema', () => {
     expect(ProposalSchema.safeParse({ ...proposal, traceId: 'abc123' }).success).toBe(true);
   });
 });
+
+describe('applyOps — arrows with meaning', () => {
+  it('a connect op can carry a label and say the call is async', () => {
+    const result = unwrap(
+      applyOps(board(), [
+        addCache,
+        {
+          op: 'connect',
+          edgeId: 'e3',
+          source: 'api',
+          target: 'cache',
+          label: 'reads',
+          mode: 'async',
+        },
+      ]),
+    );
+    expect(result.edges.find((e) => e.id === 'e3')).toMatchObject({
+      label: 'reads',
+      mode: 'async',
+    });
+  });
+
+  it('rejects an unknown mode from the AI', () => {
+    expect(
+      AgentOpSchema.safeParse({
+        op: 'connect',
+        edgeId: 'e3',
+        source: 'a',
+        target: 'b',
+        mode: 'later',
+      }).success,
+    ).toBe(false);
+  });
+});

@@ -2,11 +2,13 @@ import { fail, ok, type Result } from '../result.ts';
 import {
   BoardEdgeSchema,
   BoardNodeSchema,
+  EdgeLabelSchema,
   KIND_DEFAULT_LABEL,
   PositionSchema,
   type Board,
   type BoardEdge,
   type BoardNode,
+  type EdgeMode,
   type NodeKind,
   type Position,
 } from './board.ts';
@@ -90,11 +92,15 @@ export const canConnect = (board: Board, source: string, target: string): BoardR
   return ok(true);
 };
 
+/** What an arrow says about the link: its name, and whether the call is async. */
+export type EdgeDetails = { label?: string; mode?: EdgeMode };
+
 export const connect = (
   board: Board,
   edgeId: string,
   source: string,
   target: string,
+  details: EdgeDetails = {},
 ): BoardResult => {
   if (!BoardEdgeSchema.shape.id.safeParse(edgeId).success) {
     return fail('INVALID_ID', `"${edgeId}" is not a valid edge id`);
@@ -105,9 +111,50 @@ export const connect = (
   if (hasEdge(board, edgeId)) {
     return fail('DUPLICATE_ID', `An edge with id "${edgeId}" already exists`);
   }
-  const edge: BoardEdge = { id: edgeId, source, target };
+  const label = parseEdgeLabel(details.label);
+  if (!label.ok) return label;
+  const edge: BoardEdge = {
+    id: edgeId,
+    source,
+    target,
+    ...(label.value !== undefined ? { label: label.value } : {}),
+    ...(details.mode !== undefined ? { mode: details.mode } : {}),
+  };
   return ok({ ...board, edges: [...board.edges, edge] });
 };
+
+/** Trimmed; empty means "no label". */
+const parseEdgeLabel = (label: string | undefined): BoardResult<string | undefined> => {
+  const trimmed = label?.trim();
+  if (!trimmed) return ok(undefined);
+  const parsed = EdgeLabelSchema.safeParse(trimmed);
+  return parsed.success
+    ? ok(parsed.data)
+    : fail('INVALID_LABEL', parsed.error.issues[0]?.message ?? 'Invalid label');
+};
+
+const updateEdge = (
+  board: Board,
+  id: string,
+  change: (edge: BoardEdge) => BoardEdge,
+): BoardResult => {
+  if (!hasEdge(board, id)) return fail('EDGE_NOT_FOUND', `No edge with id "${id}"`);
+  return ok({ ...board, edges: board.edges.map((e) => (e.id === id ? change(e) : e)) });
+};
+
+/** Names an arrow ("HTTPS"); an empty label removes the name. */
+export const labelEdge = (board: Board, id: string, label: string): BoardResult => {
+  const parsed = parseEdgeLabel(label);
+  if (!parsed.ok) return parsed;
+  const next = parsed.value;
+  return updateEdge(board, id, ({ label: _previous, ...edge }) =>
+    next === undefined ? edge : { ...edge, label: next },
+  );
+};
+
+/** Sync (the caller waits for an answer) or async (queue, events). */
+export const setEdgeMode = (board: Board, id: string, mode: EdgeMode): BoardResult =>
+  updateEdge(board, id, (edge) => ({ ...edge, mode }));
 
 export const removeEdge = (board: Board, id: string): BoardResult => {
   if (!hasEdge(board, id)) {

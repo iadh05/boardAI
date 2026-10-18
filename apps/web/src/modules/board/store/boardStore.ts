@@ -7,12 +7,15 @@ import {
   emptyBoard,
   moveNode,
   ok,
+  labelEdge,
   removeEdge,
+  setEdgeMode,
   removeNode,
   renameNode,
   type Board,
   type BoardResult,
   type DomainError,
+  type EdgeMode,
   type NodeKind,
   type Position,
   type Proposal,
@@ -43,6 +46,10 @@ export type BoardActions = {
   /** Returns the new edge's id, or null if refused (self-loop, duplicate…). */
   connect: (source: string, target: string) => string | null;
   removeEdge: (id: string) => void;
+  /** Names an arrow ("HTTPS"); an empty label removes the name. */
+  labelEdge: (id: string, label: string) => void;
+  /** Sync (the caller waits) or async (queue, events: drawn dashed). */
+  setEdgeMode: (id: string, mode: EdgeMode) => void;
   /**
    * Removes nodes (with their edges) and edges in one update — what the Delete key does to a
    * selection. Ids already gone (e.g. edges removed with their node) are skipped, not reported.
@@ -98,6 +105,12 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
       connect: (source, target) => {
         const id = newId();
         return commit(connect(get().board, id, source, target)) ? id : null;
+      },
+      labelEdge: (id, label) => {
+        commit(labelEdge(get().board, id, label));
+      },
+      setEdgeMode: (id, mode) => {
+        commit(setEdgeMode(get().board, id, mode));
       },
       removeEdge: (id) => {
         commit(removeEdge(get().board, id));

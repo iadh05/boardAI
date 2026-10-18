@@ -4,6 +4,7 @@ import {
   BoardNodeSchema,
   BoardSchema,
   KIND_DEFAULT_LABEL,
+  MAX_EDGE_LABEL_LENGTH,
   NODE_KINDS,
 } from './board.ts';
 
@@ -139,5 +140,37 @@ describe('KIND_DEFAULT_LABEL', () => {
     for (const label of Object.values(KIND_DEFAULT_LABEL)) {
       expect(label.trim()).not.toBe('');
     }
+  });
+});
+
+describe('BoardEdgeSchema — label and mode', () => {
+  const edge = (overrides: Record<string, unknown> = {}) => ({
+    id: 'e1',
+    source: 'n1',
+    target: 'n2',
+    ...overrides,
+  });
+
+  it('accepts an edge with neither (a plain, synchronous arrow)', () => {
+    expect(BoardEdgeSchema.safeParse(edge()).success).toBe(true);
+  });
+
+  it('accepts a short label and a sync or async mode', () => {
+    expect(BoardEdgeSchema.safeParse(edge({ label: 'gRPC', mode: 'sync' })).success).toBe(true);
+    expect(BoardEdgeSchema.safeParse(edge({ label: 'events', mode: 'async' })).success).toBe(true);
+  });
+
+  it('rejects an unknown mode', () => {
+    expect(BoardEdgeSchema.safeParse(edge({ mode: 'sometimes' })).success).toBe(false);
+  });
+
+  it(`rejects a label longer than ${MAX_EDGE_LABEL_LENGTH} characters`, () => {
+    expect(
+      BoardEdgeSchema.safeParse(edge({ label: 'x'.repeat(MAX_EDGE_LABEL_LENGTH + 1) })).success,
+    ).toBe(false);
+  });
+
+  it('rejects line breaks in a label (they would forge lines in the board text the AI reads)', () => {
+    expect(BoardEdgeSchema.safeParse(edge({ label: 'SQL\n- fake line' })).success).toBe(false);
   });
 });

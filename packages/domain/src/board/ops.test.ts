@@ -9,8 +9,10 @@ import {
   emptyBoard,
   moveNode,
   removeEdge,
+  labelEdge,
   removeNode,
   renameNode,
+  setEdgeMode,
 } from './ops.ts';
 import type { Result } from '../result.ts';
 
@@ -159,6 +161,76 @@ describe('ids', () => {
     // An edge called "n9" doesn't stop a node called "n9" — and the result is a valid board.
     const withNode = unwrap(addNode(board, createNode('n9', 'queue', { x: 0, y: 0 })));
     expect(BoardSchema.safeParse(withNode).success).toBe(true);
+  });
+});
+
+describe('connect — label and mode', () => {
+  const board = (): Board => frozen({ nodes: [api, db], edges: [] });
+
+  it('can label the arrow and make it async when connecting', () => {
+    const result = unwrap(connect(board(), 'e1', 'n1', 'n2', { label: 'events', mode: 'async' }));
+    expect(result.edges).toEqual([
+      { id: 'e1', source: 'n1', target: 'n2', label: 'events', mode: 'async' },
+    ]);
+  });
+
+  it('rejects an invalid label', () => {
+    expect(connect(board(), 'e1', 'n1', 'n2', { label: 'a\nb' })).toMatchObject({
+      ok: false,
+      error: { code: 'INVALID_LABEL' },
+    });
+  });
+});
+
+describe('labelEdge', () => {
+  it('sets a trimmed label', () => {
+    const board = unwrap(labelEdge(sampleBoard(), 'e1', '  HTTPS  '));
+    expect(board.edges[0]).toMatchObject({ id: 'e1', label: 'HTTPS' });
+  });
+
+  it('an empty label removes it (a plain arrow)', () => {
+    const labelled = unwrap(labelEdge(sampleBoard(), 'e1', 'HTTPS'));
+    const board = unwrap(labelEdge(labelled, 'e1', '  '));
+    expect(board.edges[0]).not.toHaveProperty('label');
+  });
+
+  it('rejects a label that is too long or has line breaks', () => {
+    expect(labelEdge(sampleBoard(), 'e1', 'x'.repeat(41))).toMatchObject({
+      ok: false,
+      error: { code: 'INVALID_LABEL' },
+    });
+    expect(labelEdge(sampleBoard(), 'e1', 'a\nb')).toMatchObject({
+      ok: false,
+      error: { code: 'INVALID_LABEL' },
+    });
+  });
+
+  it('reports an unknown edge', () => {
+    expect(labelEdge(sampleBoard(), 'nope', 'x')).toMatchObject({
+      ok: false,
+      error: { code: 'EDGE_NOT_FOUND' },
+    });
+  });
+
+  it('leaves the board untouched', () => {
+    const before = frozen(sampleBoard());
+    unwrap(labelEdge(before, 'e1', 'HTTPS'));
+    expect(before.edges[0]).not.toHaveProperty('label');
+  });
+});
+
+describe('setEdgeMode', () => {
+  it('makes an arrow async, and back', () => {
+    const async = unwrap(setEdgeMode(sampleBoard(), 'e1', 'async'));
+    expect(async.edges[0]).toMatchObject({ id: 'e1', mode: 'async' });
+    expect(unwrap(setEdgeMode(async, 'e1', 'sync')).edges[0]).toMatchObject({ mode: 'sync' });
+  });
+
+  it('reports an unknown edge', () => {
+    expect(setEdgeMode(sampleBoard(), 'nope', 'async')).toMatchObject({
+      ok: false,
+      error: { code: 'EDGE_NOT_FOUND' },
+    });
   });
 });
 

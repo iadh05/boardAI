@@ -3,6 +3,7 @@ import {
   applyOps,
   KIND_DEFAULT_LABEL,
   type Board,
+  type BoardEdge,
   type BoardNode,
   type Proposal,
 } from '@designroom/domain';
@@ -23,6 +24,16 @@ const toNode = (n: BoardNode, ghost: boolean): DiagramNode => ({
   ghost,
 });
 
+/** An arrow: its label, and dashed when the call is async (queue, events). */
+const toEdge = (e: BoardEdge, ghost: boolean): DiagramEdge => ({
+  id: e.id,
+  source: e.source,
+  target: e.target,
+  ghost,
+  ...(e.label !== undefined ? { label: e.label } : {}),
+  ...(e.mode === 'async' ? { dashed: true } : {}),
+});
+
 /**
  * Board (+ pending AI proposal) → what the diagram draws. The proposal is previewed with the same
  * `applyOps` that Accept uses, so ghosts appear exactly where accepting would put them. A
@@ -33,12 +44,7 @@ export const toDiagram = (
   proposal: Proposal | null,
 ): { nodes: DiagramNode[]; edges: DiagramEdge[] } => {
   const nodes = board.nodes.map((n) => toNode(n, false));
-  const edges: DiagramEdge[] = board.edges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    ghost: false,
-  }));
+  const edges = board.edges.map((e) => toEdge(e, false));
 
   const preview = proposal ? applyOps(board, proposal.ops) : null;
   if (!preview?.ok) return { nodes, edges };
@@ -50,7 +56,7 @@ export const toDiagram = (
   }
   for (const e of preview.value.edges) {
     if (!existingEdges.has(e.id)) {
-      edges.push({ id: e.id, source: e.source, target: e.target, ghost: true });
+      edges.push(toEdge(e, true));
     }
   }
   return { nodes, edges };

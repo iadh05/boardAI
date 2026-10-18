@@ -45,6 +45,14 @@ describe('toDiagram', () => {
     ]);
   });
 
+  it('shows the label of an arrow, and async arrows dashed', () => {
+    const named: Board = {
+      ...board,
+      edges: [{ id: 'e1', source: 'api', target: 'db', label: 'events', mode: 'async' }],
+    };
+    expect(toDiagram(named, null).edges[0]).toMatchObject({ label: 'events', dashed: true });
+  });
+
   it('shows a proposal as ghosts, exactly where accepting would put them', () => {
     const { nodes, edges } = toDiagram(board, proposal);
     const ghost = nodes.find((n) => n.id === 'cache');

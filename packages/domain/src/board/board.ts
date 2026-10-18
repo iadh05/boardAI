@@ -33,6 +33,10 @@ const IdSchema = z
   .max(MAX_ID_LENGTH)
   .regex(/^\S+$/, 'Ids must not contain whitespace');
 
+/** No line breaks or other control characters (see the node label below). */
+const SINGLE_LINE = /^\P{Cc}*$/u;
+const SINGLE_LINE_MESSAGE = 'Labels must not contain line breaks or control characters';
+
 export const PositionSchema = z.object({
   x: z.number(), // zod rejects NaN and ±Infinity
   y: z.number(),
@@ -44,18 +48,32 @@ export const BoardNodeSchema = z.object({
   kind: NodeKindSchema,
   // No line breaks or other control characters: labels are pasted into the board text the AI
   // reads, and a newline would let a label forge extra board lines (prompt injection).
-  label: z
-    .string()
-    .max(MAX_LABEL_LENGTH)
-    .regex(/^\P{Cc}*$/u, 'Labels must not contain line breaks or control characters'),
+  label: z.string().max(MAX_LABEL_LENGTH).regex(SINGLE_LINE, SINGLE_LINE_MESSAGE),
   position: PositionSchema,
 });
 export type BoardNode = z.infer<typeof BoardNodeSchema>;
+
+/** Arrow labels name the link ("HTTPS", "gRPC", "events"): short. */
+export const MAX_EDGE_LABEL_LENGTH = 40;
+
+/** How the source calls the target: waits for an answer (sync) or not (async: queue, events). */
+export const EDGE_MODES = ['sync', 'async'] as const;
+export const EdgeModeSchema = z.enum(EDGE_MODES);
+export type EdgeMode = z.infer<typeof EdgeModeSchema>;
+
+export const EdgeLabelSchema = z
+  .string()
+  .min(1)
+  .max(MAX_EDGE_LABEL_LENGTH)
+  .regex(SINGLE_LINE, SINGLE_LINE_MESSAGE);
 
 export const BoardEdgeSchema = z.object({
   id: IdSchema,
   source: IdSchema, // BoardNode.id
   target: IdSchema, // BoardNode.id
+  label: EdgeLabelSchema.optional(),
+  /** Absent means sync: older boards and plain arrows stay valid without it. */
+  mode: EdgeModeSchema.optional(),
 });
 export type BoardEdge = z.infer<typeof BoardEdgeSchema>;
 
