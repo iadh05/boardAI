@@ -16,7 +16,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-02 | Boundary lint rules | setup | M | done |
 | M1-03 | Web shell: Vite + React + Tailwind + providers | setup | S | done |
 | M1-03b | Playwright + smoke test in CI | setup | M | done |
-| M1-04 | `core/ui` kit: atoms + molecules | setup | M | todo |
+| M1-04 | `core/ui` kit: atoms + molecules | setup | M | done |
 | M1-05 | domain: board types + zod | M1a | S | done |
 | M1-06 | domain: board operations | M1a | M | todo |
 | M1-07 | domain: agent ops, `applyOps`, API contract | M1a | M | todo |
@@ -244,25 +244,31 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-04 — `core/ui` kit: atoms + molecules
-**Status:** todo · **Size:** M · **Depends on:** M1-03
+**Status:** done · **Size:** M · **Depends on:** M1-03
 
 **Why:** Pods build their components from these; atoms never live in pods.
 
 **Learning goal:** atomic design; components with no business knowledge.
 
-**Tests first**
-- [ ] `Button`: renders children, calls `onClick`, `disabled` blocks clicks.
-- [ ] `TextField`: label linked to input (accessible name), `onChange` fires.
+**Tests first** (27 tests, red → green)
+- [x] `Button`: renders children, calls `onClick`, `disabled` blocks clicks, `type="button"` by default, keyboard-reachable with the focus ring.
+- [x] `TextField`: label linked to input, `onChange` fires, hint and error both describe the input, error forces `aria-invalid`, caller's `aria-describedby` kept.
+- [x] `Icon` decorative vs labelled; `Spinner` announced as status text; `IconButton` named by its label; `Card`; `Panel` is a region named by its title, footer optional.
 
 **Tasks**
-- [ ] Atoms: `Button`, `Icon` (wraps one icon library), `Input`, `Spinner`.
-- [ ] Molecules: `IconButton`, `TextField`, `Card`.
-- [ ] Organism: `Panel` (title + body + footer slots).
+- [x] Design tokens in `src/index.css` (`@theme`): accent, danger, canvas, surface, line, ink, muted, focus. Existing shell moved to them — no raw colours left.
+- [x] Atoms: `Button` (variants, sizes, `shape: 'square'`), `Icon` (only place touching `lucide-react`), `Input`, `Spinner`; shared `FOCUS_RING`.
+- [x] Molecules: `IconButton` (label required), `TextField`, `Card`.
+- [x] Organism: `Panel` (title + scrolling body + optional footer).
+- [x] `core/ui/index.ts` as the kit's public entry.
 
 **Acceptance criteria**
-- [ ] No import from `modules/` anywhere in `core/` (lint proves it).
-- [ ] Keyboard focus visible on every interactive atom.
+- [x] No import from `modules/` anywhere in `core/` (enforced by the M1-02 boundary rule).
+- [x] Keyboard focus visible on every interactive atom (`Button`, `Input` share `FOCUS_RING`; tested with keyboard tabbing).
 
+**Notes**
+- **Review (/code-review, 6 findings, all fixed):** IconButton's padding fought Button's size classes (Tailwind resolves conflicts by CSS order, not class order) → `shape: 'square'`; Spinner's status had a label but no content, so screen readers announced nothing → visually hidden text inside; TextField let caller props drop the error link and hid the hint during errors; focus tests now check the shared constant.
+- `className` on kit components is for layout around them (margins, flex), not for their own size or colour.
 ---
 
 # M1a — Board
