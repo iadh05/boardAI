@@ -9,6 +9,12 @@ export type LabelEditorProps = {
   onCancel: () => void;
 };
 
+/**
+ * One line of text: pasted tabs and line breaks become spaces (the domain refuses control
+ * characters, and a refused rename would just leave the old label).
+ */
+const singleLine = (text: string) => text.replace(/\s+/g, ' ');
+
 /** In-place label input: Enter or leaving it saves, Escape cancels. */
 export function LabelEditor({ label, onCommit, onCancel }: LabelEditorProps) {
   // Enter/Escape close the editor, and closing can also fire blur: settle only once.
@@ -22,8 +28,13 @@ export function LabelEditor({ label, onCommit, onCancel }: LabelEditorProps) {
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     // Keep keys for the text: React Flow must not act on them (e.g. Backspace = delete, M1-12).
     event.stopPropagation();
-    if (event.key === 'Enter') settle(() => onCommit(event.currentTarget.value));
-    if (event.key === 'Escape') settle(onCancel);
+    if (event.key !== 'Enter' && event.key !== 'Escape') return;
+
+    const input = event.currentTarget;
+    // The input disappears on close; hand focus back to the node so keyboard users keep their place.
+    const node = input.closest<HTMLElement>('.react-flow__node');
+    settle(() => (event.key === 'Enter' ? onCommit(singleLine(input.value)) : onCancel()));
+    node?.focus();
   };
 
   return (
@@ -35,7 +46,7 @@ export function LabelEditor({ label, onCommit, onCancel }: LabelEditorProps) {
       autoFocus
       onFocus={(event) => event.currentTarget.select()}
       onKeyDown={onKeyDown}
-      onBlur={(event) => settle(() => onCommit(event.currentTarget.value))}
+      onBlur={(event) => settle(() => onCommit(singleLine(event.currentTarget.value)))}
       // nodrag/nopan: dragging inside the input selects text instead of moving the node or the view.
       className="nodrag nopan h-8 px-2"
     />

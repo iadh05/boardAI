@@ -38,8 +38,8 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
   const flow = useMemo(() => toFlow(board, proposal), [board, proposal]);
 
   // Canvas-local copy of the nodes: React Flow updates it during drags, selection and
-  // measuring; the store's version is merged in whenever the store changes ('adjust state
-  // when a prop changes' — React docs). Avoids rebuilding the board on every drag frame.
+  // measuring; the store's version is merged in whenever the store changes ("adjust state
+  // when a prop changes" — React docs). Avoids rebuilding the board on every drag frame.
   const [nodes, setNodes] = useState<FlowNode[]>(flow.nodes);
   const [mergedFrom, setMergedFrom] = useState(flow.nodes);
   if (mergedFrom !== flow.nodes) {

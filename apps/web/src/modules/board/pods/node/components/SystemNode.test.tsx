@@ -23,12 +23,8 @@ const oneNode = (label = 'Orders DB'): Board => ({
   edges: [],
 });
 
-/** The React Flow wrapper of the node showing `label` — the element you double-click. */
-const nodeShowing = (label: string) => {
-  const node = screen.getByText(label).closest('.react-flow__node');
-  if (!(node instanceof HTMLElement)) throw new Error(`no node shows "${label}"`);
-  return node;
-};
+/** The node (React Flow's wrapper, named after the label) — what you focus and double-click. */
+const nodeShowing = (label: string) => screen.getByRole('group', { name: label });
 
 const labelInput = () => screen.getByRole<HTMLInputElement>('textbox', { name: 'Node label' });
 
@@ -98,6 +94,27 @@ describe('SystemNode', () => {
 
     expect(store.getState().board.nodes).toHaveLength(1);
     expect(store.getState().board.nodes[0]?.label).toBe('Orders'); // trimmed by the domain
+  });
+
+  it('pasted tabs and line breaks become spaces instead of making the rename fail', async () => {
+    const store = renderBoard(oneNode());
+    fireEvent.doubleClick(nodeShowing('Orders DB'));
+
+    await userEvent.paste('Users	DB');
+    await userEvent.keyboard('{Enter}');
+
+    expect(store.getState().board.nodes[0]?.label).toBe('Users DB');
+  });
+
+  it('after Enter or Escape, focus goes back to the node', async () => {
+    renderBoard(oneNode());
+    fireEvent.doubleClick(nodeShowing('Orders DB'));
+    await userEvent.keyboard('Users DB{Enter}');
+    expect(nodeShowing('Users DB')).toHaveFocus();
+
+    fireEvent.doubleClick(nodeShowing('Users DB'));
+    await userEvent.keyboard('{Escape}');
+    expect(nodeShowing('Users DB')).toHaveFocus();
   });
 
   it('the input keeps labels within the domain limit', () => {
