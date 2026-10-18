@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { fail, ok, type Result } from '../result.ts';
 import {
   BoardNodeSchema,
+  EdgeLabelSchema,
+  EdgeModeSchema,
   KIND_DEFAULT_LABEL,
   NodeKindSchema,
   type Board,
@@ -50,6 +52,10 @@ export const ConnectOpSchema = z.object({
   edgeId: Id,
   source: Id,
   target: Id,
+  /** E.g. "events": the agent can say what the link is. */
+  label: EdgeLabelSchema.optional(),
+  /** E.g. async through a queue — something a reviewer often suggests. */
+  mode: EdgeModeSchema.optional(),
 });
 
 export const AgentOpSchema = z.discriminatedUnion('op', [
@@ -122,7 +128,7 @@ const applyOne = (
       return next;
     }
     case 'connect':
-      return connect(board, op.edgeId, op.source, op.target);
+      return connect(board, op.edgeId, op.source, op.target, { label: op.label, mode: op.mode });
   }
 };
 

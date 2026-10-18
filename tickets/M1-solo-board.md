@@ -30,7 +30,10 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-D2 | `<Diagram>`: the canvas inside the package | diagram | M | done |
 | M1-D3 | Orthogonal routing with libavoid | diagram | M | done |
 | M1-D4 | The app uses the package | diagram | M | done |
-| M1-D5 | Edge meaning in the domain | diagram | S | todo |
+| M1-D5a | Edge meaning in the domain (label, sync/async) | diagram | S | done |
+| M1-D5b | Edit an arrow: label + Async toggle | diagram | S | todo |
+| M1-D6a | Zones in the domain (VPC, region…) | diagram | M | todo |
+| M1-D6b | Zones on the diagram | diagram | M | todo |
 | M1-UX1 | UX polish from the M1a pass | diagram | M | done |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | todo |
 | M1-14b | Nginx edge proxy | M1b | M | todo |
@@ -540,12 +543,36 @@ Inserted after M1a (2026-10-18): the board read like a flowchart, not an archite
 - e2e: React Flow ignores a drag's first move; the page object starts drags with a 5 px nudge so nodes land where asked.
 - Engine chunk: `diagram-engine-*.js` 78 KB gzip + `libavoid-*.wasm` 184 KB gzip (lazy).
 
-## M1-D5 — Edge meaning in the domain
-**Status:** todo · **Size:** S · **Depends on:** M1-D4
+## M1-D5a — Edge meaning in the domain
+**Status:** done · **Size:** S · **Depends on:** M1-D4
 
-**Tasks**
-- [ ] `BoardEdge` gets `label?` and `mode: 'sync' | 'async'` (zod, ops, `applyOps`); async drawn dashed.
-- [ ] Edit an edge's label in place.
+- [x] `BoardEdge` gets `label?` (≤ 40 chars, one line) and `mode?: 'sync' | 'async'` (absent = sync, so existing boards stay valid).
+- [x] Ops: `connect(…, { label, mode })`, `labelEdge` (trimmed; empty removes it), `setEdgeMode`.
+- [x] The AI's `connect` op can carry `label` and `mode` ("connect via an async queue").
+- [x] Store actions; async arrows drawn dashed, labels shown.
+
+## M1-D5b — Edit an arrow: label + Async toggle
+**Status:** todo · **Size:** S · **Depends on:** M1-D5a
+
+- [ ] Double-click (or Enter on) an arrow: edit its label in place; Enter/blur saves, Escape cancels.
+- [ ] While editing, an "Async" toggle (`aria-pressed`) switches the arrow to dashed.
+- [ ] Package: `editingEdgeId`, `onEdgeEditStart`, `onEdgeLabelCommit`, `onEdgeDashedChange` — generic names (`dashed`), the app maps them to sync/async.
+
+## M1-D6a — Zones in the domain
+**Status:** todo · **Size:** M · **Depends on:** M1-D5a · **Decision:** [ADR-005](../docs/decisions.md)
+
+**Tests first**
+- [ ] `Zone`: id, label, rectangle; at least a minimum size; one line label.
+- [ ] Ops: `addZone`, `renameZone`, `moveZone` (moves the boxes inside it too), `resizeZone`, `removeZone` (boxes stay).
+- [ ] `zonesOf(board, nodeId)`: which zones contain a box (by its rectangle), innermost first; nested zones work.
+- [ ] `BoardSchema` gets `zones` (default empty); the chat request accepts them.
+
+## M1-D6b — Zones on the diagram
+**Status:** todo · **Size:** M · **Depends on:** M1-D6a, M1-D5b
+
+- [ ] Package: `zones` prop — dashed rectangles with a title, drawn behind boxes; drag to move (boxes inside follow), handles to resize; rename in place; Delete removes the zone only.
+- [ ] Zones are not obstacles for arrow routing.
+- [ ] Toolbar: "Zone" button; e2e journey: draw a VPC around LB + API + DB, move it, rename it.
 
 ---
 

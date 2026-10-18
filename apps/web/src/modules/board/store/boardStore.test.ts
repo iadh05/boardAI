@@ -261,6 +261,28 @@ describe('boardStore — removeElements (what the Delete key removes)', () => {
   });
 });
 
+describe('boardStore — arrow label and mode', () => {
+  it('labels an arrow and makes it async', () => {
+    const { api, db } = seedApiAndDb();
+    const edge = state().connect(api, db) ?? '';
+
+    state().labelEdge(edge, 'events');
+    state().setEdgeMode(edge, 'async');
+
+    expect(state().board.edges[0]).toMatchObject({ label: 'events', mode: 'async' });
+  });
+
+  it('records a refused label as the last error', () => {
+    const { api, db } = seedApiAndDb();
+    const edge = state().connect(api, db) ?? '';
+
+    state().labelEdge(edge, 'x'.repeat(41));
+
+    expect(state().lastError?.code).toBe('INVALID_LABEL');
+    expect(state().board.edges[0]).not.toHaveProperty('label');
+  });
+});
+
 describe('boardStore — label editing', () => {
   it('nobody is editing at first', () => {
     expect(state().editingNodeId).toBeNull();
