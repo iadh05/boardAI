@@ -25,7 +25,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-10 | toolbar pod | M1a | S | done |
 | M1-11 | node pod: SystemNode + editable label | M1a | M | done |
 | M1-12 | Connect and delete | M1a | M | done |
-| M1-13 | ADR-001/002/003 + M1a checkpoint | M1a | S | todo |
+| M1-13 | ADR-001/002/003 + M1a checkpoint | M1a | S | doing |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | todo |
 | M1-14b | Nginx edge proxy | M1b | M | todo |
 | M1-15 | Spike: Qwen tool call end to end | M1b | S | todo |
@@ -453,12 +453,16 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-13 — ADR-001/002/003 + M1a checkpoint
-**Status:** todo · **Size:** S · **Depends on:** M1-12
+**Status:** doing — waiting on the structure-review verdict · **Size:** S · **Depends on:** M1-12
 
 **Tasks**
-- [ ] ADR-001 React Flow (include one thing it's worse at); ADR-002 own domain model, data not SVG; ADR-003 FE modules/pods + Zustand/React Query.
-- [ ] Demo steps 2–5 of the spec; short screen capture.
+- [x] ADR-001 React Flow (include one thing it's worse at); ADR-002 own domain model, data not SVG; ADR-003 FE modules/pods + Zustand/React Query.
+- [x] Demo steps 2–5 of the spec; short screen capture.
 - [ ] **Structure review:** did modules/pods help or slow you down? Anything to simplify before M1b? Record it.
+
+**Notes**
+- ADRs written from the owner's reasons, in [decisions.md](../docs/decisions.md). Demo + facts for the structure review: [docs/checkpoints/M1a.md](../docs/checkpoints/M1a.md).
+- New e2e: self-loop and duplicate arrow are refused (demo step 4).
 
 ---
 

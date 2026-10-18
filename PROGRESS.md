@@ -29,7 +29,7 @@
 
 ## In progress
 
-- **M1-13** — ADR-001/002/003 and the M1a checkpoint.
+- **M1-13** — ADRs + M1a checkpoint: ADRs and demo done (PR #19); **your structure-review verdict** goes in docs/checkpoints/M1a.md.
 
 ## Next
 

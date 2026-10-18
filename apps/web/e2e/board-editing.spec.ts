@@ -67,3 +67,17 @@ test('deleting a node takes its edges with it; deleting an edge keeps the nodes'
   await expect(app.board.edge('API', 'Database')).toHaveCount(0);
   await expect(app.board.nodes).toHaveCount(2);
 });
+
+test('a node cannot connect to itself, and an arrow cannot be drawn twice', async ({ app }) => {
+  await app.board.addNode('API');
+  await app.board.move('API', -150, 0);
+  await app.board.addNode('Database');
+  await app.board.move('Database', 150, 0);
+
+  await app.board.connect('API', 'API');
+  await app.board.connect('API', 'Database');
+  await app.board.connect('API', 'Database');
+
+  await expect(app.board.edge('API', 'API')).toHaveCount(0);
+  await expect(app.board.edge('API', 'Database')).toHaveCount(1);
+});
