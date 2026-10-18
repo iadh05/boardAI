@@ -31,7 +31,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-D3 | Orthogonal routing with libavoid | diagram | M | done |
 | M1-D4 | The app uses the package | diagram | M | done |
 | M1-D5a | Edge meaning in the domain (label, sync/async) | diagram | S | done |
-| M1-D5b | Edit an arrow: label + Async toggle | diagram | S | todo |
+| M1-D5b | Edit an arrow: label + Async toggle | diagram | S | done |
 | M1-D6a | Zones in the domain (VPC, region…) | diagram | M | done |
 | M1-D6b | Zones on the diagram | diagram | M | todo |
 | M1-UX1 | UX polish from the M1a pass | diagram | M | done |
@@ -552,11 +552,16 @@ Inserted after M1a (2026-10-18): the board read like a flowchart, not an archite
 - [x] Store actions; async arrows drawn dashed, labels shown.
 
 ## M1-D5b — Edit an arrow: label + Async toggle
-**Status:** todo · **Size:** S · **Depends on:** M1-D5a
+**Status:** done · **Size:** S · **Depends on:** M1-D5a
 
-- [ ] Double-click (or Enter on) an arrow: edit its label in place; Enter/blur saves, Escape cancels.
-- [ ] While editing, an "Async" toggle (`aria-pressed`) switches the arrow to dashed.
-- [ ] Package: `editingEdgeId`, `onEdgeEditStart`, `onEdgeLabelCommit`, `onEdgeDashedChange` — generic names (`dashed`), the app maps them to sync/async.
+- [x] Double-click (or Enter on) an arrow: edit its label in place; Enter/blur saves, Escape cancels.
+- [x] While editing, an "Async" toggle (`aria-pressed`) switches the arrow to dashed.
+- [x] Package: `editingEdgeId`, `onEdgeEditStart`, `onEdgeLabelCommit`, `onEdgeDashedChange` — generic names (`dashed`), the app maps them to sync/async.
+
+**Notes — found in the browser**
+- The editor opened *behind* the boxes (React Flow draws edge labels under nodes): labels are now always above boxes.
+- New boxes were 44 px apart: no room for an arrow with a label. Now 96 px.
+- A straight arrow's SVG box is 0 px tall, so Playwright never sees it as visible: the page object double-clicks the line's centre.
 
 ## M1-D6a — Zones in the domain
 **Status:** done · **Size:** M · **Depends on:** M1-D5a · **Decision:** [ADR-005](../docs/decisions.md)

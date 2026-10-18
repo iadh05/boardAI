@@ -57,6 +57,25 @@ export class BoardRegion {
     return this.diagram.getByRole('group', { name: `From ${from} to ${to}`, exact: true });
   }
 
+  readonly arrowLabelInput = (): Locator =>
+    this.diagram.getByRole('textbox', { name: 'Arrow label' });
+
+  arrowLabel(text: string): Locator {
+    return this.diagram.getByText(text, { exact: true });
+  }
+
+  /** Opens the arrow editor, types its label, and toggles Async if asked; saves with Enter. */
+  async describeArrow(from: string, to: string, label: string, opts: { async?: boolean } = {}) {
+    // A straight arrow's SVG box is 0 px tall (strokes don't count), so Playwright never calls it
+    // "visible". Users hit React Flow's 20 px invisible hit area: double-click the line's centre.
+    const box = await this.edge(from, to).boundingBox();
+    if (!box) throw new Error(`arrow ${from} → ${to} is not on screen`);
+    await this.page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+    if (opts.async) await this.diagram.getByRole('button', { name: 'Async' }).click();
+    await this.arrowLabelInput().fill(label);
+    await this.arrowLabelInput().press('Enter');
+  }
+
   /** Selects a node or edge with a click and presses Delete. */
   async delete(element: Locator): Promise<void> {
     await element.click();

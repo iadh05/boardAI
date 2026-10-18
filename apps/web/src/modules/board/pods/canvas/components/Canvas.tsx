@@ -1,6 +1,6 @@
 import { Diagram } from '@designroom/diagram';
-import { canConnect, MAX_LABEL_LENGTH } from '@designroom/domain';
-import { useMemo } from 'react';
+import { canConnect, MAX_EDGE_LABEL_LENGTH, MAX_LABEL_LENGTH } from '@designroom/domain';
+import { useMemo, useState } from 'react';
 import { useBoardStore } from '../../../store/boardStore.ts';
 import { Toolbar } from '../../toolbar/index.ts';
 import { toDiagram } from '../mappers/toDiagram.tsx';
@@ -24,6 +24,10 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
   const startEditing = store((s) => s.startEditing);
   const stopEditing = store((s) => s.stopEditing);
   const renameNode = store((s) => s.renameNode);
+  const labelEdge = store((s) => s.labelEdge);
+  const setEdgeMode = store((s) => s.setEdgeMode);
+  // Which arrow is being edited: view state only the canvas needs (frontend rules: State).
+  const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
 
   // useMemo: toDiagram previews the proposal with applyOps, and the diagram expects stable
   // arrays between renders.
@@ -48,6 +52,14 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
         onEditStart={startEditing}
         onLabelCommit={renameNode}
         onEditEnd={stopEditing}
+        editingEdgeId={editingEdgeId}
+        maxEdgeLabelLength={MAX_EDGE_LABEL_LENGTH}
+        dashedLabel="Async"
+        onEdgeEditStart={setEditingEdgeId}
+        onEdgeLabelCommit={labelEdge}
+        // Dashed on the diagram = an async call in the board model.
+        onEdgeDashedChange={(id, dashed) => setEdgeMode(id, dashed ? 'async' : 'sync')}
+        onEdgeEditEnd={() => setEditingEdgeId(null)}
         minimap={nodes.length >= MINIMAP_FROM}
       >
         <Toolbar store={store} />

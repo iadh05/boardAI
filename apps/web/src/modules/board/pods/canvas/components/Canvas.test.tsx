@@ -141,3 +141,16 @@ describe('Canvas — renaming through the store', () => {
     expect(labelInput()).toHaveAttribute('maxLength', String(MAX_LABEL_LENGTH));
   });
 });
+
+describe('Canvas — arrows', () => {
+  it('double-click an arrow, type a label, make it async: the store gets both', async () => {
+    const store = renderCanvas(boardWithTwoNodes);
+
+    fireEvent.doubleClick(screen.getByLabelText('From Orders API to Database'));
+    await userEvent.click(screen.getByRole('button', { name: 'Async' }));
+    await userEvent.click(screen.getByRole('textbox', { name: 'Arrow label' }));
+    await userEvent.keyboard('events{Enter}');
+
+    expect(store.getState().board.edges[0]).toMatchObject({ label: 'events', mode: 'async' });
+  });
+});

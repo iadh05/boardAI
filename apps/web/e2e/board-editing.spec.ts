@@ -81,3 +81,14 @@ test('a node cannot connect to itself, and an arrow cannot be drawn twice', asyn
   await expect(app.board.edge('API', 'API')).toHaveCount(0);
   await expect(app.board.edge('API', 'Database')).toHaveCount(1);
 });
+
+test('an arrow can say what it is and be made async', async ({ app }) => {
+  await app.board.addNode('API');
+  await app.board.addNode('Queue');
+  await app.board.connect('API', 'Queue');
+
+  await app.board.describeArrow('API', 'Queue', 'order events', { async: true });
+
+  await expect(app.board.edge('API', 'Queue')).toHaveCount(1);
+  await expect(app.board.arrowLabel('order events')).toBeVisible();
+});
