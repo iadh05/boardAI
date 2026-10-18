@@ -276,6 +276,8 @@ export default tseslint.config(
       // docs/rules/backend.md — no floating promises.
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
+      // `const { removed, ...rest } = obj` is the idiomatic way to drop a key.
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
       '@typescript-eslint/consistent-type-imports': 'error',
       // docs/rules/general.md — no shared/, common/, misc/, utils.ts, helpers.ts.
       'designroom/no-banned-names': 'error',
