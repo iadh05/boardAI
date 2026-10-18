@@ -14,12 +14,15 @@ const boardWithTwoNodes: Board = {
 };
 
 const renderCanvas = (board: Board) => {
-  const store = createBoardStore({ newId: () => 'x', initialBoard: board });
+  const store = createBoardStore({ newId: () => 'x' });
   render(
     <div style={{ width: 800, height: 600 }}>
       <Canvas store={store} />
     </div>,
   );
+  // Load the board after mount: in jsdom React Flow never measures nodes present on the first
+  // render, so they (and their edges) never show. Browsers are fine.
+  act(() => store.setState({ board }));
   return store;
 };
 
@@ -46,18 +49,53 @@ describe('Canvas', () => {
     expect(screen.getByText(/proposed/i)).toBeInTheDocument();
   });
 
-  it('Backspace on a selected node does not hide it (deletion goes through the store, M1-12)', async () => {
+  it('Backspace on a selected node removes it and its edges, through the store', async () => {
     const store = renderCanvas(boardWithTwoNodes);
     const label = screen.getByText('Orders API');
 
     // A plain click selects without a mousedown: jsdom gives mousedown a null `view`, which
     // React Flow's drag library (d3-drag) can't handle. Real browsers are fine.
     fireEvent.click(label);
-    expect(label.closest('.react-flow__node')).toHaveClass('selected');
     await userEvent.keyboard('{Backspace}');
 
-    expect(screen.getByText('Orders API')).toBeInTheDocument();
+    expect(store.getState().board.nodes.map((n) => n.id)).toEqual(['db']);
+    expect(store.getState().board.edges).toEqual([]);
+    expect(store.getState().lastError).toBeNull();
+    expect(screen.queryByText('Orders API')).not.toBeInTheDocument();
+  });
+
+  it('the Delete key works too', async () => {
+    const store = renderCanvas(boardWithTwoNodes);
+    fireEvent.click(screen.getByText('Database'));
+    await userEvent.keyboard('{Delete}');
+    expect(store.getState().board.nodes.map((n) => n.id)).toEqual(['api']);
+  });
+
+  it('deleting a selected edge removes only that edge', async () => {
+    const store = renderCanvas(boardWithTwoNodes);
+
+    fireEvent.click(await screen.findByLabelText('From Orders API to Database'));
+    await userEvent.keyboard('{Backspace}');
+
+    expect(store.getState().board.edges).toEqual([]);
     expect(store.getState().board.nodes).toHaveLength(2);
+  });
+
+  it('ghost nodes cannot be deleted', async () => {
+    const store = renderCanvas(boardWithTwoNodes);
+    act(() => {
+      store.getState().setProposal({
+        id: 'p1',
+        summary: 'Add a cache',
+        ops: [{ op: 'addNode', nodeId: 'cache', kind: 'cache', label: 'Redis', near: 'api' }],
+      });
+    });
+
+    fireEvent.click(screen.getByText('Redis'));
+    await userEvent.keyboard('{Backspace}');
+
+    expect(screen.getByText('Redis')).toBeInTheDocument();
+    expect(store.getState().proposal).not.toBeNull();
   });
 
   it('has zoom controls', () => {

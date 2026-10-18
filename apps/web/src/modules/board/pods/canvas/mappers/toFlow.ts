@@ -21,14 +21,13 @@ export const toFlow = (board: Board, proposal: Proposal | null): FlowGraph => {
     // The accessible name of React Flow's node wrapper (role "group").
     ariaLabel: n.label,
   }));
+  const labelOf = new Map(board.nodes.map((n) => [n.id, n.label]));
   const edges: Edge[] = board.edges.map((e) => ({
     id: e.id,
     source: e.source,
     target: e.target,
     markerEnd: ARROW,
-    // Not interactive until M1-12 wires edge selection and deletion through the store.
-    selectable: false,
-    focusable: false,
+    ariaLabel: `From ${labelOf.get(e.source) ?? e.source} to ${labelOf.get(e.target) ?? e.target}`,
   }));
 
   const preview = proposal ? applyOps(board, proposal.ops) : null;
@@ -48,6 +47,7 @@ export const toFlow = (board: Board, proposal: Proposal | null): FlowGraph => {
       draggable: false,
       selectable: false,
       connectable: false,
+      deletable: false,
     });
   }
   for (const e of preview.value.edges) {
@@ -60,6 +60,7 @@ export const toFlow = (board: Board, proposal: Proposal | null): FlowGraph => {
       className: 'is-proposed',
       selectable: false,
       focusable: false,
+      deletable: false,
     });
   }
 

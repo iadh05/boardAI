@@ -18,10 +18,11 @@ export const mergeFlowNodes = (fromStore: FlowNode[], current: FlowNode[]): Flow
 };
 
 /**
- * The changes the canvas may apply to its own copy: drag, select, measure. Additions and removals
- * are dropped — only the store decides what exists (deletion goes through the store, M1-12).
+ * The node or edge changes the canvas may apply to its own copy: drag, select, measure. Additions
+ * and removals are dropped — only the store decides what exists (the Canvas sends deletions to
+ * the store through onDelete).
  */
-export const canvasChanges = (changes: NodeChange<FlowNode>[]): NodeChange<FlowNode>[] =>
+export const canvasChanges = <Change extends { type: string }>(changes: Change[]): Change[] =>
   changes.filter((change) => change.type !== 'remove' && change.type !== 'add');
 
 /**

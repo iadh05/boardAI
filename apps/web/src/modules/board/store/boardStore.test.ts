@@ -207,6 +207,51 @@ describe('boardStore — proposals', () => {
   });
 });
 
+describe('boardStore — removeElements (what the Delete key removes)', () => {
+  it('removes nodes with their edges, and edges, in one update', () => {
+    const { api, db } = seedApiAndDb();
+    const cache = state().addNode('cache', { x: 0, y: 120 });
+    if (!cache) throw new Error('seed failed');
+    const apiToDb = state().connect(api, db);
+    const apiToCache = state().connect(api, cache);
+    let updates = 0;
+    const unsubscribe = store.subscribe(() => updates++);
+
+    state().removeElements([db], [apiToCache ?? '']);
+
+    unsubscribe();
+    expect(state().board.nodes.map((n) => n.id)).toEqual([api, cache]);
+    expect(state().board.edges).toEqual([]);
+    expect(apiToDb).not.toBeNull();
+    expect(updates).toBe(1);
+  });
+
+  it('skips edges already removed with their node — no error', () => {
+    const { api, db } = seedApiAndDb();
+    const edge = state().connect(api, db);
+
+    // React Flow lists a deleted node's edges too.
+    state().removeElements([db], [edge ?? '']);
+
+    expect(state().board.edges).toEqual([]);
+    expect(state().lastError).toBeNull();
+  });
+
+  it('ends label editing when the edited node is removed', () => {
+    const { api } = seedApiAndDb();
+    state().startEditing(api);
+    state().removeElements([api], []);
+    expect(state().editingNodeId).toBeNull();
+  });
+
+  it('does nothing for an empty selection', () => {
+    seedApiAndDb();
+    const before = state().board;
+    state().removeElements([], []);
+    expect(state().board).toBe(before);
+  });
+});
+
 describe('boardStore — label editing', () => {
   it('nobody is editing at first', () => {
     expect(state().editingNodeId).toBeNull();
