@@ -116,10 +116,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      # No `cache: pnpm` here: this job never installs, so the pnpm store doesn't exist and
+      # setup-node's post-step would fail trying to save it on a cache miss.
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-          cache: pnpm
       # Known vulnerabilities in the whole dependency tree (high and critical fail the job).
       - run: pnpm audit --audit-level=high
       # On PRs: block dependency changes that add a vulnerable package or a non-permissive licence.
