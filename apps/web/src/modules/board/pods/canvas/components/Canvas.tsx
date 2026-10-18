@@ -1,5 +1,10 @@
 import { Diagram } from '@designroom/diagram';
-import { canConnect, MAX_EDGE_LABEL_LENGTH, MAX_LABEL_LENGTH } from '@designroom/domain';
+import {
+  canConnect,
+  MAX_EDGE_LABEL_LENGTH,
+  MAX_LABEL_LENGTH,
+  MIN_ZONE_SIZE,
+} from '@designroom/domain';
 import { useMemo, useState } from 'react';
 import { useBoardStore } from '../../../store/boardStore.ts';
 import { Toolbar } from '../../toolbar/index.ts';
@@ -26,12 +31,18 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
   const renameNode = store((s) => s.renameNode);
   const labelEdge = store((s) => s.labelEdge);
   const setEdgeMode = store((s) => s.setEdgeMode);
+  const editingZoneId = store((s) => s.editingZoneId);
+  const moveZone = store((s) => s.moveZone);
+  const resizeZone = store((s) => s.resizeZone);
+  const renameZone = store((s) => s.renameZone);
+  const stopEditingZone = store((s) => s.stopEditingZone);
+  const startEditingZone = store((s) => s.startEditingZone);
   // Which arrow is being edited: view state only the canvas needs (frontend rules: State).
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
 
   // useMemo: toDiagram previews the proposal with applyOps, and the diagram expects stable
   // arrays between renders.
-  const { nodes, edges } = useMemo(() => toDiagram(board, proposal), [board, proposal]);
+  const { nodes, edges, zones } = useMemo(() => toDiagram(board, proposal), [board, proposal]);
 
   return (
     <div className="relative h-full">
@@ -61,6 +72,14 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
         onEdgeDashedChange={(id, dashed) => setEdgeMode(id, dashed ? 'async' : 'sync')}
         onEdgeEditEnd={() => setEditingEdgeId(null)}
         minimap={nodes.length >= MINIMAP_FROM}
+        zones={zones}
+        minZoneSize={MIN_ZONE_SIZE}
+        editingZoneId={editingZoneId}
+        onZoneMove={moveZone}
+        onZoneResize={resizeZone}
+        onZoneEditStart={startEditingZone}
+        onZoneLabelCommit={renameZone}
+        onZoneEditEnd={stopEditingZone}
       >
         <Toolbar store={store} />
       </Diagram>

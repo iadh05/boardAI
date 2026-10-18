@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-D5 edge meaning (labels, sync/async) — or M1b if you want to defer it
+**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1a + diagram package complete — next: M1-13 verdict, then M1b (server, M1-14)
 
 ## Done
 
@@ -30,7 +30,7 @@
 ## In progress
 
 - **M1-13** — waiting on your structure-review verdict (docs/checkpoints/M1a.md).
-- **Diagram package (M1-D1…D5)** — the canvas moves into `@designroom/diagram` (React Flow + libavoid), [ADR-004](docs/decisions.md). D-1 done (#20), D-2 `<Diagram>` (#21), D-3 libavoid routing (#22), D-4 the app uses it (#23). UX polish after a manual pass (#24).
+- **Diagram package (M1-D1…D5)** — the canvas moves into `@designroom/diagram` (React Flow + libavoid), [ADR-004](docs/decisions.md). D-1 done (#20), D-2 `<Diagram>` (#21), D-3 libavoid routing (#22), D-4 the app uses it (#23). UX polish after a manual pass (#24). Arrows with labels and sync/async (#25, #27), zones (#26, #28).
 
 ## Next
 

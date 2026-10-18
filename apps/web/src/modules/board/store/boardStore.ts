@@ -1,17 +1,23 @@
 import {
   addNode,
+  addZone,
   applyOps,
   changeKind,
   connect,
   createNode,
+  createZone,
   emptyBoard,
   moveNode,
+  moveZone,
   ok,
   labelEdge,
   removeEdge,
   setEdgeMode,
   removeNode,
+  removeZone,
   renameNode,
+  renameZone,
+  resizeZone,
   type Board,
   type BoardResult,
   type DomainError,
@@ -19,6 +25,7 @@ import {
   type NodeKind,
   type Position,
   type Proposal,
+  type ZoneSize,
 } from '@designroom/domain';
 import { create } from 'zustand';
 import { createId } from '../../../core/lib/ids.ts';
@@ -37,6 +44,8 @@ export type BoardState = {
   lastError: DomainError | null;
   /** The node whose label is open for editing. Shared by the toolbar (new Custom node) and the node pod. */
   editingNodeId: string | null;
+  /** The zone whose title is open for editing (a new zone opens like this). */
+  editingZoneId: string | null;
 };
 
 export type BoardActions = {
@@ -54,7 +63,20 @@ export type BoardActions = {
    * Removes nodes (with their edges) and edges in one update — what the Delete key does to a
    * selection. Ids already gone (e.g. edges removed with their node) are skipped, not reported.
    */
-  removeElements: (nodeIds: readonly string[], edgeIds: readonly string[]) => void;
+  removeElements: (
+    nodeIds: readonly string[],
+    edgeIds: readonly string[],
+    zoneIds?: readonly string[],
+  ) => void;
+  /** Adds a zone and opens its title for naming. Returns its id, or null if refused. */
+  addZone: (position: Position, size: ZoneSize) => string | null;
+  renameZone: (id: string, label: string) => void;
+  resizeZone: (id: string, size: ZoneSize) => void;
+  /** Moves the zone and everything inside it. */
+  moveZone: (id: string, position: Position) => void;
+  /** Opens a zone's title for editing; ignored for unknown ids. */
+  startEditingZone: (id: string) => void;
+  stopEditingZone: () => void;
   renameNode: (id: string, label: string) => void;
   changeKind: (id: string, kind: NodeKind) => void;
   moveNode: (id: string, position: Position) => void;
@@ -92,6 +114,7 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
       proposalError: null,
       lastError: null,
       editingNodeId: null,
+      editingZoneId: null,
 
       addNode: (kind, position) => {
         const id = newId();
@@ -115,8 +138,8 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
       removeEdge: (id) => {
         commit(removeEdge(get().board, id));
       },
-      removeElements: (nodeIds, edgeIds) => {
-        if (nodeIds.length === 0 && edgeIds.length === 0) return;
+      removeElements: (nodeIds, edgeIds, zoneIds = []) => {
+        if (nodeIds.length === 0 && edgeIds.length === 0 && zoneIds.length === 0) return;
         // Ids already gone (an edge removed with its node, a stale selection) are skipped.
         let result: BoardResult = ok(get().board);
         for (const id of nodeIds) {
@@ -129,10 +152,34 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
             result = removeEdge(result.value, id);
           }
         }
+        for (const id of zoneIds) {
+          if (result.ok && result.value.zones?.some((z) => z.id === id)) {
+            result = removeZone(result.value, id);
+          }
+        }
         if (!commit(result)) return;
         const { editingNodeId } = get();
         if (editingNodeId !== null && nodeIds.includes(editingNodeId)) set({ editingNodeId: null });
       },
+      addZone: (position, size) => {
+        const id = newId();
+        if (!commit(addZone(get().board, createZone(id, position, size)))) return null;
+        set({ editingZoneId: id });
+        return id;
+      },
+      renameZone: (id, label) => {
+        commit(renameZone(get().board, id, label));
+      },
+      resizeZone: (id, size) => {
+        commit(resizeZone(get().board, id, size));
+      },
+      moveZone: (id, position) => {
+        commit(moveZone(get().board, id, position));
+      },
+      startEditingZone: (id) => {
+        if (get().board.zones?.some((z) => z.id === id)) set({ editingZoneId: id });
+      },
+      stopEditingZone: () => set({ editingZoneId: null }),
       renameNode: (id, label) => {
         commit(renameNode(get().board, id, label));
       },

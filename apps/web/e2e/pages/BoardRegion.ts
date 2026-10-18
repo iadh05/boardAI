@@ -60,6 +60,33 @@ export class BoardRegion {
   readonly arrowLabelInput = (): Locator =>
     this.diagram.getByRole('textbox', { name: 'Arrow label' });
 
+  /** Adds a zone (centred on the view) and names it. */
+  async addZone(name: string): Promise<void> {
+    await this.diagram
+      .getByRole('toolbar', { name: 'Add a node' })
+      .getByRole('button', { name: 'Add Zone' })
+      .click();
+    await this.diagram.getByRole('textbox', { name: 'Zone label' }).fill(name);
+    await this.diagram.getByRole('textbox', { name: 'Zone label' }).press('Enter');
+  }
+
+  zone(name: string): Locator {
+    return this.diagram.getByRole('group', { name: `Zone: ${name}`, exact: true });
+  }
+
+  /** Drags a zone by its title, by (dx, dy) screen pixels. */
+  async moveZone(name: string, dx: number, dy: number): Promise<void> {
+    const box = await this.zone(name).getByText(name, { exact: true }).boundingBox();
+    if (!box) throw new Error(`zone "${name}" is not on screen`);
+    const x = box.x + 10;
+    const y = box.y + box.height / 2;
+    await this.page.mouse.move(x, y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(x + 5, y);
+    await this.page.mouse.move(x + dx, y + dy, { steps: 5 });
+    await this.page.mouse.up();
+  }
+
   arrowLabel(text: string): Locator {
     return this.diagram.getByText(text, { exact: true });
   }

@@ -169,3 +169,46 @@
 .dr-diagram .react-flow__edgelabel-renderer {
   z-index: 1001;
 }
+
+/* Zones: dashed rectangles with a title, behind the boxes. */
+.dr-diagram .react-flow__node-zone {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+.dr-zone {
+  width: 100%;
+  height: 100%;
+  border: 2px dashed var(--dr-diagram-muted);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--dr-diagram-muted) 6%, transparent);
+}
+.dr-zone.is-selected {
+  border-color: var(--dr-diagram-focus);
+}
+.dr-zone-title {
+  display: flex;
+  max-width: 100%;
+  padding: 6px 10px;
+  color: var(--dr-diagram-muted);
+  font:
+    600 12px/1.3 system-ui,
+    sans-serif;
+}
+.react-flow__node-zone:focus-visible {
+  outline: 2px solid var(--dr-diagram-focus);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+.dr-diagram .dr-zone-resize {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--dr-diagram-focus);
+  border-radius: 2px;
+  background: var(--dr-diagram-surface);
+  opacity: 0;
+}
+.dr-diagram .react-flow__node-zone:hover .dr-zone-resize,
+.dr-diagram .react-flow__node-zone.selected .dr-zone-resize {
+  opacity: 1;
+}

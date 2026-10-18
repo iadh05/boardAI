@@ -1,5 +1,12 @@
 import { MarkerType, type Edge, type Node } from '@xyflow/react';
-import type { DiagramEdge, DiagramNode, DiagramPosition, DiagramShape } from '../types.ts';
+import type { ZoneNode } from '../components/ZoneView.tsx';
+import type {
+  DiagramEdge,
+  DiagramNode,
+  DiagramPosition,
+  DiagramShape,
+  DiagramZone,
+} from '../types.ts';
 
 // The only place that knows both our public model and React Flow's. If the engine changes
 // (ADR-004), this mapper and the components change; the public API doesn't.
@@ -12,6 +19,10 @@ export type BoxData = {
   ghost: boolean;
 };
 export type BoxNode = Node<BoxData, 'box'>;
+export type FlowNode = BoxNode | ZoneNode;
+
+/** Zones sit under boxes even when selected (React Flow lifts selected nodes by 1000). */
+const ZONE_Z = -1000;
 
 export const SIDES = ['top', 'right', 'bottom', 'left'] as const;
 export type Side = (typeof SIDES)[number];
@@ -36,7 +47,8 @@ const DASH = '6 4';
 export const toReactFlow = (
   nodes: readonly DiagramNode[],
   edges: readonly DiagramEdge[],
-): { nodes: BoxNode[]; edges: Edge[] } => {
+  zones: readonly DiagramZone[] = [],
+): { nodes: FlowNode[]; edges: Edge[] } => {
   const byId = new Map(nodes.map((n) => [n.id, n]));
 
   const flowNodes = nodes.map((n): BoxNode => {
@@ -78,5 +90,17 @@ export const toReactFlow = (
     };
   });
 
-  return { nodes: flowNodes, edges: flowEdges };
+  const zoneNodes = zones.map((z): ZoneNode => ({
+    id: z.id,
+    type: 'zone',
+    position: z.position,
+    data: { label: z.label },
+    width: z.size.width,
+    height: z.size.height,
+    zIndex: ZONE_Z,
+    ariaLabel: `Zone: ${z.label}`,
+  }));
+
+  // Zones first: drawn behind the boxes.
+  return { nodes: [...zoneNodes, ...flowNodes], edges: flowEdges };
 };

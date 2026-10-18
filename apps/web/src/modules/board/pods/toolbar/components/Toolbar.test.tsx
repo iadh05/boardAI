@@ -69,3 +69,14 @@ describe('Custom nodes from the toolbar', () => {
     expect(screen.queryByRole('textbox', { name: 'Node label' })).not.toBeInTheDocument();
   });
 });
+
+describe('Zones from the toolbar', () => {
+  it('"Add Zone" draws a zone and opens its title for naming', async () => {
+    const store = renderBoard();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add Zone' }));
+    await userEvent.keyboard('VPC{Enter}');
+
+    expect(store.getState().board.zones).toMatchObject([{ label: 'VPC' }]);
+  });
+});

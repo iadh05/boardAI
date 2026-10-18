@@ -33,7 +33,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-D5a | Edge meaning in the domain (label, sync/async) | diagram | S | done |
 | M1-D5b | Edit an arrow: label + Async toggle | diagram | S | done |
 | M1-D6a | Zones in the domain (VPC, region…) | diagram | M | done |
-| M1-D6b | Zones on the diagram | diagram | M | todo |
+| M1-D6b | Zones on the diagram | diagram | M | done |
 | M1-UX1 | UX polish from the M1a pass | diagram | M | done |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | todo |
 | M1-14b | Nginx edge proxy | M1b | M | todo |
@@ -577,11 +577,16 @@ Inserted after M1a (2026-10-18): the board read like a flowchart, not an archite
 - The chat request accepts at most 50 zones.
 
 ## M1-D6b — Zones on the diagram
-**Status:** todo · **Size:** M · **Depends on:** M1-D6a, M1-D5b
+**Status:** done · **Size:** M · **Depends on:** M1-D6a, M1-D5b
 
-- [ ] Package: `zones` prop — dashed rectangles with a title, drawn behind boxes; drag to move (boxes inside follow), handles to resize; rename in place; Delete removes the zone only.
-- [ ] Zones are not obstacles for arrow routing.
-- [ ] Toolbar: "Zone" button; e2e journey: draw a VPC around LB + API + DB, move it, rename it.
+- [x] Package: `zones` prop — dashed rectangles with a title, drawn behind boxes; drag to move (boxes inside follow), handles to resize; rename in place; Delete removes the zone only.
+- [x] Zones are not obstacles for arrow routing.
+- [x] Toolbar: "Zone" button; e2e journey: draw a VPC around LB + API + DB, move it, rename it.
+
+**Notes**
+- While a zone is dragged, what it held at the start moves along live (`flow/zoneDrag.ts`, unit-tested); on drop, the store's `moveZone` moves the same boxes in one update.
+- Zones sit under boxes even when selected (React Flow lifts selected nodes by 1000).
+- A new zone opens its title for naming, like a Custom box.
 
 ---
 

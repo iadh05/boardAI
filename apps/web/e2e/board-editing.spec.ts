@@ -92,3 +92,23 @@ test('an arrow can say what it is and be made async', async ({ app }) => {
   await expect(app.board.edge('API', 'Queue')).toHaveCount(1);
   await expect(app.board.arrowLabel('order events')).toBeVisible();
 });
+
+test(
+  'a zone groups boxes: moving it carries the boxes inside',
+  { tag: '@smoke' },
+  async ({ app }) => {
+    await app.board.addNode('API'); // centre of the view: inside the zone
+    await app.board.addNode('Database'); // to its right: outside the zone
+    await app.board.addZone('VPC');
+    const apiBefore = await app.board.node('API').boundingBox();
+    const dbBefore = await app.board.node('Database').boundingBox();
+
+    await app.board.moveZone('VPC', -140, 100);
+
+    await expect(app.board.zone('VPC')).toBeVisible();
+    await expect
+      .poll(async () => (await app.board.node('API').boundingBox())?.y)
+      .toBeGreaterThan((apiBefore?.y ?? 0) + 50);
+    expect((await app.board.node('Database').boundingBox())?.y).toBe(dbBefore?.y);
+  },
+);

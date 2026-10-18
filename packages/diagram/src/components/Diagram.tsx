@@ -23,8 +23,12 @@ import {
   type ReactNode,
 } from 'react';
 import { canvasChanges, commitMoves, mergeEdges, mergeNodes } from '../flow/changes.ts';
-import { toReactFlow, type BoxNode } from '../flow/toReactFlow.ts';
-import type { DiagramEdge, DiagramNode, DiagramPosition } from '../types.ts';
+import { createZoneDrag, type DragItem } from '../flow/zoneDrag.ts';
+import { toReactFlow, type BoxNode, type FlowNode } from '../flow/toReactFlow.ts';
+import type { DiagramEdge, DiagramNode, DiagramPosition, DiagramZone } from '../types.ts';
+import { NODE_SIZE } from './nodeSize.ts';
+import { ZoneContext, type ZoneContextValue } from './ZoneContext.ts';
+import { ZoneView } from './ZoneView.tsx';
 import { BoxNodeView } from './BoxNodeView.tsx';
 import type { DiagramRouter } from '../router/types.ts';
 import { DiagramContext, type DiagramContextValue } from './DiagramContext.ts';
@@ -47,8 +51,23 @@ export type DiagramProps = {
   onConnect?: (source: string, target: string) => void;
   /** Called once per drag, when it ends. */
   onNodeMove?: (id: string, position: DiagramPosition) => void;
-  /** Delete/Backspace on the selection: the nodes, and every edge to remove (incl. their edges). */
-  onDelete?: (nodeIds: string[], edgeIds: string[]) => void;
+  /**
+   * Delete/Backspace on the selection: the boxes, every edge to remove (incl. the boxes' edges),
+   * and the zones (a zone's boxes stay).
+   */
+  onDelete?: (nodeIds: string[], edgeIds: string[], zoneIds: string[]) => void;
+  /** Zones (VPC, region…): titled rectangles behind the boxes. */
+  zones?: readonly DiagramZone[];
+  /** The zone whose title is open for editing (controlled). */
+  editingZoneId?: string | null;
+  minZoneSize?: { width: number; height: number };
+  /** Called once per drag, when it ends. The boxes inside moved along on screen: move them too. */
+  onZoneMove?: (id: string, position: DiagramPosition) => void;
+  onZoneResize?: (id: string, size: { width: number; height: number }) => void;
+  /** Double-click or Enter on a zone: asks to edit its title. */
+  onZoneEditStart?: (id: string) => void;
+  onZoneLabelCommit?: (id: string, label: string) => void;
+  onZoneEditEnd?: () => void;
   /** Double-click or Enter on a node: asks to edit its label. */
   onEditStart?: (id: string) => void;
   onLabelCommit?: (id: string, label: string) => void;
@@ -78,7 +97,9 @@ export type DiagramProps = {
 };
 
 // Defined once, outside any component: a new object each render would remount every node.
-const nodeTypes: NodeTypes = { box: BoxNodeView };
+const nodeTypes: NodeTypes = { box: BoxNodeView, zone: ZoneView };
+const NO_ZONES: readonly DiagramZone[] = [];
+const DEFAULT_MIN_ZONE = { width: 200, height: 100 };
 const edgeTypes: EdgeTypes = { routed: RoutedEdge };
 const FIT_VIEW = { maxZoom: 1 };
 const DELETE_KEYS = ['Backspace', 'Delete'];
@@ -112,6 +133,14 @@ function DiagramCanvas({
   onEdgeLabelCommit,
   onEdgeDashedChange,
   onEdgeEditEnd,
+  zones: zonesProp = NO_ZONES,
+  editingZoneId = null,
+  minZoneSize = DEFAULT_MIN_ZONE,
+  onZoneMove,
+  onZoneResize,
+  onZoneEditStart,
+  onZoneLabelCommit,
+  onZoneEditEnd,
   router,
   snapGrid = 20,
   minimap = true,
@@ -119,11 +148,14 @@ function DiagramCanvas({
 }: DiagramProps) {
   // useMemo: keeps the mapped arrays stable while the props are, so the merge below runs only
   // when the app actually changed something.
-  const flow = useMemo(() => toReactFlow(nodesProp, edgesProp), [nodesProp, edgesProp]);
+  const flow = useMemo(
+    () => toReactFlow(nodesProp, edgesProp, zonesProp),
+    [nodesProp, edgesProp, zonesProp],
+  );
 
   // Canvas-local copy: React Flow updates it during drags, selection and measuring; the props
   // are merged in when they change ("adjust state when a prop changes" — React docs).
-  const [nodes, setNodes] = useState<BoxNode[]>(flow.nodes);
+  const [nodes, setNodes] = useState<FlowNode[]>(flow.nodes);
   const [edges, setEdges] = useState<Edge[]>(flow.edges);
   const [mergedFrom, setMergedFrom] = useState(flow);
   if (mergedFrom !== flow) {
@@ -133,17 +165,46 @@ function DiagramCanvas({
   }
 
   // From the live positions, so arrows follow a node while it's dragged.
-  const routes = useRoutes(nodes, edges, router);
+  // Zones are not obstacles: arrows may cross them.
+  const boxes = useMemo(() => nodes.filter((n): n is BoxNode => n.type === 'box'), [nodes]);
+  const routes = useRoutes(boxes, edges, router);
 
-  const onNodesChange = (changes: NodeChange<BoxNode>[]) => {
-    setNodes((current) => applyNodeChanges(canvasChanges(changes), current));
-    if (onNodeMove) commitMoves(changes, onNodeMove);
+  // While a zone is dragged, what was inside it when the drag started moves along, live.
+  const [zoneDrag] = useState(createZoneDrag);
+  const toDragItem = (n: FlowNode): DragItem => ({
+    id: n.id,
+    zone: n.type === 'zone',
+    x: n.position.x,
+    y: n.position.y,
+    width: n.measured?.width ?? n.width ?? NODE_SIZE.width,
+    height: n.measured?.height ?? n.height ?? NODE_SIZE.height,
+  });
+
+  const onNodesChange = (changes: NodeChange<FlowNode>[]) => {
+    const moves = changes.flatMap((c) => (c.type === 'position' ? [c] : []));
+    const { carried, ended } = zoneDrag.step(moves, nodes.map(toDragItem));
+    const carriedChanges = carried.map((c): NodeChange<FlowNode> => ({
+      type: 'position',
+      id: c.id,
+      position: c.position,
+    }));
+    setNodes((current) =>
+      applyNodeChanges([...canvasChanges(changes), ...carriedChanges], current),
+    );
+    for (const zone of ended) onZoneMove?.(zone.id, zone.position);
+    const isZone = (id: string) => zonesProp.some((z) => z.id === id);
+    if (onNodeMove)
+      commitMoves(
+        moves.filter((c) => !isZone(c.id)),
+        onNodeMove,
+      );
   };
   const onEdgesChange = (changes: EdgeChange[]) => {
     setEdges((current) => applyEdgeChanges(canvasChanges(changes), current));
   };
 
   const isEditable = (id: string) => nodesProp.some((n) => n.id === id && !n.ghost);
+  const isZoneId = (id: string) => zonesProp.some((z) => z.id === id);
   const isEditableEdge = (id: string) => edgesProp.some((e) => e.id === id && !e.ghost);
   // React Flow's wrapper around each node or edge is what gets focus; Enter bubbles up to here.
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -152,6 +213,7 @@ function DiagramCanvas({
     const id = target.getAttribute('data-id');
     if (!id) return;
     if (target.classList.contains('react-flow__node-box') && isEditable(id)) onEditStart?.(id);
+    if (target.classList.contains('react-flow__node-zone') && isZoneId(id)) onZoneEditStart?.(id);
     if (target.classList.contains('react-flow__edge') && isEditableEdge(id)) onEdgeEditStart?.(id);
   };
 
@@ -159,6 +221,9 @@ function DiagramCanvas({
   // since this component re-renders then. So: a stable value that changes only with the editing
   // state, and the latest callbacks read through a ref (apps may pass inline functions).
   const callbacks = useRef({
+    onZoneLabelCommit,
+    onZoneEditEnd,
+    onZoneResize,
     onLabelCommit,
     onEditEnd,
     onEdgeLabelCommit,
@@ -167,6 +232,9 @@ function DiagramCanvas({
   });
   useLayoutEffect(() => {
     callbacks.current = {
+      onZoneLabelCommit,
+      onZoneEditEnd,
+      onZoneResize,
       onLabelCommit,
       onEditEnd,
       onEdgeLabelCommit,
@@ -194,52 +262,66 @@ function DiagramCanvas({
     }),
     [editingEdgeId, maxEdgeLabelLength, dashedLabel],
   );
+  const zoneContext = useMemo<ZoneContextValue>(
+    () => ({
+      editingZoneId,
+      minSize: minZoneSize,
+      commitLabel: (id, label) => callbacks.current.onZoneLabelCommit?.(id, label),
+      endEditing: () => callbacks.current.onZoneEditEnd?.(),
+      resize: (id, size) => callbacks.current.onZoneResize?.(id, size),
+    }),
+    [editingZoneId, minZoneSize],
+  );
 
   return (
     <DiagramContext value={context}>
-      <EdgeEditContext value={edgeContext}>
-        <RoutesContext value={routes}>
-          <ReactFlow
-            className="dr-diagram"
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            // Any side can start or end an arrow (handles on 4 sides).
-            connectionMode={ConnectionMode.Loose}
-            isValidConnection={({ source, target }) => canConnect?.(source, target) ?? true}
-            onConnect={({ source, target }) => onConnect?.(source, target)}
-            onDelete={({ nodes: gone, edges: goneEdges }) =>
-              onDelete?.(
-                gone.map((n) => n.id),
-                goneEdges.map((e) => e.id),
-              )
-            }
-            onNodeDoubleClick={(_, node) => {
-              if (isEditable(node.id)) onEditStart?.(node.id);
-            }}
-            onEdgeDoubleClick={(_, edge) => {
-              if (isEditableEdge(edge.id)) onEdgeEditStart?.(edge.id);
-            }}
-            onKeyDown={onKeyDown}
-            deleteKeyCode={DELETE_KEYS}
-            snapToGrid={snapGrid !== null}
-            snapGrid={snapGrid === null ? undefined : [snapGrid, snapGrid]}
-            // On an empty diagram the fit happens when the first node appears; without a cap it zooms to 2×.
-            fitView
-            fitViewOptions={FIT_VIEW}
-            aria-label={ariaLabel}
-          >
-            {/* Panels first: they come before the zoom controls when tabbing. */}
-            {children}
-            <Background variant={BackgroundVariant.Dots} gap={snapGrid ?? 20} />
-            <Controls />
-            {minimap && <MiniMap pannable zoomable />}
-          </ReactFlow>
-        </RoutesContext>
-      </EdgeEditContext>
+      <ZoneContext value={zoneContext}>
+        <EdgeEditContext value={edgeContext}>
+          <RoutesContext value={routes}>
+            <ReactFlow
+              className="dr-diagram"
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              // Any side can start or end an arrow (handles on 4 sides).
+              connectionMode={ConnectionMode.Loose}
+              isValidConnection={({ source, target }) => canConnect?.(source, target) ?? true}
+              onConnect={({ source, target }) => onConnect?.(source, target)}
+              onDelete={({ nodes: gone, edges: goneEdges }) =>
+                onDelete?.(
+                  gone.filter((n) => n.type !== 'zone').map((n) => n.id),
+                  goneEdges.map((e) => e.id),
+                  gone.filter((n) => n.type === 'zone').map((n) => n.id),
+                )
+              }
+              onNodeDoubleClick={(_, node) => {
+                if (node.type === 'zone') onZoneEditStart?.(node.id);
+                else if (isEditable(node.id)) onEditStart?.(node.id);
+              }}
+              onEdgeDoubleClick={(_, edge) => {
+                if (isEditableEdge(edge.id)) onEdgeEditStart?.(edge.id);
+              }}
+              onKeyDown={onKeyDown}
+              deleteKeyCode={DELETE_KEYS}
+              snapToGrid={snapGrid !== null}
+              snapGrid={snapGrid === null ? undefined : [snapGrid, snapGrid]}
+              // On an empty diagram the fit happens when the first node appears; without a cap it zooms to 2×.
+              fitView
+              fitViewOptions={FIT_VIEW}
+              aria-label={ariaLabel}
+            >
+              {/* Panels first: they come before the zoom controls when tabbing. */}
+              {children}
+              <Background variant={BackgroundVariant.Dots} gap={snapGrid ?? 20} />
+              <Controls />
+              {minimap && <MiniMap pannable zoomable />}
+            </ReactFlow>
+          </RoutesContext>
+        </EdgeEditContext>
+      </ZoneContext>
     </DiagramContext>
   );
 }

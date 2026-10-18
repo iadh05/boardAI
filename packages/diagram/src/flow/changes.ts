@@ -1,12 +1,11 @@
-import type { Edge, NodeChange } from '@xyflow/react';
+import type { Edge, Node, NodeChange } from '@xyflow/react';
 import type { DiagramPosition } from '../types.ts';
-import type { BoxNode } from './toReactFlow.ts';
 
 // The diagram is controlled: the app owns what exists and where. The canvas keeps a local copy
 // only for what it alone knows — selection, measured size, a node mid-drag — and merges the
 // app's version in whenever the props change.
 
-export const mergeNodes = (fromProps: BoxNode[], current: BoxNode[]): BoxNode[] => {
+export const mergeNodes = <N extends Node>(fromProps: N[], current: N[]): N[] => {
   const byId = new Map(current.map((n) => [n.id, n]));
   return fromProps.map((next) => {
     const previous = byId.get(next.id);
