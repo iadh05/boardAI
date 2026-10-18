@@ -27,7 +27,9 @@ export type BoardErrorCode =
   | 'INVALID_ID'
   | 'INVALID_NODE'
   | 'INVALID_LABEL'
-  | 'INVALID_POSITION';
+  | 'INVALID_POSITION'
+  | 'ZONE_NOT_FOUND'
+  | 'INVALID_ZONE';
 
 export type BoardResult<T = Board> = Result<T, BoardErrorCode>;
 

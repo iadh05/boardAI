@@ -1,4 +1,10 @@
-import { createNode, type Board, type Proposal } from '@designroom/domain';
+import { NODE_SIZE as DIAGRAM_NODE_SIZE } from '@designroom/diagram';
+import {
+  createNode,
+  NODE_SIZE as DOMAIN_NODE_SIZE,
+  type Board,
+  type Proposal,
+} from '@designroom/domain';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { toDiagram } from './toDiagram.tsx';
@@ -77,4 +83,8 @@ describe('toDiagram', () => {
     expect(nodes).toHaveLength(2);
     expect(edges).toHaveLength(1);
   });
+});
+
+it('the board and the diagram agree on the size of a box (zone membership depends on it)', () => {
+  expect({ ...DOMAIN_NODE_SIZE }).toEqual({ ...DIAGRAM_NODE_SIZE });
 });
