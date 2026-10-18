@@ -1,6 +1,8 @@
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
 import boundaries from 'eslint-plugin-boundaries';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import { designroomPlugin } from './tooling/lint/src/index.ts';
@@ -285,6 +287,50 @@ export default tseslint.config(
   },
   ...packageRules,
   appRules,
+  {
+    // React in the browser: hooks rules + safe Fast Refresh (docs/rules/frontend.md).
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    languageOptions: { globals: { ...globals.browser } },
+    ...reactHooks.configs.flat['recommended-latest'],
+    plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
+    rules: {
+      ...reactHooks.configs.flat['recommended-latest'].rules,
+      'react-refresh/only-export-components': ['error', { allowConstantExport: true }],
+    },
+  },
+  {
+    // E2E specs (docs/rules/e2e.md): page objects come from the fixtures; no sleeps; no test.only.
+    files: ['apps/web/e2e/**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@playwright/test',
+              message:
+                'Import test/expect from ./fixtures.ts so page objects are injected (docs/rules/e2e.md).',
+            },
+            // Repeat the web package rules: this block replaces them for spec files.
+            internalPackage('agent', 'The browser never imports agent code (architecture §3).'),
+            internalPackage('ai-gateway', 'The browser never talks to LLMs (architecture §3).'),
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.property.name='waitForTimeout']",
+          message:
+            'No fixed sleeps: wait for a locator, response or URL instead (docs/rules/e2e.md).',
+        },
+        {
+          selector: "CallExpression[callee.object.name='test'][callee.property.name='only']",
+          message: 'test.only would skip every other test (docs/rules/e2e.md).',
+        },
+      ],
+    },
+  },
   {
     // Tool config files must use a default export.
     files: ['**/*.config.{js,ts}'],
