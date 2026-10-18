@@ -12,6 +12,12 @@ import { designroomPlugin } from './tooling/lint/src/index.ts';
 
 const internalPackage = (name, why) => ({ name: `@designroom/${name}`, message: why });
 
+/** The diagram engine lives behind @designroom/diagram; the app never touches it (ADR-004). */
+const DIAGRAM_ENGINES = ['@xyflow/react', 'libavoid-js'].map((name) => ({
+  name,
+  message: 'Use @designroom/diagram: the diagram engine stays behind its API (ADR-004).',
+}));
+
 /** Package graph: which @designroom/* package may import which (architecture §3). */
 const packageRules = [
   {
@@ -69,6 +75,7 @@ const packageRules = [
           paths: [
             internalPackage('agent', 'The browser never imports agent code (architecture §3).'),
             internalPackage('ai-gateway', 'The browser never talks to LLMs (architecture §3).'),
+            ...DIAGRAM_ENGINES,
           ],
         },
       ],
@@ -344,6 +351,7 @@ export default tseslint.config(
             // Repeat the web package rules: this block replaces them for spec files.
             internalPackage('agent', 'The browser never imports agent code (architecture §3).'),
             internalPackage('ai-gateway', 'The browser never talks to LLMs (architecture §3).'),
+            ...DIAGRAM_ENGINES,
           ],
         },
       ],

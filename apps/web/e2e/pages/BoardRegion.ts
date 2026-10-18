@@ -39,15 +39,18 @@ export class BoardRegion {
     const y = box.y + box.height / 2;
     await this.page.mouse.move(x, y);
     await this.page.mouse.down();
+    // The drag only starts on the first move, and that move's distance is not applied: start
+    // with a tiny one so the node lands where asked (5 px short at most).
+    await this.page.mouse.move(x + 5, y);
     await this.page.mouse.move(x + dx, y + dy, { steps: 5 });
     await this.page.mouse.up();
   }
 
-  /** Drags from the right handle of one node to the left handle of another. */
+  /** Drags from the right side of one node to the left side of another (any side works). */
   async connect(from: string, to: string): Promise<void> {
     await this.node(from)
-      .getByTestId('connect-out')
-      .dragTo(this.node(to).getByTestId('connect-in'));
+      .getByTestId('connect-right')
+      .dragTo(this.node(to).getByTestId('connect-left'));
   }
 
   edge(from: string, to: string): Locator {

@@ -33,8 +33,8 @@ test('draw Client → Load Balancer → API → Database', { tag: '@smoke' }, as
   const chain = ['Client', 'Load Balancer', 'API', 'Database'];
   for (const [i, kind] of chain.entries()) {
     await app.board.addNode(kind);
-    // Spread them out on a diagonal: new nodes land mid-view, nudged only slightly.
-    await app.board.move(kind, (i - 1.5) * 200, (i - 1.5) * 110);
+    // A diagonal staircase that fits the canvas (clear of the minimap in the corner).
+    await app.board.move(kind, (i - 1.5) * 160, (i - 1.5) * 70);
   }
 
   await app.board.connect('Client', 'Load Balancer');

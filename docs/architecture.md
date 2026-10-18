@@ -191,9 +191,8 @@ src/
 └─ modules/
    ├─ board/
    │  ├─ pods/
-   │  │  ├─ canvas/              # components/ hooks/ mappers/ (toFlow) lib/ (placement) index.ts
+   │  │  ├─ canvas/              # <Diagram> from @designroom/diagram + mappers/ (toDiagram) — ADR-004
    │  │  ├─ toolbar/
-   │  │  └─ node/                # SystemNode, GhostNode
    │  ├─ store/boardStore.ts     # Zustand: nodes, edges, proposal + actions
    │  └─ index.ts                # public API of the module
    └─ chat/
@@ -236,7 +235,7 @@ src/
 ### 5.4 Proposal flow
 
 1. `proposal` event → `board.setProposal(p)`.
-2. `toFlow` (canvas mapper) renders proposed nodes as `GhostNode`, proposed edges dashed.
+2. `toDiagram` (canvas mapper) passes proposed nodes and edges to `<Diagram>` as `ghost` (faded, dashed, read-only).
 3. AI-added nodes have no position; `placement` puts them right of `near`, else at viewport centre (LLMs are bad at coordinates).
 4. **Accept** → `applyOps(currentBoard, ops)`; if it no longer fits (you edited meanwhile) → "proposal out of date", nothing applied.
 5. **Reject** → cleared.
