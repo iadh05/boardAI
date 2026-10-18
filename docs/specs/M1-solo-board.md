@@ -106,7 +106,7 @@ See [architecture.md §11](../architecture.md#11-testing-strategy-tdd). Tests co
 11. Trigger a test error in the web app: it appears in Sentry with a stack trace.
 12. `pnpm test` (with Ollama stopped) and `pnpm lint` are green. Add an import from one pod into another pod's internals: lint fails.
 13. Send 15 chat requests quickly: Nginx answers some with 429.
-14. The last PR of M1 shows `checks`, `unit` and `e2e` green on GitHub.
+14. The last PR of M1 shows every CI check green (lint, format, typecheck, unit, security, commitlint, codeql, e2e).
 
 ## 10. Self-check
 

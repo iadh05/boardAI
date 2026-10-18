@@ -12,6 +12,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-01b | CI: checks + unit tests on GitHub Actions | setup | S | doing |
 | M1-01c | Repo workflow: PR template, branch protection | setup | S | todo |
 | M1-01d | Code quality and security checks in CI | setup | S | doing |
+| M1-01e | Git hooks (Lefthook), commitlint, split CI checks | setup | S | doing |
 | M1-02 | Boundary lint rules | setup | M | todo |
 | M1-03 | Web shell: Vite + React + Tailwind + providers | setup | S | todo |
 | M1-03b | Playwright + smoke test in CI | setup | M | todo |
@@ -106,7 +107,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 
 **Tasks**
 - [ ] `.github/pull_request_template.md` in place (already drafted).
-- [ ] On GitHub: branch protection on `main` — PR required, status checks `checks` + `unit` required (add `e2e` after M1-03b), no force-push.
+- [ ] On GitHub: branch protection on `main` — PR required, status checks `lint`, `format`, `typecheck`, `unit`, `security`, `commitlint`, `codeql` required (add `e2e` after M1-03b), no force-push.
 - [ ] Merge settings: squash only, auto-delete branches.
 - [ ] Open your first real PR with the template; run an AI review on it; answer every comment following workflow §6.
 
@@ -140,6 +141,30 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 **Notes**
 - Every new package with logic gets its own `vitest.config.ts` with thresholds (domain 90 %; set per package).
 - Playwright is **not** here: it needs the web app (M1-03) and lands in M1-03b.
+
+---
+
+## M1-01e — Git hooks (Lefthook), commitlint, split CI checks
+**Status:** doing · **Size:** S · **Depends on:** M1-01d
+
+**Why:** Catch formatting, lint and commit-message problems on your machine in seconds, before CI does it in minutes. Make each CI check visible on its own.
+
+**Learning goal:** git hooks; shifting checks left (commit → push → CI); why the PR title matters with squash merge.
+
+**Tasks**
+- [x] commitlint with `@commitlint/config-conventional` (`commitlint.config.js`); `subject-case` off because subjects start with a ticket id. All existing commits pass.
+- [x] Lefthook (`lefthook.yml`), installed by the root `prepare` script:
+  - `pre-commit`: Prettier `--write` then ESLint `--fix` on staged files, re-staged.
+  - `commit-msg`: commitlint.
+  - `pre-push`: `pnpm typecheck` + `pnpm test`.
+- [x] CI: the single `checks` job split into `lint`, `format`, `typecheck`; new `commitlint` job checks every PR commit **and the PR title** (the title goes through an env var — it's user input).
+- [x] Repo settings (with the owner's OK): squash merge only, squash commit = PR title + commit messages, branches deleted automatically after merge.
+- [x] Docs: workflow.md (hooks, PR title format, stacked PRs, required checks), architecture.md §15, rules/general.md.
+
+**Acceptance criteria**
+- [x] `git commit -m "added stuff"` is refused by the hook (verified).
+- [ ] All CI checks green on the PR, each listed separately.
+- [ ] A PR whose title isn't Conventional Commits fails `commitlint`.
 
 ---
 

@@ -13,9 +13,13 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  LEFTHOOK: 0 # git hooks are for local commits, not CI
+
+# One job per check, so each shows as its own status on the PR.
 jobs:
-  checks:
-    name: checks
+  lint:
+    name: lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -27,8 +31,61 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
-      - run: pnpm typecheck
+
+  format:
+    name: format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
+
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+
+  commitlint:
+    name: commitlint
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # need the PR's commits, not just the tip
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint every commit in the PR
+        run: pnpm exec commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      # Squash merge turns the PR title into the commit on main, so it must follow the same format.
+      # The title goes through an env var, never straight into the script (it's user input).
+      - name: Lint the PR title
+        run: printf '%s\n' "$PR_TITLE" | pnpm exec commitlint --verbose
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
 
   unit:
     name: unit
