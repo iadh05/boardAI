@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - tooling/*
 
 # lefthook's own postinstall isn't needed: the root "prepare" script runs `lefthook install`.
 ignoredBuiltDependencies:
