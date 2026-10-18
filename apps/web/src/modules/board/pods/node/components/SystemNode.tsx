@@ -1,5 +1,5 @@
 import { KIND_DEFAULT_LABEL } from '@designroom/domain';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Handle, Position, useStore, type NodeProps } from '@xyflow/react';
 import { Icon } from '../../../../../core/ui/index.ts';
 import { KIND_ICON, KIND_TONE } from '../../../lib/kindAppearance.ts';
 import type { SystemFlowNode } from '../../../lib/flowTypes.ts';
@@ -15,6 +15,9 @@ export function SystemNode({ id, data, selected }: NodeProps<SystemFlowNode>) {
   const editing = store((s) => s.editingNodeId === id);
   const stopEditing = store((s) => s.stopEditing);
   const renameNode = store((s) => s.renameNode);
+  // React Flow shows a node (visibility) only once it has measured it, and a hidden input can't
+  // take focus — so a brand-new node opens its editor after the first measure.
+  const measured = useStore((s) => s.nodeLookup.get(id)?.measured.width !== undefined);
 
   return (
     <div
@@ -29,7 +32,7 @@ export function SystemNode({ id, data, selected }: NodeProps<SystemFlowNode>) {
         {/* Named, so screen readers hear the kind even when the label says something else. */}
         <Icon icon={KIND_ICON[data.kind]} label={KIND_DEFAULT_LABEL[data.kind]} />
       </span>
-      {editing ? (
+      {editing && measured ? (
         <LabelEditor
           label={data.label}
           onCommit={(label) => {
