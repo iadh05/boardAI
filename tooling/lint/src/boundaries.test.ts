@@ -10,6 +10,7 @@ const repoRoot = path.resolve(import.meta.dirname, '../../..');
 const fixturesRoot = path.join(repoRoot, 'tooling/lint/fixtures');
 
 const ARCHITECTURE_RULES = new Set([
+  'no-restricted-properties',
   'boundaries/dependencies',
   '@typescript-eslint/no-restricted-imports',
   'designroom/no-banned-names',
@@ -136,5 +137,17 @@ describe('e2e spec rules (docs/rules/e2e.md)', () => {
 
   it('allows a spec that uses the fixtures', () => {
     expect(violationsOf('apps/web/e2e/okUsesFixtures.spec.ts')).toEqual([]);
+  });
+});
+
+describe('server env rule', () => {
+  it('rejects process.env outside core/config.ts', () => {
+    expect(violationsOf('apps/server/src/modules/health/badReadsEnv.ts')).toEqual([
+      'no-restricted-properties',
+    ]);
+  });
+
+  it('allows it in core/config.ts', () => {
+    expect(violationsOf('apps/server/src/core/config.ts')).toEqual([]);
   });
 });

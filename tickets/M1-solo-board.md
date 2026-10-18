@@ -35,7 +35,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-D6a | Zones in the domain (VPC, region…) | diagram | M | done |
 | M1-D6b | Zones on the diagram | diagram | M | done |
 | M1-UX1 | UX polish from the M1a pass | diagram | M | done |
-| M1-14 | Server skeleton: composition root, core, health | M1b | M | todo |
+| M1-14 | Server skeleton: composition root, core, health | M1b | M | done |
 | M1-14b | Nginx edge proxy | M1b | M | todo |
 | M1-15 | Spike: Qwen tool call end to end | M1b | S | todo |
 | M1-16 | `packages/ai-gateway` | M1b | L | todo |
@@ -614,23 +614,28 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-14 — Server skeleton: composition root, core, health
-**Status:** todo · **Size:** M · **Depends on:** M1-02
+**Status:** done · **Size:** M · **Depends on:** M1-02
 
 **Learning goal:** modular monolith wiring; testing Hono without a running server.
 
 **Tests first**
-- [ ] `app.request('/api/health')` → 200 `{ ok: true }`.
-- [ ] Config parser: missing `LLM_BASE_URL` → clear error.
-- [ ] Error mapping: a thrown domain error → JSON error response with the right status.
+- [x] `app.request('/api/health')` → 200 `{ ok: true }`.
+- [x] Config parser: missing `LLM_BASE_URL` → clear error.
+- [x] Error mapping: a thrown domain error → JSON error response with the right status.
 
 **Tasks**
-- [ ] `core/config.ts` (zod env), `core/logger.ts` (JSON), `core/errors.ts`; `.env.example`.
-- [ ] `modules/health` (flat) exporting a Hono sub-app.
-- [ ] `main.ts` builds the app from modules (`app.route(...)`); `index.ts` starts `@hono/node-server`; dev with `tsx watch`.
-- [ ] Vite proxy `/api` → server; root `pnpm dev` starts both.
+- [x] `core/config.ts` (zod env), `core/logger.ts` (JSON), `core/errors.ts`; `.env.example`.
+- [x] `modules/health` (flat) exporting a Hono sub-app.
+- [x] `main.ts` builds the app from modules (`app.route(...)`); `index.ts` starts `@hono/node-server`; dev with `tsx watch`.
+- [x] Vite proxy `/api` → server; root `pnpm dev` starts both.
 
 **Acceptance criteria**
-- [ ] `fetch('/api/health')` from the browser works through the proxy.
+- [x] `fetch('/api/health')` from the browser works through the proxy.
+
+**Notes**
+- Every request gets an id (Nginx's X-Request-Id if plain, or a new one), returned in the response and in the JSON access log.
+- Lint: `process.env` only in `core/config.ts` (fixture test).
+- `LLM_PROVIDER=fake` needs no URL (tests, CI, offline).
 
 ---
 
