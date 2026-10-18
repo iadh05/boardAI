@@ -11,8 +11,8 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppShell
-        canvas={<p className="p-4 text-sm text-slate-500">Canvas — coming in M1-09.</p>}
-        sidePanel={<p className="p-4 text-sm text-slate-500">Assistant — coming in M1-22.</p>}
+        canvas={<p className="p-4 text-sm text-muted">Canvas — coming in M1-09.</p>}
+        sidePanel={<p className="p-4 text-sm text-muted">Assistant — coming in M1-22.</p>}
       />
     </QueryClientProvider>
   );

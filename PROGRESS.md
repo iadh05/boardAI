@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-04 `core/ui` kit
+**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-06 board operations
 
 ## Done
 
@@ -17,14 +17,16 @@
 | M1-03 | Web shell: Vite + React + Tailwind + React Query + AppShell | #7 |
 | M1-05 | Board model as zod schemas (`packages/domain`) | #8 |
 | M1-03b | Playwright e2e (production build) + CI job with browser cache | #9 |
+| — | Post-merge review of #6/#7/#9: 7 fixes, e2e made a required check | #10 |
+| M1-04 | `core/ui` kit (atoms, molecules, Panel) + design tokens | #11 |
 
 ## In progress
 
-- **M1-04** — `core/ui` atoms + molecules.
+- **M1-06** — board operations (pure, immutable, TDD) in `packages/domain`.
 
 ## Next
 
-M1-06 board operations → M1-07 agent ops + API contract → M1-08…M1-13 board UI (M1a) → M1-14… AI reviewer (M1b).
+M1-07 agent ops + API contract → M1-08…M1-13 board UI (M1a) → M1-14… AI reviewer (M1b).
 
 ## Waiting on you
 
@@ -34,7 +36,7 @@ M1-06 board operations → M1-07 agent ops + API contract → M1-08…M1-13 boar
 
 ## How work flows
 
-ticket → branch → tests first → local review → PR (template) → CI (7 required checks) → GitHub auto-merge when green → branch auto-deleted. See [docs/workflow.md](docs/workflow.md).
+ticket → branch → tests first → **full `/code-review`** (findings listed in the PR) → PR (template) → CI (7 required checks) → GitHub auto-merge when green → branch auto-deleted. See [docs/workflow.md](docs/workflow.md).
 
 ## Notes for whoever resumes
 
