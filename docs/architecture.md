@@ -452,7 +452,7 @@ flowchart LR
 | Job | Runs | Notes |
 |---|---|---|
 | `checks` | `pnpm install --frozen-lockfile` → `pnpm lint` → `pnpm typecheck` | Boundary rules fail here |
-| `unit` | `pnpm test -- --coverage` | Coverage report uploaded as an artifact |
+| `unit` | `pnpm test:coverage` | Coverage report uploaded as an artifact |
 | `e2e` | build → start server (`LLM_PROVIDER=fake`) + web preview → `playwright test` (Chromium) | Playwright HTML report + traces uploaded on failure. No GPU, no Ollama, no Docker needed in CI |
 
 - pnpm store and Playwright browsers cached between runs.

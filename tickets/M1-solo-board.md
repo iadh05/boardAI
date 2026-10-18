@@ -85,7 +85,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 **Tasks**
 - [ ] `.github/workflows/ci.yml` triggered on `pull_request` and `push` to `main`.
 - [ ] Job `checks`: checkout → setup pnpm + Node (versions from `packageManager` / `engines`) with pnpm cache → `pnpm install --frozen-lockfile` → `pnpm lint` → `pnpm typecheck`.
-- [ ] Job `unit`: same setup → `pnpm test -- --coverage` → upload coverage as an artifact.
+- [ ] Job `unit`: same setup → `pnpm test:coverage` → upload coverage as an artifact.
 - [ ] `concurrency` group so a new push cancels the previous run on the same branch.
 
 **Acceptance criteria**

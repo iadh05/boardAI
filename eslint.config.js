@@ -14,7 +14,8 @@ export default tseslint.config(
       globals: { ...globals.node },
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['*.config.js'],
+          // Tool config files (vite/vitest/playwright) live outside `src`, so no tsconfig includes them.
+          allowDefaultProject: ['apps/*/*.config.ts', 'packages/*/*.config.ts'],
         },
         tsconfigRootDir: import.meta.dirname,
       },
