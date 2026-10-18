@@ -17,6 +17,7 @@ jobs:
   checks:
     name: checks
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6 # version comes from "packageManager" in package.json
@@ -32,6 +33,7 @@ jobs:
   unit:
     name: unit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -45,5 +47,7 @@ jobs:
         if: always()
         with:
           name: coverage
-          path: '**/coverage/'
+          path: |
+            apps/*/coverage/
+            packages/*/coverage/
           if-no-files-found: ignore
