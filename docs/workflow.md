@@ -33,7 +33,10 @@ Then read your own diff top to bottom (`git diff main...`) as if someone else wr
 
 ## 5. Review
 
-Reviewers: you (with fresh eyes, ideally the next day) + an AI review (Claude Code: `/code-review` on the branch, or ask Claude to review the PR). Later, teammates.
+Reviewers: you (with fresh eyes, ideally the next day) + an AI review. Later, teammates.
+
+- **AI review runs locally**, before the PR is opened: `/code-review` in Claude Code on the branch. Findings are fixed as `fix(review)` commits, and a short summary (what was found, what was fixed, what was skipped and why) goes into the PR description under **Review**.
+- No GitHub Action for AI review for now — it would need a token and app setup, and running it live teaches more. A GitHub-side reviewer can be added later (Claude's GitHub Action) if the repo needs one; the earlier version is in git history (commit `ffd14e2`).
 
 Comments use **Conventional Comments** labels so the author knows what's required:
 
@@ -59,7 +62,7 @@ Example: `blocking: removeNode leaves edges pointing at the deleted node — add
 4. Push → CI runs again → re-request review if someone else reviewed.
 5. Learning-log line: what did the review catch that you missed? Patterns repeating across PRs become new rules or lint checks.
 
-> Using Claude to fix comments: fine, but for learning, read each fix and be able to explain it. Ask "why" before accepting.
+> Using Claude to fix comments: fine — but for learning, read each fix and be able to explain it. Ask "why" before accepting.
 
 ## 7. Merge
 
