@@ -11,8 +11,9 @@ import {
 import { useCallback, useMemo, useState } from 'react';
 import { useBoardStore } from '../../../store/boardStore.ts';
 import { GhostNode, SystemNode } from '../../node/index.ts';
-import { commitNodeChanges, mergeFlowNodes } from '../lib/nodeChanges.ts';
-import { toFlow, type FlowNode } from '../mappers/toFlow.ts';
+import type { FlowNode } from '../../../lib/flowTypes.ts';
+import { canvasChanges, commitNodeChanges, mergeFlowNodes } from '../lib/nodeChanges.ts';
+import { toFlow } from '../mappers/toFlow.ts';
 
 // Defined once, outside any component: a new object each render would remount every node.
 const nodeTypes: NodeTypes = { system: SystemNode, ghost: GhostNode };
@@ -43,7 +44,7 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
 
   const onNodesChange = useCallback(
     (changes: NodeChange<FlowNode>[]) => {
-      setNodes((current) => applyNodeChanges(changes, current));
+      setNodes((current) => applyNodeChanges(canvasChanges(changes), current));
       commitNodeChanges(changes, { moveNode });
     },
     [moveNode],
@@ -55,6 +56,8 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
       edges={flow.edges}
       nodeTypes={nodeTypes}
       onNodesChange={onNodesChange}
+      // Deleting with Backspace arrives in M1-12, through the store.
+      deleteKeyCode={null}
       fitView
       aria-label="Diagram"
     >

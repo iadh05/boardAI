@@ -36,7 +36,15 @@ describe('toFlow', () => {
     const { edges } = toFlow(board, null);
 
     expect(edges).toEqual([
-      { id: 'e1', source: 'api', target: 'db', markerEnd: { type: MarkerType.ArrowClosed } },
+      {
+        id: 'e1',
+        source: 'api',
+        target: 'db',
+        markerEnd: { type: MarkerType.ArrowClosed },
+        // Not interactive until M1-12 wires edge selection and deletion through the store.
+        selectable: false,
+        focusable: false,
+      },
     ]);
   });
 
@@ -54,7 +62,13 @@ describe('toFlow', () => {
     const { edges } = toFlow(board, proposal);
     const proposed = edges.find((e) => e.id === 'e-cache');
 
-    expect(proposed).toMatchObject({ source: 'api', target: 'cache', className: 'is-proposed' });
+    expect(proposed).toMatchObject({
+      source: 'api',
+      target: 'cache',
+      className: 'is-proposed',
+      // The arrow head is recoloured with the dashed line.
+      markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--color-accent)' },
+    });
   });
 
   it('keeps the real board untouched and unmarked', () => {

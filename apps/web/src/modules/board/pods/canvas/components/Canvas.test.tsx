@@ -1,5 +1,6 @@
 import { createNode, type Board } from '@designroom/domain';
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { createBoardStore } from '../../../store/boardStore.ts';
 import { Canvas } from './Canvas.tsx';
@@ -43,6 +44,17 @@ describe('Canvas', () => {
 
     expect(screen.getByText('Redis')).toBeInTheDocument();
     expect(screen.getByText(/proposed/i)).toBeInTheDocument();
+  });
+
+  it('Backspace on a selected node does not hide it (deletion goes through the store, M1-12)', async () => {
+    const store = renderCanvas(boardWithTwoNodes);
+    const label = screen.getByText('Orders API');
+
+    await userEvent.click(label);
+    await userEvent.keyboard('{Backspace}');
+
+    expect(screen.getByText('Orders API')).toBeInTheDocument();
+    expect(store.getState().board.nodes).toHaveLength(2);
   });
 
   it('has zoom controls', () => {

@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import type { GhostFlowNode } from '../../canvas/index.ts';
+import type { GhostFlowNode } from '../../../lib/flowTypes.ts';
 
 /** A node the AI proposes: dashed and faded until accepted. Finished in M1-23. */
 export function GhostNode({ data }: NodeProps<GhostFlowNode>) {

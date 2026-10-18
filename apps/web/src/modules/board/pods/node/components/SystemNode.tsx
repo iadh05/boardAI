@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import type { SystemFlowNode } from '../../canvas/index.ts';
+import type { SystemFlowNode } from '../../../lib/flowTypes.ts';
 
 /** A box on the board. M1-11 adds the kind icon and inline label editing. */
 export function SystemNode({ data, selected }: NodeProps<SystemFlowNode>) {

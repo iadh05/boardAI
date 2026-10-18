@@ -1,15 +1,9 @@
-import { applyOps, type Board, type NodeKind, type Proposal } from '@designroom/domain';
-import { MarkerType, type Edge, type Node } from '@xyflow/react';
+import { applyOps, type Board, type Proposal } from '@designroom/domain';
+import { MarkerType, type Edge } from '@xyflow/react';
+import type { FlowGraph, FlowNode } from '../../../lib/flowTypes.ts';
 
 // The only place that knows both our board model and React Flow's (architecture §5.1).
 // In M2 the board comes from Yjs; this mapper and everything after it stay the same.
-
-export type BoardNodeData = { kind: NodeKind; label: string };
-export type SystemFlowNode = Node<BoardNodeData, 'system'>;
-export type GhostFlowNode = Node<BoardNodeData, 'ghost'>;
-export type FlowNode = SystemFlowNode | GhostFlowNode;
-
-export type FlowGraph = { nodes: FlowNode[]; edges: Edge[] };
 
 const ARROW = { type: MarkerType.ArrowClosed } as const;
 
@@ -30,6 +24,9 @@ export const toFlow = (board: Board, proposal: Proposal | null): FlowGraph => {
     source: e.source,
     target: e.target,
     markerEnd: ARROW,
+    // Not interactive until M1-12 wires edge selection and deletion through the store.
+    selectable: false,
+    focusable: false,
   }));
 
   const preview = proposal ? applyOps(board, proposal.ops) : null;
@@ -56,7 +53,7 @@ export const toFlow = (board: Board, proposal: Proposal | null): FlowGraph => {
       id: e.id,
       source: e.source,
       target: e.target,
-      markerEnd: ARROW,
+      markerEnd: { ...ARROW, color: 'var(--color-accent)' },
       className: 'is-proposed',
       selectable: false,
       focusable: false,
