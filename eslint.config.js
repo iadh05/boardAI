@@ -369,8 +369,9 @@ export default tseslint.config(
     },
   },
   {
-    // Tool config files must use a default export.
-    files: ['**/*.config.{js,ts}'],
+    // Tool config files must use a default export; declaration files describe other modules'
+    // shapes (e.g. Vite's `?url` imports), which may be default exports.
+    files: ['**/*.config.{js,ts}', '**/*.d.ts'],
     rules: { 'no-restricted-exports': 'off' },
   },
   {

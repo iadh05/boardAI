@@ -11,3 +11,4 @@ export { Shape } from './shapes/Shape.tsx';
 export type { ShapeProps } from './shapes/Shape.tsx';
 export { SHAPES } from './types.ts';
 export type { DiagramEdge, DiagramNode, DiagramPosition, DiagramShape } from './types.ts';
+export type { DiagramRouter, Route, RouterBox, RouterLink } from './router/types.ts';

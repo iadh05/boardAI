@@ -10,6 +10,7 @@ import {
   ReactFlowProvider,
   type Edge,
   type EdgeChange,
+  type EdgeTypes,
   type NodeChange,
   type NodeTypes,
 } from '@xyflow/react';
@@ -25,7 +26,11 @@ import { canvasChanges, commitMoves, mergeEdges, mergeNodes } from '../flow/chan
 import { toReactFlow, type BoxNode } from '../flow/toReactFlow.ts';
 import type { DiagramEdge, DiagramNode, DiagramPosition } from '../types.ts';
 import { BoxNodeView } from './BoxNodeView.tsx';
+import type { DiagramRouter } from '../router/types.ts';
 import { DiagramContext, type DiagramContextValue } from './DiagramContext.ts';
+import { RoutedEdge } from './RoutedEdge.tsx';
+import { RoutesContext } from './RoutesContext.ts';
+import { useRoutes } from './useRoutes.ts';
 import '../styles.css';
 
 export type DiagramProps = {
@@ -48,12 +53,18 @@ export type DiagramProps = {
   onLabelCommit?: (id: string, label: string) => void;
   /** Editing finished (saved or cancelled). */
   onEditEnd?: () => void;
+  /**
+   * Routes arrows around boxes. Default: libavoid, loaded on first use (simple right-angle
+   * arrows until then, or if it can't load). `null`: always simple arrows.
+   */
+  router?: DiagramRouter | null;
   /** Panels drawn over the diagram (see DiagramPanel). */
   children?: ReactNode;
 };
 
 // Defined once, outside any component: a new object each render would remount every node.
 const nodeTypes: NodeTypes = { box: BoxNodeView };
+const edgeTypes: EdgeTypes = { routed: RoutedEdge };
 const FIT_VIEW = { maxZoom: 1 };
 const DELETE_KEYS = ['Backspace', 'Delete'];
 
@@ -79,6 +90,7 @@ function DiagramCanvas({
   onEditStart,
   onLabelCommit,
   onEditEnd,
+  router,
   children,
 }: DiagramProps) {
   // useMemo: keeps the mapped arrays stable while the props are, so the merge below runs only
@@ -95,6 +107,9 @@ function DiagramCanvas({
     setNodes((current) => mergeNodes(flow.nodes, current));
     setEdges((current) => mergeEdges(flow.edges, current));
   }
+
+  // From the live positions, so arrows follow a node while it's dragged.
+  const routes = useRoutes(nodes, edges, router);
 
   const onNodesChange = (changes: NodeChange<BoxNode>[]) => {
     setNodes((current) => applyNodeChanges(canvasChanges(changes), current));
@@ -133,38 +148,41 @@ function DiagramCanvas({
 
   return (
     <DiagramContext value={context}>
-      <ReactFlow
-        className="dr-diagram"
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        // Any side can start or end an arrow (handles on 4 sides).
-        connectionMode={ConnectionMode.Loose}
-        isValidConnection={({ source, target }) => canConnect?.(source, target) ?? true}
-        onConnect={({ source, target }) => onConnect?.(source, target)}
-        onDelete={({ nodes: gone, edges: goneEdges }) =>
-          onDelete?.(
-            gone.map((n) => n.id),
-            goneEdges.map((e) => e.id),
-          )
-        }
-        onNodeDoubleClick={(_, node) => {
-          if (isEditable(node.id)) onEditStart?.(node.id);
-        }}
-        onKeyDown={onKeyDown}
-        deleteKeyCode={DELETE_KEYS}
-        // On an empty diagram the fit happens when the first node appears; without a cap it zooms to 2×.
-        fitView
-        fitViewOptions={FIT_VIEW}
-        aria-label={ariaLabel}
-      >
-        <Background variant={BackgroundVariant.Dots} gap={16} />
-        <Controls />
-        <MiniMap pannable zoomable />
-        {children}
-      </ReactFlow>
+      <RoutesContext value={routes}>
+        <ReactFlow
+          className="dr-diagram"
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          // Any side can start or end an arrow (handles on 4 sides).
+          connectionMode={ConnectionMode.Loose}
+          isValidConnection={({ source, target }) => canConnect?.(source, target) ?? true}
+          onConnect={({ source, target }) => onConnect?.(source, target)}
+          onDelete={({ nodes: gone, edges: goneEdges }) =>
+            onDelete?.(
+              gone.map((n) => n.id),
+              goneEdges.map((e) => e.id),
+            )
+          }
+          onNodeDoubleClick={(_, node) => {
+            if (isEditable(node.id)) onEditStart?.(node.id);
+          }}
+          onKeyDown={onKeyDown}
+          deleteKeyCode={DELETE_KEYS}
+          // On an empty diagram the fit happens when the first node appears; without a cap it zooms to 2×.
+          fitView
+          fitViewOptions={FIT_VIEW}
+          aria-label={ariaLabel}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={16} />
+          <Controls />
+          <MiniMap pannable zoomable />
+          {children}
+        </ReactFlow>
+      </RoutesContext>
     </DiagramContext>
   );
 }

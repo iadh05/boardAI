@@ -1,6 +1,10 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, vi } from 'vitest';
+
+// Component tests never load the libavoid wasm: the default router stays "loading", so edges
+// are drawn simply. Routing itself is tested in Node (router/avoid.test.ts).
+vi.mock('./router/loadAvoid.ts', () => ({ loadAvoidRouter: () => new Promise(() => {}) }));
 
 afterEach(() => {
   cleanup();
@@ -29,9 +33,12 @@ class DOMMatrixReadOnlyStub {
 globalThis.DOMMatrixReadOnly ??= DOMMatrixReadOnlyStub as unknown as typeof DOMMatrixReadOnly;
 
 // Give elements a size so React Flow renders its nodes instead of waiting for layout.
-Object.defineProperties(globalThis.HTMLElement.prototype, {
-  offsetHeight: { get: () => 100, configurable: true },
-  offsetWidth: { get: () => 100, configurable: true },
-});
-(globalThis.SVGElement.prototype as unknown as { getBBox: () => DOMRect }).getBBox = () =>
-  ({ x: 0, y: 0, width: 0, height: 0 }) as DOMRect;
+// (Only with a DOM: the routing tests run in plain Node.)
+if (typeof HTMLElement !== 'undefined') {
+  Object.defineProperties(HTMLElement.prototype, {
+    offsetHeight: { get: () => 100, configurable: true },
+    offsetWidth: { get: () => 100, configurable: true },
+  });
+  (SVGElement.prototype as unknown as { getBBox: () => DOMRect }).getBBox = () =>
+    ({ x: 0, y: 0, width: 0, height: 0 }) as DOMRect;
+}
