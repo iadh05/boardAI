@@ -30,7 +30,7 @@ type Avoid = {
     proportional: boolean,
     insideOffset: number,
     directions: number,
-  ) => Wrapped;
+  ) => Wrapped & { setExclusive(exclusive: boolean): void };
   ConnEnd: new (shape: unknown, classId: number) => Wrapped;
   ConnRef: new (
     router: unknown,
@@ -50,9 +50,18 @@ const PINS: Record<Side, { classId: number; x: number; y: number; direction: num
   left: { classId: 4, x: 0, y: 0.5, direction: 4 },
 };
 
-/** Gap kept between routes and boxes, and between parallel routes. */
-const BUFFER = 14;
+/**
+ * Gap kept between routes and boxes, and between parallel routes. Small on purpose: boxes are
+ * often placed close together, and two clearance zones that overlap block the way between them.
+ */
+const BUFFER = 8;
 const NUDGE = 10;
+
+/** Is the point on the outline of the box (not inside it, e.g. its centre)? */
+const onEdge = (p: Point | undefined, b: RouterBox): boolean =>
+  !!p &&
+  (((p.x === b.x || p.x === b.x + b.width) && p.y >= b.y && p.y <= b.y + b.height) ||
+    ((p.y === b.y || p.y === b.y + b.height) && p.x >= b.x && p.x <= b.x + b.width));
 
 /**
  * A router backed by a loaded libavoid instance. Arrows leave and enter by the facing sides
@@ -78,12 +87,22 @@ export const createAvoidRouter = (instance: unknown): DiagramRouter => {
         );
         const shape = new Avoid.ShapeRef(router, rect);
         for (const pin of Object.values(PINS)) {
-          new Avoid.ShapeConnectionPin(shape, pin.classId, pin.x, pin.y, true, 0, pin.direction);
+          // Pins are exclusive by default (one arrow each): a second arrow from the same side
+          // would fall back to the box centre. Several arrows may share a side.
+          new Avoid.ShapeConnectionPin(
+            shape,
+            pin.classId,
+            pin.x,
+            pin.y,
+            true,
+            0,
+            pin.direction,
+          ).setExclusive(false);
         }
         shapes.set(b.id, shape);
       }
 
-      const connections: [string, InstanceType<Avoid['ConnRef']>][] = [];
+      const connections: [string, InstanceType<Avoid['ConnRef']>, RouterBox, RouterBox][] = [];
       for (const link of links) {
         const from = byId.get(link.source);
         const to = byId.get(link.target);
@@ -98,20 +117,24 @@ export const createAvoidRouter = (instance: unknown): DiagramRouter => {
             new Avoid.ConnEnd(fromShape, PINS[out].classId),
             new Avoid.ConnEnd(toShape, PINS[into].classId),
           ),
+          from,
+          to,
         ]);
       }
 
       router.processTransaction();
 
       const routes = new Map<string, Route>();
-      for (const [id, connection] of connections) {
+      for (const [id, connection, from, to] of connections) {
         const line = connection.displayRoute();
         const points: Route = [];
         for (let i = 0; i < line.size(); i++) {
           const p = line.at(i);
           points.push({ x: p.x, y: p.y });
         }
-        routes.set(id, points);
+        // When libavoid can't route (e.g. overlapping boxes) it silently joins the box centres.
+        // Keep only proper routes, from edge to edge; the others fall back to a simple arrow.
+        if (onEdge(points[0], from) && onEdge(points.at(-1), to)) routes.set(id, points);
       }
 
       // The router owns its shapes and connections: deleting it frees them all.

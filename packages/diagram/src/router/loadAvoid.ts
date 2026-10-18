@@ -7,6 +7,14 @@ import type { DiagramRouter } from './types.ts';
 
 let loading: Promise<DiagramRouter> | null = null;
 
-/** The default router: libavoid, loaded on first use (not with the page), once per session. */
+/** jsdom (unit tests) can't fetch and compile the wasm: there, the router never loads. */
+const inJsdom = () => /jsdom/i.test(globalThis.navigator?.userAgent ?? '');
+
+/**
+ * The default router: libavoid, loaded on first use (not with the page), once per session.
+ * Never settles in jsdom, so components there keep their simple arrows without any mocking.
+ */
 export const loadAvoidRouter = (): Promise<DiagramRouter> =>
-  (loading ??= AvoidLib.load(wasmUrl).then(() => createAvoidRouter(AvoidLib.getInstance())));
+  (loading ??= inJsdom()
+    ? new Promise<DiagramRouter>(() => {})
+    : AvoidLib.load(wasmUrl).then(() => createAvoidRouter(AvoidLib.getInstance())));
