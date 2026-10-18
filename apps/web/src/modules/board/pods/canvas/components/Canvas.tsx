@@ -11,6 +11,7 @@ import {
 import { useCallback, useMemo, useState } from 'react';
 import { useBoardStore } from '../../../store/boardStore.ts';
 import { GhostNode, SystemNode } from '../../node/index.ts';
+import { Toolbar } from '../../toolbar/index.ts';
 import type { FlowNode } from '../../../lib/flowTypes.ts';
 import { canvasChanges, commitNodeChanges, mergeFlowNodes } from '../lib/nodeChanges.ts';
 import { toFlow } from '../mappers/toFlow.ts';
@@ -64,6 +65,7 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
       <Background variant={BackgroundVariant.Dots} gap={16} />
       <Controls />
       <MiniMap pannable zoomable />
+      <Toolbar store={store} />
     </ReactFlow>
   );
 }
