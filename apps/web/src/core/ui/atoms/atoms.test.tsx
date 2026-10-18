@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { Database } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 import { Button } from './Button.tsx';
+import { FOCUS_RING } from './focusRing.ts';
 import { Icon } from './Icon.tsx';
 import { Input } from './Input.tsx';
 import { Spinner } from './Spinner.tsx';
@@ -47,7 +48,7 @@ describe('Button', () => {
 
     const button = screen.getByRole('button', { name: 'Save' });
     expect(button).toHaveFocus();
-    expect(button.className).toContain('focus-visible:outline');
+    expect(button.className).toContain(FOCUS_RING);
   });
 });
 
@@ -59,7 +60,7 @@ describe('Input', () => {
 
     const input = screen.getByRole('textbox', { name: 'Name' });
     expect(input).toHaveFocus();
-    expect(input.className).toContain('focus-visible:outline');
+    expect(input.className).toContain(FOCUS_RING);
   });
 });
 
@@ -76,13 +77,13 @@ describe('Icon', () => {
 });
 
 describe('Spinner', () => {
-  it('announces loading as a status', () => {
+  it('announces loading as a status, with the text inside so screen readers read it', () => {
     render(<Spinner />);
-    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading');
   });
 
   it('accepts a more specific label', () => {
     render(<Spinner label="Waiting for the model" />);
-    expect(screen.getByRole('status', { name: 'Waiting for the model' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Waiting for the model');
   });
 });

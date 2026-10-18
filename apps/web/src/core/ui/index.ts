@@ -1,6 +1,6 @@
 // The UI kit's public entry. Pods import from here, never from atoms/ molecules/ organisms/ directly.
 export { Button } from './atoms/Button.tsx';
-export type { ButtonProps, ButtonSize, ButtonVariant } from './atoms/Button.tsx';
+export type { ButtonProps, ButtonShape, ButtonSize, ButtonVariant } from './atoms/Button.tsx';
 export { Icon } from './atoms/Icon.tsx';
 export type { IconProps, IconSize } from './atoms/Icon.tsx';
 export { Input } from './atoms/Input.tsx';

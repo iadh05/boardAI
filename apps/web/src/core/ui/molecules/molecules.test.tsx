@@ -51,6 +51,33 @@ describe('TextField', () => {
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(input).toHaveAccessibleDescription('Name is required');
   });
+
+  it('shows the hint and the error together, both describing the input', () => {
+    render(<TextField label="Node name" hint="Up to 100 characters" error="Too long" />);
+    expect(screen.getByRole('textbox', { name: 'Node name' })).toHaveAccessibleDescription(
+      'Too long Up to 100 characters',
+    );
+  });
+
+  it("keeps the caller's aria-describedby and still links the error", () => {
+    render(
+      <>
+        <p id="extra-help">Shown on the canvas</p>
+        <TextField label="Node name" error="Too long" aria-describedby="extra-help" />
+      </>,
+    );
+    expect(screen.getByRole('textbox', { name: 'Node name' })).toHaveAccessibleDescription(
+      'Shown on the canvas Too long',
+    );
+  });
+
+  it('stays invalid even if the caller passes aria-invalid={false} with an error', () => {
+    render(<TextField label="Node name" error="Too long" aria-invalid={false} />);
+    expect(screen.getByRole('textbox', { name: 'Node name' })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
 });
 
 describe('Card', () => {
