@@ -1,4 +1,5 @@
 import type { Proposal } from '@designroom/domain';
+import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createBoardStore } from './boardStore.ts';
 
@@ -174,6 +175,31 @@ describe('boardStore — proposals', () => {
     expect(state().proposalError).toBeNull();
   });
 
+  it('calls a proposal the model got wrong "invalid", not "out of date"', () => {
+    const { api } = seedApiAndDb();
+    // Reuses an existing node id: this could never have applied.
+    state().setProposal({
+      id: 'p1',
+      summary: 'Add a database',
+      ops: [{ op: 'addNode', nodeId: api, kind: 'database', label: 'DB' }],
+    });
+
+    state().acceptProposal();
+
+    expect(state().proposalError).toMatch(/can't be applied/i);
+    expect(state().proposalError).not.toMatch(/out of date/i);
+  });
+
+  it('proposal actions clear a stale editing error', () => {
+    const { api } = seedApiAndDb();
+    state().connect(api, api); // refused → lastError set
+    state().setProposal(proposalFor(api));
+
+    state().acceptProposal();
+
+    expect(state().lastError).toBeNull();
+  });
+
   it('acceptProposal without a proposal does nothing', () => {
     const before = state().board;
     state().acceptProposal();
@@ -181,6 +207,13 @@ describe('boardStore — proposals', () => {
   });
 });
 
-it('works as a React hook too (same store)', () => {
-  expect(typeof store).toBe('function');
+it('works as a React hook: a component re-renders when its slice changes', () => {
+  const { result } = renderHook(() => store((s) => s.board.nodes.length));
+  expect(result.current).toBe(0);
+
+  act(() => {
+    state().addNode('api', { x: 0, y: 0 });
+  });
+
+  expect(result.current).toBe(1);
 });

@@ -17,6 +17,7 @@ import {
   type Proposal,
 } from '@designroom/domain';
 import { create } from 'zustand';
+import { createId } from '../../../core/lib/ids.ts';
 
 // The board module's single source of client state (architecture §5.3). Actions delegate every
 // rule to @designroom/domain, so the UI never re-implements them. In M2 the same actions will
@@ -97,23 +98,30 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
         commit(moveNode(get().board, id, position));
       },
 
-      setProposal: (proposal) => set({ proposal, proposalError: null }),
+      setProposal: (proposal) => set({ proposal, proposalError: null, lastError: null }),
       acceptProposal: () => {
         const { proposal, board } = get();
         if (!proposal) return;
         const result = applyOps(board, proposal.ops);
         if (result.ok) {
-          set({ board: result.value, proposal: null, proposalError: null });
-        } else {
-          // Keep the proposal visible so the user sees what couldn't be applied.
-          set({
-            proposalError: `This proposal is out of date: ${result.error.message}`,
-          });
+          set({ board: result.value, proposal: null, proposalError: null, lastError: null });
+          return;
         }
+        // Keep the proposal visible so the user sees what couldn't be applied. Missing nodes or
+        // edges mean the board changed since the proposal; anything else, the proposal was wrong.
+        const outOfDate = ['NODE_NOT_FOUND', 'EDGE_NOT_FOUND', 'DUPLICATE_EDGE'].includes(
+          result.error.code,
+        );
+        set({
+          proposalError: outOfDate
+            ? `This proposal is out of date: ${result.error.message}`
+            : `This proposal can't be applied: ${result.error.message}`,
+          lastError: null,
+        });
       },
-      rejectProposal: () => set({ proposal: null, proposalError: null }),
+      rejectProposal: () => set({ proposal: null, proposalError: null, lastError: null }),
     };
   });
 
 /** The app's board store. */
-export const useBoardStore = createBoardStore({ newId: () => crypto.randomUUID() });
+export const useBoardStore = createBoardStore({ newId: createId });

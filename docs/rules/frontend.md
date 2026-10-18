@@ -30,7 +30,7 @@ Builds on [general.md](general.md). Structure explained in [architecture.md §5]
 
 - MUST: read stores with a **selector** (`useBoardStore((s) => s.nodes)`), never the whole store.
 - MUST NOT: Redux. React Context only for providers/dependency injection, not for app state.
-- MUST: stores are testable without React (`useBoardStore.getState()`), with a reset helper for tests.
+- MUST: stores are created by a factory (`createBoardStore(deps)`) with injected dependencies (id generator…); tests build a fresh store each and use `getState()` — no shared state, no reset helpers. The app exports one instance (`useBoardStore`).
 
 ## Data and API
 

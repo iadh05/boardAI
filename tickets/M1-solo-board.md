@@ -550,7 +550,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 **Status:** todo · **Size:** M · **Depends on:** M1-07, M1-16
 
 **Tests first**
-- [ ] `add_node` on a draft → new id, `addNode` op recorded.
+- [ ] `add_node` on a draft → new id, `addNode` op recorded. **The agent generates the id (UUID), never the model** — model-chosen ids like "cache" would collide between proposals (found in the M1-08 review).
 - [ ] `connect_nodes` to that new id succeeds.
 - [ ] Bad args / unknown id → error tool result, no op.
 - [ ] Tool list contains no delete tool.
