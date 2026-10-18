@@ -2,6 +2,8 @@ import { useRef, type KeyboardEvent } from 'react';
 
 export type LabelEditorProps = {
   label: string;
+  /** Accessible name of the input (default "Node label"). */
+  ariaLabel?: string;
   maxLength: number;
   /** Called once, with the typed text on one line. */
   onCommit: (label: string) => void;
@@ -12,7 +14,13 @@ export type LabelEditorProps = {
 const singleLine = (text: string) => text.replace(/\s+/g, ' ');
 
 /** In-place label input: Enter or leaving it saves, Escape cancels. */
-export function LabelEditor({ label, maxLength, onCommit, onCancel }: LabelEditorProps) {
+export function LabelEditor({
+  label,
+  ariaLabel = 'Node label',
+  maxLength,
+  onCommit,
+  onCancel,
+}: LabelEditorProps) {
   // Enter/Escape close the editor, and closing can also fire blur: settle only once.
   const settled = useRef(false);
   const settle = (action: () => void) => {
@@ -35,7 +43,7 @@ export function LabelEditor({ label, maxLength, onCommit, onCancel }: LabelEdito
 
   return (
     <input
-      aria-label="Node label"
+      aria-label={ariaLabel}
       defaultValue={label}
       maxLength={maxLength}
       // Focus on open: the user just asked to edit this label.

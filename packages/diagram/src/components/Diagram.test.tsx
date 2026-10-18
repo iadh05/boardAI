@@ -2,7 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { DiagramEdge, DiagramNode } from '../types.ts';
+import type { DiagramRouter } from '../router/types.ts';
+import type { DiagramEdge, DiagramNode, DiagramZone } from '../types.ts';
 import { Diagram, type DiagramProps } from './Diagram.tsx';
 import { DiagramPanel } from './DiagramPanel.tsx';
 import { useDiagramViewport } from './useDiagramViewport.ts';
@@ -17,10 +18,19 @@ const EDGES = [link];
 type HarnessProps = Partial<DiagramProps> & {
   initialNodes?: DiagramNode[];
   initialEdges?: DiagramEdge[];
+  initialZones?: DiagramZone[];
 };
+const NO_ZONES: DiagramZone[] = [];
 
 /** Holds the diagram's state the way an app store would, and spies on every callback. */
-function Harness({ initialNodes = NODES, initialEdges = EDGES, ...spies }: HarnessProps) {
+function Harness({
+  initialNodes = NODES,
+  initialEdges = EDGES,
+  initialZones = NO_ZONES,
+  ...spies
+}: HarnessProps) {
+  const [zones, setZones] = useState<DiagramZone[]>([]);
+  const [editingZone, setEditingZone] = useState<string | null>(null);
   const [nodes, setNodes] = useState<DiagramNode[]>([]);
   const [edges, setEdges] = useState<DiagramEdge[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
@@ -31,7 +41,8 @@ function Harness({ initialNodes = NODES, initialEdges = EDGES, ...spies }: Harne
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate post-mount load (see above)
     setNodes(initialNodes);
     setEdges(initialEdges);
-  }, [initialNodes, initialEdges]);
+    setZones(initialZones);
+  }, [initialNodes, initialEdges, initialZones]);
 
   return (
     <div style={{ width: 800, height: 600 }}>
@@ -39,9 +50,23 @@ function Harness({ initialNodes = NODES, initialEdges = EDGES, ...spies }: Harne
         nodes={nodes}
         edges={edges}
         editingNodeId={editing}
+        zones={zones}
+        editingZoneId={editingZone}
         editingEdgeId={editingEdge}
         dashedLabel="Async"
         {...spies}
+        onZoneEditStart={(id) => {
+          spies.onZoneEditStart?.(id);
+          setEditingZone(id);
+        }}
+        onZoneLabelCommit={(id, label) => {
+          spies.onZoneLabelCommit?.(id, label);
+          setZones((zs) => zs.map((z) => (z.id === id ? { ...z, label } : z)));
+        }}
+        onZoneEditEnd={() => {
+          spies.onZoneEditEnd?.();
+          setEditingZone(null);
+        }}
         onEdgeEditStart={(id) => {
           spies.onEdgeEditStart?.(id);
           setEditingEdge(id);
@@ -218,7 +243,7 @@ describe('Diagram — deleting', () => {
     fireEvent.click(await screen.findByText('Orders API'));
     await userEvent.keyboard('{Backspace}');
 
-    expect(onDelete).toHaveBeenCalledWith(['api'], ['e1']);
+    expect(onDelete).toHaveBeenCalledWith(['api'], ['e1'], []);
   });
 
   it('the Delete key works too', async () => {
@@ -228,7 +253,7 @@ describe('Diagram — deleting', () => {
     fireEvent.click(await screen.findByText('Postgres'));
     await userEvent.keyboard('{Delete}');
 
-    expect(onDelete).toHaveBeenCalledWith(['db'], ['e1']);
+    expect(onDelete).toHaveBeenCalledWith(['db'], ['e1'], []);
   });
 
   it('a selected edge is reported alone', async () => {
@@ -238,7 +263,7 @@ describe('Diagram — deleting', () => {
     fireEvent.click(await screen.findByLabelText('From Orders API to Postgres'));
     await userEvent.keyboard('{Backspace}');
 
-    expect(onDelete).toHaveBeenCalledWith([], ['e1']);
+    expect(onDelete).toHaveBeenCalledWith([], ['e1'], []);
   });
 
   it('ghost nodes cannot be deleted', async () => {
@@ -264,6 +289,19 @@ describe('Diagram — panels', () => {
     );
   }
 
+  function BoundsButton({
+    onBounds,
+  }: {
+    onBounds: (r: { width: number; height: number }) => void;
+  }) {
+    const viewport = useDiagramViewport();
+    return (
+      <button type="button" onClick={() => onBounds(viewport.bounds())}>
+        What do I see
+      </button>
+    );
+  }
+
   it('renders panels over the diagram, and they can read the view centre', async () => {
     const onCenter = vi.fn<(point: { x: number; y: number }) => void>();
     render(
@@ -278,6 +316,19 @@ describe('Diagram — panels', () => {
 
     const point = onCenter.mock.calls[0]?.[0];
     expect(Number.isFinite(point?.x) && Number.isFinite(point?.y)).toBe(true);
+  });
+
+  it('and what part of the diagram is on screen', async () => {
+    const onBounds = vi.fn<(r: { width: number; height: number }) => void>();
+    render(
+      <Harness>
+        <DiagramPanel position="top-left">
+          <BoundsButton onBounds={onBounds} />
+        </DiagramPanel>
+      </Harness>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'What do I see' }));
+    expect(onBounds.mock.calls[0]?.[0].width).toBeGreaterThan(0);
   });
 });
 
@@ -422,6 +473,19 @@ describe('Diagram — editing an arrow', () => {
     expect(screen.queryByRole('textbox', { name: 'Arrow label' })).not.toBeInTheDocument();
   });
 
+  it('clicking away saves; moving to the Async toggle does not', async () => {
+    const onEdgeLabelCommit = vi.fn();
+    render(<Harness onEdgeLabelCommit={onEdgeLabelCommit} />);
+    fireEvent.doubleClick(await arrow());
+
+    await userEvent.keyboard('gRPC');
+    await userEvent.click(screen.getByRole('button', { name: 'Async' }));
+    expect(onEdgeLabelCommit).not.toHaveBeenCalled();
+
+    fireEvent.blur(screen.getByRole('button', { name: 'Async' }));
+    expect(onEdgeLabelCommit).toHaveBeenCalledWith('e1', 'gRPC');
+  });
+
   it('Escape cancels', async () => {
     const onEdgeLabelCommit = vi.fn();
     render(<Harness onEdgeLabelCommit={onEdgeLabelCommit} />);
@@ -451,5 +515,66 @@ describe('Diagram — editing an arrow', () => {
     render(<Harness initialEdges={[{ ...link, ghost: true }]} onEdgeEditStart={onEdgeEditStart} />);
     fireEvent.doubleClick(await arrow());
     expect(onEdgeEditStart).not.toHaveBeenCalled();
+  });
+});
+
+describe('Diagram — zones', () => {
+  const vpc: DiagramZone = {
+    id: 'vpc',
+    label: 'VPC',
+    position: { x: -40, y: -40 },
+    size: { width: 600, height: 200 },
+  };
+  const ZONES = [vpc];
+
+  it('draws a zone with its title, named for screen readers', async () => {
+    render(<Harness initialZones={ZONES} />);
+    expect(await screen.findByRole('group', { name: 'Zone: VPC' })).toHaveTextContent('VPC');
+  });
+
+  it('draws zones behind boxes', async () => {
+    render(<Harness initialZones={ZONES} />);
+    const zoneEl = await screen.findByRole('group', { name: 'Zone: VPC' });
+    expect(
+      zoneEl.compareDocumentPosition(node('Orders API')) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('double-click renames it: Enter commits the label', async () => {
+    const onZoneEditStart = vi.fn();
+    const onZoneLabelCommit = vi.fn();
+    render(
+      <Harness
+        initialZones={ZONES}
+        onZoneEditStart={onZoneEditStart}
+        onZoneLabelCommit={onZoneLabelCommit}
+      />,
+    );
+
+    fireEvent.doubleClick(await screen.findByRole('group', { name: 'Zone: VPC' }));
+    expect(onZoneEditStart).toHaveBeenCalledWith('vpc');
+    expect(screen.getByRole('textbox', { name: 'Zone label' })).toHaveFocus();
+    await userEvent.keyboard('eu-west-1{Enter}');
+
+    expect(onZoneLabelCommit).toHaveBeenCalledWith('vpc', 'eu-west-1');
+  });
+
+  it('Delete on a selected zone reports the zone only', async () => {
+    const onDelete = vi.fn();
+    render(<Harness initialZones={ZONES} onDelete={onDelete} />);
+
+    fireEvent.click(await screen.findByText('VPC'));
+    await userEvent.keyboard('{Delete}');
+
+    expect(onDelete).toHaveBeenCalledWith([], [], ['vpc']);
+  });
+
+  it('zones are not obstacles: arrows may cross them', async () => {
+    const route = vi.fn<DiagramRouter['route']>(() => new Map());
+    render(<Harness initialZones={ZONES} router={{ route }} />);
+    await screen.findByRole('group', { name: 'Zone: VPC' });
+
+    const boxes = route.mock.calls.at(-1)?.[0];
+    expect(boxes?.map((b) => b.id)).toEqual(['api', 'db']);
   });
 });
