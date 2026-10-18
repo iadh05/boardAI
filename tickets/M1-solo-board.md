@@ -19,7 +19,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-04 | `core/ui` kit: atoms + molecules | setup | M | done |
 | M1-05 | domain: board types + zod | M1a | S | done |
 | M1-06 | domain: board operations | M1a | M | done |
-| M1-07 | domain: agent ops, `applyOps`, API contract | M1a | M | todo |
+| M1-07 | domain: agent ops, `applyOps`, API contract | M1a | M | done |
 | M1-08 | board module: `boardStore` (Zustand) | M1a | M | todo |
 | M1-09 | canvas pod: React Flow + `toFlow` | M1a | M | todo |
 | M1-10 | toolbar pod | M1a | S | todo |
@@ -330,20 +330,24 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-07 — domain: agent ops, `applyOps`, API contract
-**Status:** todo · **Size:** M · **Depends on:** M1-06
+**Status:** done · **Size:** M · **Depends on:** M1-06
 
 **Learning goal:** all-or-nothing application; designing a contract before either side exists.
 
-**Tests first**
-- [ ] `[addNode cache, connect api→cache]` succeeds; the edge targets the new node.
-- [ ] If op 2 of 3 fails → error, board unchanged.
-- [ ] `updateNode` on unknown id fails.
-- [ ] `ChatRequest` / `ChatEvent` schemas: valid examples pass; unknown event `type` fails.
+**Tests first** (31 tests, red → green)
+- [x] `[addNode cache, connect api→cache]` succeeds; the edge targets the new node; the result is a valid board.
+- [x] If op 2 of 3 fails → error naming the operation, board unchanged.
+- [x] `updateNode` on unknown id fails; `near` pointing to a missing node fails; malformed ops (`deleteNode`, empty list) → `INVALID_OP`.
+- [x] `ChatRequest` / `ChatEvent` schemas: valid examples pass; unknown event `type`, `system` role, empty message, invalid board, oversized board fail.
 
 **Tasks**
-- [ ] `domain/board`: `AgentOp`, `Proposal`, `applyOps`.
-- [ ] `domain/contracts`: `ChatRequest`, `ChatEvent`.
+- [x] `domain/board/agentOps.ts`: `AgentOp` (addNode / updateNode / connect — **no delete**), `Proposal` (1–20 ops, optional `traceId`), `applyOps(board, ops, { placeNode? })`.
+- [x] `domain/contracts/chat.ts`: `ChatMessage`, `ChatRequest` (board ≤ 150 nodes / 300 edges, 1–50 messages, no `system` role), `ChatEvent` (text | proposal | error | done).
 
+**Notes**
+- `applyOps` re-validates the ops at runtime: they come from an LLM, whatever the static types say.
+- Placement: the caller can pass `placeNode` (the canvas will in M1-23); the default puts a node one column right of `near` and moves down until the spot is free.
+- **Review (/code-review, 5 findings, all fixed):** empty AI label → kind default; new nodes near the same node no longer stack; `INVALID_OP` names the operation and field; chat board size capped (it's in every prompt); updateNode ordering pinned by a test.
 ---
 
 ## M1-08 — board module: `boardStore` (Zustand)
@@ -727,6 +731,10 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 
 ## M1-27 — ADR-004…007, demo, retro
 **Status:** todo · **Size:** S · **Depends on:** all M1 tickets
+
+**Before closing M1 — architecture review (asked by the owner, 2026-10-18)**
+- [ ] Should `apps/web/src/core/ui` + the design tokens become a design-system package (`packages/ui`)? (Storybook? Used by other apps later?)
+- [ ] Should some modules move into packages? Decide with the real M1 code in hand, record the decision as an ADR.
 
 **Tasks**
 - [ ] ADR-004 modular monolith + packages; ADR-005 local Qwen behind the gateway (mention existing gateways such as LiteLLM); ADR-006 proposals; ADR-007 observability split.
