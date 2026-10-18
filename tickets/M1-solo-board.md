@@ -198,6 +198,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 - Boundary patterns match from the **end** of a path, which is why fixtures under `tooling/lint/fixtures/apps/web/…` are classified exactly like real code.
 - The direction rule names `board` and `chat` literally — add a policy when a new module needs a direction rule.
 - Not covered yet: circular imports (general rules: "MUST NOT circular imports") — add when real code makes it possible (e.g. `import-x/no-cycle` or dependency-cruiser).
+- **Security (found by CI `security` on the PR):** `eslint-plugin-boundaries` pulled `handlebars` ≤ 4.7.9 (2 critical advisories) → forced to `>=4.7.10` with a pnpm override. It also pulls `braces` 3.0.3 (high, GHSA-vfj7-8cjw-p6xm), which has **no patched release**; it only runs at lint time on our own glob patterns, so the advisory is ignored by id in `pnpm-workspace.yaml` (`auditConfig.ignoreGhsas`) and `ci.yml` (`allow-ghsas`). Re-check when braces ships a fix.
 - `eslint.config.js` imports the local rule from a `.ts` file, which relies on Node's built-in type stripping (Node ≥ 22.18). If the editor's ESLint extension runs an older Node, set it to use the system Node.
 ---
 

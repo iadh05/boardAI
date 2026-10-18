@@ -131,3 +131,5 @@ jobs:
         with:
           fail-on-severity: high
           deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
+          # Same single exception as auditConfig.ignoreGhsas in pnpm-workspace.yaml (braces, no fix released).
+          allow-ghsas: GHSA-vfj7-8cjw-p6xm
