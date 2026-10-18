@@ -1,7 +1,20 @@
 packages:
   - apps/*
   - packages/*
+  - tooling/*
 
 # lefthook's own postinstall isn't needed: the root "prepare" script runs `lefthook install`.
 ignoredBuiltDependencies:
   - lefthook
+
+# Security overrides — see the ticket notes in tickets/M1-solo-board.md (M1-02).
+overrides:
+  # eslint-plugin-boundaries pulls handlebars <=4.7.9 (GHSA-8r5x-fm3f-whwj, GHSA-p8wg-vrv2-v86f, critical).
+  handlebars: '>=4.7.10'
+
+auditConfig:
+  ignoreGhsas:
+    # braces <=3.0.3 stack-exhaustion DoS on deeply nested patterns. No patched release exists
+    # (3.0.3 is the latest). Only reached at lint time via eslint-plugin-boundaries > micromatch,
+    # with glob patterns we write ourselves — no untrusted input. Re-check when a fix ships.
+    - GHSA-vfj7-8cjw-p6xm

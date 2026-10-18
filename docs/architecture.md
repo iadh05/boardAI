@@ -90,9 +90,11 @@ designroom/
    ├─ domain/                   # @designroom/domain     — board model, ops, API contracts
    ├─ agent/                    # @designroom/agent      — agent logic
    └─ ai-gateway/               # @designroom/ai-gateway — the only code that talks to LLM providers
+└─ tooling/
+   └─ lint/                     # @designroom/lint — local ESLint rules + fixture tests for the architecture rules
 ```
 
-**Who may import whom** (lint-enforced):
+**Who may import whom** (lint-enforced — `@typescript-eslint/no-restricted-imports` for packages, `eslint-plugin-boundaries` inside the apps; every rule has a failing fixture in `tooling/lint/fixtures/`):
 
 ```mermaid
 flowchart TD

@@ -13,7 +13,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-01c | Repo workflow: PR template, branch protection | setup | S | doing |
 | M1-01d | Code quality and security checks in CI | setup | S | done |
 | M1-01e | Git hooks (Lefthook), commitlint, split CI checks | setup | S | done |
-| M1-02 | Boundary lint rules | setup | M | todo |
+| M1-02 | Boundary lint rules | setup | M | done |
 | M1-03 | Web shell: Vite + React + Tailwind + providers | setup | S | todo |
 | M1-03b | Playwright + smoke test in CI | setup | M | todo |
 | M1-04 | `core/ui` kit: atoms + molecules | setup | M | todo |
@@ -171,25 +171,35 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-02 — Boundary lint rules
-**Status:** todo · **Size:** M · **Depends on:** M1-01
+**Status:** done · **Size:** M · **Depends on:** M1-01
 
 **Why:** The architecture only holds if breaking it fails the build.
 
 **Learning goal:** turning architecture rules into automated checks.
 
 **Tasks**
-- [ ] Pick a tool (`eslint-plugin-boundaries` or `dependency-cruiser`) — note why in the learning log.
-- [ ] Package rules (architecture §3): `web` must not import `agent`/`ai-gateway`; `domain` imports nothing internal; `agent` may only `import type` from `ai-gateway`.
-- [ ] Web rules (§5.2): pod → own files, module store/promoted folders, `core`, `domain`; module → other module only via `index.ts`; `core` → never a module.
-- [ ] Server rules (§6.1): module → other module only via `index.ts`; `domain` layer imports no `api`/`infra`.
-- [ ] Banned folder/file names: `shared/`, `common/`, `misc/`, `utils.ts`, `helpers.ts`.
+- [x] Pick a tool — **both, each where it fits best** (see Notes).
+- [x] Package rules (architecture §3): `web` must not import `agent`/`ai-gateway`; `domain` and `ai-gateway` import nothing internal; `agent` may only `import type` from `ai-gateway`.
+- [x] Web rules (§5.2): `core` never imports a module/page/layout; another pod only via its `index.ts`; never another module's pods; another module only via its `index.ts`; `board` never depends on `chat`; modules never import `app/` or `layout/`.
+- [x] Server rules (§6.1): `core` never imports a module; layers point inward (domain ↛ api/application/infra, application ↛ api/infra, api ↛ infra); another module only via its `index.ts`.
+- [x] Banned folder/file names: `shared/`, `common/`, `misc/`, `utils.ts`, `helpers.ts` — a local ESLint rule `designroom/no-banned-names`.
 
 **Tests first**
-- [ ] A small fixture folder (or temporary files) with one forbidden import per rule; lint must report each.
+- [x] `tooling/lint/fixtures/` mirrors `apps/` and `packages/`: one *bad* file per rule (16) and *ok* files for the legal imports (7). `tooling/lint/src/boundaries.test.ts` lints them with the real config and checks each bad file fails with the right rule and each ok file stays clean. Written first: 16 red → green.
+- [x] `noBannedNames.test.ts`: ESLint `RuleTester` cases (9).
 
 **Acceptance criteria**
-- [ ] Each rule demonstrated failing once, then the fixture removed or kept as a lint test.
+- [x] Each rule demonstrated failing — kept permanently as lint tests (they run in `unit` on every PR).
 
+**Notes**
+- **Package graph → `@typescript-eslint/no-restricted-imports`** per package folder. Its `allowTypeImports` option expresses "agent may only `import type` from ai-gateway" in one line, and it's a rule people already know.
+- **Inside the apps → `eslint-plugin-boundaries` v7** (policies + captured values, e.g. "same module" / "other module"). Chosen over `dependency-cruiser` because it runs inside ESLint: violations show in the editor, in the pre-commit hook and in the existing `lint` CI job — no extra tool or job.
+- Every policy has a plain-language `message` pointing at the doc rule it enforces.
+- Boundary patterns match from the **end** of a path, which is why fixtures under `tooling/lint/fixtures/apps/web/…` are classified exactly like real code.
+- The direction rule names `board` and `chat` literally — add a policy when a new module needs a direction rule.
+- Not covered yet: circular imports (general rules: "MUST NOT circular imports") — add when real code makes it possible (e.g. `import-x/no-cycle` or dependency-cruiser).
+- **Security (found by CI `security` on the PR):** `eslint-plugin-boundaries` pulled `handlebars` ≤ 4.7.9 (2 critical advisories) → forced to `>=4.7.10` with a pnpm override. It also pulls `braces` 3.0.3 (high, GHSA-vfj7-8cjw-p6xm), which has **no patched release**; it only runs at lint time on our own glob patterns, so the advisory is ignored by id in `pnpm-workspace.yaml` (`auditConfig.ignoreGhsas`) and `ci.yml` (`allow-ghsas`). Re-check when braces ships a fix.
+- `eslint.config.js` imports the local rule from a `.ts` file, which relies on Node's built-in type stripping (Node ≥ 22.18). If the editor's ESLint extension runs an older Node, set it to use the system Node.
 ---
 
 ## M1-03 — Web shell: Vite + React + Tailwind + providers

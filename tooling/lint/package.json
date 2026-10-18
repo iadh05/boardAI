@@ -1,0 +1,21 @@
+{
+  "name": "@designroom/lint",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Architecture lint rules for the repo: local ESLint rules and the fixture tests that prove the boundary rules work.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "eslint": "^10.13.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5"
+  }
+}
