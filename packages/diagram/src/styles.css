@@ -1,0 +1,110 @@
+/*
+ * @designroom/diagram — its own stylesheet (no Tailwind inside the package).
+ * Theme it from the app by setting these variables, e.g. on :root.
+ */
+@import '@xyflow/react/dist/style.css';
+
+:root {
+  --dr-diagram-accent: #4f46e5;
+  --dr-diagram-edge: #334155;
+  --dr-diagram-node: #64748b;
+  --dr-diagram-text: #0f172a;
+  --dr-diagram-muted: #64748b;
+  --dr-diagram-focus: #6366f1;
+  --dr-diagram-surface: #ffffff;
+}
+
+.dr-diagram .react-flow__node-box {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.dr-node {
+  position: relative;
+  color: var(--dr-diagram-text);
+  font:
+    600 13px/1.2 system-ui,
+    sans-serif;
+}
+.dr-node > svg {
+  position: absolute;
+  inset: 0;
+}
+.dr-node.is-selected > svg {
+  filter: drop-shadow(0 0 0.15rem var(--dr-diagram-focus));
+}
+.dr-node.is-ghost {
+  opacity: 0.8;
+}
+.react-flow__node-box:focus-visible {
+  outline: 2px solid var(--dr-diagram-focus);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.dr-node-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 12px;
+}
+.dr-node-icon {
+  display: flex;
+  flex-shrink: 0;
+}
+.dr-node-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dr-node-tag {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--dr-diagram-accent);
+}
+.dr-label-input {
+  min-width: 0;
+  flex: 1;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--dr-diagram-focus);
+  border-radius: 6px;
+  background: var(--dr-diagram-surface);
+  color: inherit;
+  font: inherit;
+}
+
+.dr-diagram .dr-handle {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--dr-diagram-accent);
+  background: var(--dr-diagram-surface);
+  opacity: 0;
+}
+.dr-diagram .react-flow__node:hover .dr-handle,
+.dr-diagram .react-flow__node.selected .dr-handle,
+.dr-diagram.react-flow .react-flow__handle.connectingto {
+  opacity: 1;
+}
+
+.dr-diagram .react-flow__edge-path {
+  stroke: var(--dr-diagram-edge);
+  stroke-width: 1.75;
+}
+.dr-diagram .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--dr-diagram-focus);
+}
+.dr-diagram .react-flow__edge.dr-edge-ghost .react-flow__edge-path {
+  stroke: var(--dr-diagram-accent);
+  stroke-dasharray: 6 4;
+}
+.dr-diagram .react-flow__edge-text {
+  font:
+    600 11px system-ui,
+    sans-serif;
+  fill: var(--dr-diagram-text);
+}

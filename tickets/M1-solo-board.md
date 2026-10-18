@@ -27,7 +27,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-12 | Connect and delete | M1a | M | done |
 | M1-13 | ADR-001/002/003 + M1a checkpoint | M1a | S | doing |
 | M1-D1 | ADR-004 + `@designroom/diagram` skeleton | diagram | S | done |
-| M1-D2 | `<Diagram>`: the canvas inside the package | diagram | M | todo |
+| M1-D2 | `<Diagram>`: the canvas inside the package | diagram | M | done |
 | M1-D3 | Orthogonal routing with libavoid | diagram | M | todo |
 | M1-D4 | The app uses the package | diagram | M | todo |
 | M1-D5 | Edge meaning in the domain | diagram | S | todo |
@@ -488,15 +488,20 @@ Inserted after M1a (2026-10-18): the board read like a flowchart, not an archite
 - [x] Lint: diagram imports no `@designroom/*` package (fixture test).
 
 ## M1-D2 — `<Diagram>`: the canvas inside the package
-**Status:** todo · **Size:** M · **Depends on:** M1-D1
+**Status:** done · **Size:** M · **Depends on:** M1-D1
 
 **Tasks**
-- [ ] Controlled `<Diagram nodes edges … />`: store-driven, canvas keeps only selection, drag and measured size (moved from the canvas pod: `mergeFlowNodes`, `canvasChanges`, edges).
-- [ ] Node: `Shape` + icon + label, handles on 4 sides (loose connection mode), accessible name; ghost style.
-- [ ] Edges: labels, dashed, ghost; arrows in the theme colour.
-- [ ] Callbacks: `onNodeMove`, `onConnect` (+ `canConnect`), `onDelete`, label editing (`editingNodeId`, `onEditStart`, `onLabelCommit`, `onEditEnd`) — moved from M1-11/M1-12 with their tests.
-- [ ] `useDiagramViewport()` for children (toolbar): `center()`.
-- [ ] Own stylesheet themed by `--dr-diagram-*` CSS variables (no Tailwind inside the package).
+- [x] Controlled `<Diagram nodes edges … />`: store-driven, canvas keeps only selection, drag and measured size (moved from the canvas pod: `mergeFlowNodes`, `canvasChanges`, edges).
+- [x] Node: `Shape` + icon + label, handles on 4 sides (loose connection mode), accessible name; ghost style.
+- [x] Edges: labels, dashed, ghost; arrows in the theme colour.
+- [x] Callbacks: `onNodeMove`, `onConnect` (+ `canConnect`), `onDelete`, label editing (`editingNodeId`, `onEditStart`, `onLabelCommit`, `onEditEnd`) — moved from M1-11/M1-12 with their tests.
+- [x] `useDiagramViewport()` for children (toolbar): `center()`.
+- [x] Own stylesheet themed by `--dr-diagram-*` CSS variables (no Tailwind inside the package).
+
+**Notes**
+- 56 tests in the package (mapping, change handling, viewport, component behaviour). Dragging is left to the app's e2e (d3-drag needs a real browser).
+- `<Diagram>` imports its own stylesheet; apps theme it with `--dr-diagram-*` variables.
+- Not visible in the app yet: M1-D4 switches the board to it.
 
 ## M1-D3 — Orthogonal routing with libavoid
 **Status:** todo · **Size:** M · **Depends on:** M1-D2

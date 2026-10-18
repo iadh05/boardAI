@@ -28,8 +28,6 @@ export type DiagramNode = {
   color?: string;
   /** A small icon drawn at the left of the label (decorative). */
   icon?: ReactNode;
-  /** Spoken name of what the node is ("Database"), when the label says something else. */
-  description?: string;
   /** A proposal: drawn faded and dashed; can't be moved, connected or deleted. */
   ghost?: boolean;
 };
