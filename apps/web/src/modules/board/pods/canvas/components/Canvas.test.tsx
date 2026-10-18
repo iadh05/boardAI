@@ -1,5 +1,5 @@
 import { createNode, type Board } from '@designroom/domain';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { createBoardStore } from '../../../store/boardStore.ts';
@@ -50,7 +50,10 @@ describe('Canvas', () => {
     const store = renderCanvas(boardWithTwoNodes);
     const label = screen.getByText('Orders API');
 
-    await userEvent.click(label);
+    // A plain click selects without a mousedown: jsdom gives mousedown a null `view`, which
+    // React Flow's drag library (d3-drag) can't handle. Real browsers are fine.
+    fireEvent.click(label);
+    expect(label.closest('.react-flow__node')).toHaveClass('selected');
     await userEvent.keyboard('{Backspace}');
 
     expect(screen.getByText('Orders API')).toBeInTheDocument();
