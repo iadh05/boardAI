@@ -1,6 +1,8 @@
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
 import boundaries from 'eslint-plugin-boundaries';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import { designroomPlugin } from './tooling/lint/src/index.ts';
@@ -283,6 +285,17 @@ export default tseslint.config(
   },
   ...packageRules,
   appRules,
+  {
+    // React in the browser: hooks rules + safe Fast Refresh (docs/rules/frontend.md).
+    files: ['apps/web/**/*.{ts,tsx}'],
+    languageOptions: { globals: { ...globals.browser } },
+    ...reactHooks.configs.flat['recommended-latest'],
+    plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
+    rules: {
+      ...reactHooks.configs.flat['recommended-latest'].rules,
+      'react-refresh/only-export-components': ['error', { allowConstantExport: true }],
+    },
+  },
   {
     // Tool config files must use a default export.
     files: ['**/*.config.{js,ts}'],
