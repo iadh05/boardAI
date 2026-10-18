@@ -2,6 +2,7 @@
 import type { Proposal } from '@designroom/domain';
 import { useBoardStore } from './store/boardStore.ts';
 
+export { Canvas as BoardCanvas } from './pods/canvas/index.ts';
 export { createBoardStore, useBoardStore } from './store/boardStore.ts';
 export type { BoardActions, BoardState, BoardStore } from './store/boardStore.ts';
 
