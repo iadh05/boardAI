@@ -13,7 +13,14 @@ import {
   type NodeChange,
   type NodeTypes,
 } from '@xyflow/react';
-import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import { canvasChanges, commitMoves, mergeEdges, mergeNodes } from '../flow/changes.ts';
 import { toReactFlow, type BoxNode } from '../flow/toReactFlow.ts';
 import type { DiagramEdge, DiagramNode, DiagramPosition } from '../types.ts';
@@ -107,12 +114,22 @@ function DiagramCanvas({
     if (id && isEditable(id)) onEditStart?.(id);
   };
 
-  const context: DiagramContextValue = {
-    editingNodeId,
-    maxLabelLength,
-    commitLabel: (id, label) => onLabelCommit?.(id, label),
-    endEditing: () => onEditEnd?.(),
-  };
+  // Every node reads this context, and a new value re-renders all of them — on every drag frame,
+  // since this component re-renders then. So: a stable value that changes only with the editing
+  // state, and the latest callbacks read through a ref (apps may pass inline functions).
+  const callbacks = useRef({ onLabelCommit, onEditEnd });
+  useLayoutEffect(() => {
+    callbacks.current = { onLabelCommit, onEditEnd };
+  });
+  const context = useMemo<DiagramContextValue>(
+    () => ({
+      editingNodeId,
+      maxLabelLength,
+      commitLabel: (id, label) => callbacks.current.onLabelCommit?.(id, label),
+      endEditing: () => callbacks.current.onEditEnd?.(),
+    }),
+    [editingNodeId, maxLabelLength],
+  );
 
   return (
     <DiagramContext value={context}>
