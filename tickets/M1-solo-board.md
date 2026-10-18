@@ -128,7 +128,9 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 - [x] `security` job in `ci.yml`: `pnpm audit --audit-level=high`; on PRs, `dependency-review-action` (fails on high-severity vulnerabilities and GPL/AGPL licences).
 - [x] `.github/dependabot.yml`: weekly grouped updates for npm packages and GitHub Actions.
 - [x] Coverage gate in `packages/domain/vitest.config.ts`: 90 % lines/functions/branches/statements — proven by adding an untested function (run failed at 50 % / 0 %).
-- [ ] On GitHub (settings, yours): turn on **Dependabot alerts** and **Dependabot security updates** (Settings → Code security). Secret scanning + push protection are already on.
+- [x] On GitHub: **Dependabot alerts** + dependency graph enabled (2026-10-18, via `gh api`, with the owner's OK — dependency review needs the graph). Secret scanning + push protection were already on.
+- [ ] Optional: **Dependabot security updates** (auto-PRs for vulnerable packages) in Settings → Code security.
+- [x] CodeQL review finding fixed: third-party `pnpm/action-setup` pinned to a commit SHA; rule added to docs/rules/general.md.
 - [ ] Add `security` and `codeql` to the required checks when M1-01c sets up branch protection.
 
 **Acceptance criteria**
