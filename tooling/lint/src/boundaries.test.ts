@@ -43,6 +43,7 @@ describe('package dependency rules', () => {
   it.each([
     ['packages/domain/src/badImportsAgent.ts', 'domain imports no other internal package'],
     ['packages/ai-gateway/src/badImportsDomain.ts', 'ai-gateway imports no other internal package'],
+    ['packages/diagram/src/badImportsDomain.ts', 'diagram imports no other internal package'],
     ['packages/agent/src/badValueImport.ts', 'agent may only `import type` from ai-gateway'],
     ['apps/web/src/modules/chat/pods/conversation/badImportsAgent.ts', 'web never imports agent'],
   ])('%s is rejected (%s)', (fixture) => {

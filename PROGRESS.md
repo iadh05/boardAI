@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-13 ADRs + M1a checkpoint
+**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-D2 `<Diagram>` in `@designroom/diagram`
 
 ## Done
 
@@ -29,7 +29,8 @@
 
 ## In progress
 
-- **M1-13** — ADRs + M1a checkpoint: ADRs and demo done (PR #19); **your structure-review verdict** goes in docs/checkpoints/M1a.md.
+- **M1-13** — waiting on your structure-review verdict (docs/checkpoints/M1a.md).
+- **Diagram package (M1-D1…D5)** — the canvas moves into `@designroom/diagram` (React Flow + libavoid), [ADR-004](docs/decisions.md). D-1 done (#20).
 
 ## Next
 
