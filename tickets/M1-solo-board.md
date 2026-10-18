@@ -9,7 +9,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | ID | Title | Part | Size | Status |
 |---|---|---|---|---|
 | M1-01 | pnpm monorepo + TypeScript + Vitest + ESLint | setup | S | done |
-| M1-01b | CI: checks + unit tests on GitHub Actions | setup | S | todo |
+| M1-01b | CI: checks + unit tests on GitHub Actions | setup | S | doing |
 | M1-01c | Repo workflow: PR template, branch protection | setup | S | todo |
 | M1-02 | Boundary lint rules | setup | M | todo |
 | M1-03 | Web shell: Vite + React + Tailwind + providers | setup | S | todo |
@@ -76,21 +76,25 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-01b — CI: checks + unit tests on GitHub Actions
-**Status:** todo · **Size:** S · **Depends on:** M1-01
+**Status:** doing · **Size:** S · **Depends on:** M1-01
 
 **Why:** From the first PR on, nothing merges red.
 
 **Learning goal:** GitHub Actions basics — workflows, jobs, steps, caching, artifacts.
 
 **Tasks**
-- [ ] `.github/workflows/ci.yml` triggered on `pull_request` and `push` to `main`.
-- [ ] Job `checks`: checkout → setup pnpm + Node (versions from `packageManager` / `engines`) with pnpm cache → `pnpm install --frozen-lockfile` → `pnpm lint` → `pnpm typecheck`.
-- [ ] Job `unit`: same setup → `pnpm test:coverage` → upload coverage as an artifact.
-- [ ] `concurrency` group so a new push cancels the previous run on the same branch.
+- [x] `.github/workflows/ci.yml` triggered on `pull_request` and `push` to `main`.
+- [x] Job `checks`: checkout → setup pnpm + Node (versions from `packageManager` / `engines`) with pnpm cache → `pnpm install --frozen-lockfile` → `pnpm lint` → `pnpm typecheck`.
+- [x] Job `unit`: same setup → `pnpm test:coverage` → upload coverage as an artifact.
+- [x] `concurrency` group so a new push cancels the previous run on the same branch.
 
 **Acceptance criteria**
 - [ ] A PR with a failing test shows a red `unit` check; fixing it turns it green.
 - [ ] Second run is faster than the first (cache hit visible in logs).
+
+**Notes**
+- Also added in the same PR: the two Claude workflows (automatic PR review + `@claude` on demand) moved from `.github/` to `.github/workflows/` and upgraded from `@beta` to `@v1`. They start working once merged to `main`.
+- `checks` also runs `pnpm format:check`.
 
 ---
 
