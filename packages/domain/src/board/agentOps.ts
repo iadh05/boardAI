@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { fail, ok, type Result } from '../result.ts';
-import { BoardNodeSchema, NodeKindSchema, type Board, type Position } from './board.ts';
+import {
+  BoardNodeSchema,
+  KIND_DEFAULT_LABEL,
+  NodeKindSchema,
+  type Board,
+  type Position,
+} from './board.ts';
 import {
   addNode,
   changeKind,
@@ -73,11 +79,28 @@ export type ApplyOpsOptions = {
   placeNode?: (op: AddNodeOp, board: Board) => Position;
 };
 
-/** Default placement: one column to the right of the `near` node, else the origin. */
+const COLUMN_GAP = 240;
+const ROW_GAP = 120;
+
+/**
+ * Default placement: one column to the right of the `near` node (else the origin), moving down
+ * one row at a time until the spot is free — so several new nodes near the same node don't stack.
+ */
 const besideNear = (op: AddNodeOp, board: Board): Position => {
   const near = board.nodes.find((n) => n.id === op.near);
-  return near ? { x: near.position.x + 240, y: near.position.y } : { x: 0, y: 0 };
+  const x = near ? near.position.x + COLUMN_GAP : 0;
+  let y = near ? near.position.y : 0;
+  const taken = (py: number) =>
+    board.nodes.some(
+      (n) =>
+        Math.abs(n.position.x - x) < COLUMN_GAP / 2 && Math.abs(n.position.y - py) < ROW_GAP / 2,
+    );
+  while (taken(y)) y += ROW_GAP;
+  return { x, y };
 };
+
+/** The AI's label follows the same rule as a user rename: trimmed, empty → the kind's default. */
+const labelFor = (op: AddNodeOp): string => op.label.trim() || KIND_DEFAULT_LABEL[op.kind];
 
 const applyOne = (
   board: Board,
@@ -90,7 +113,7 @@ const applyOne = (
         return fail('NODE_NOT_FOUND', `No node with id "${op.near}" to place the new node near`);
       }
       const position = (placeNode ?? besideNear)(op, board);
-      return addNode(board, { ...createNode(op.nodeId, op.kind, position), label: op.label });
+      return addNode(board, { ...createNode(op.nodeId, op.kind, position), label: labelFor(op) });
     }
     case 'updateNode': {
       let next: BoardResult = ok(board);
@@ -115,7 +138,14 @@ export const applyOps = (
   // Operations come from an LLM: validate them at runtime, whatever the static types say.
   const parsed = z.array(AgentOpSchema).min(1).max(MAX_OPS_PER_PROPOSAL).safeParse(ops);
   if (!parsed.success) {
-    return fail('INVALID_OP', parsed.error.issues[0]?.message ?? 'Invalid operations');
+    // Say which operation and field were wrong, so the model can fix that one (path: [index, field]).
+    const issue = parsed.error.issues[0];
+    const [index, ...field] = issue?.path ?? [];
+    const where =
+      typeof index === 'number'
+        ? `Operation ${index + 1}${field.length ? ` (${field.join('.')})` : ''}: `
+        : '';
+    return fail('INVALID_OP', `${where}${issue?.message ?? 'Invalid operations'}`);
   }
 
   let current = board;

@@ -17,9 +17,21 @@ export const ChatMessageSchema = z.object({
 });
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 
+/**
+ * Largest board the chat accepts: the whole board goes into the model's prompt on every request,
+ * so it must stay small enough for a local model's context. (The editor itself has no such limit.)
+ */
+export const MAX_CHAT_BOARD_NODES = 150;
+export const MAX_CHAT_BOARD_EDGES = 300;
+
 /** POST /api/chat body. */
 export const ChatRequestSchema = z.object({
-  board: BoardSchema,
+  board: BoardSchema.refine(
+    (b) => b.nodes.length <= MAX_CHAT_BOARD_NODES && b.edges.length <= MAX_CHAT_BOARD_EDGES,
+    {
+      message: `The board is too large for the assistant (max ${MAX_CHAT_BOARD_NODES} nodes, ${MAX_CHAT_BOARD_EDGES} edges)`,
+    },
+  ),
   messages: z.array(ChatMessageSchema).min(1).max(MAX_MESSAGES),
 });
 export type ChatRequest = z.infer<typeof ChatRequestSchema>;

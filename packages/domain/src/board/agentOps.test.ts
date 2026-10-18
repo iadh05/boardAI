@@ -51,6 +51,26 @@ describe('applyOps', () => {
     expect(cache?.position.x).toBeGreaterThan(api?.position.x ?? Infinity);
   });
 
+  it('gives an empty AI label the kind default, like a user rename', () => {
+    const result = unwrap(applyOps(board(), [{ ...addCache, label: '   ' }]));
+    expect(result.nodes.find((n) => n.id === 'cache')?.label).toBe('Cache');
+  });
+
+  it('does not stack two new nodes placed near the same node', () => {
+    const addQueue: AgentOp = {
+      op: 'addNode',
+      nodeId: 'queue',
+      kind: 'queue',
+      label: 'Jobs',
+      near: 'api',
+    };
+    const result = unwrap(applyOps(board(), [addCache, addQueue]));
+    const cache = result.nodes.find((n) => n.id === 'cache')?.position;
+    const queue = result.nodes.find((n) => n.id === 'queue')?.position;
+    expect(cache).toBeDefined();
+    expect(queue).not.toEqual(cache);
+  });
+
   it('uses the placement function it is given', () => {
     const result = unwrap(applyOps(board(), [addCache], { placeNode: () => ({ x: 7, y: 9 }) }));
     expect(result.nodes.find((n) => n.id === 'cache')?.position).toEqual({ x: 7, y: 9 });
@@ -103,6 +123,21 @@ describe('applyOps', () => {
   it('rejects malformed operations (they come from an LLM)', () => {
     const bogus = [{ op: 'deleteNode', nodeId: 'api' }] as unknown as AgentOp[];
     expect(applyOps(board(), bogus)).toMatchObject({ ok: false, error: { code: 'INVALID_OP' } });
+  });
+
+  it('names the operation that failed validation', () => {
+    const ops = [addCache, { ...connectApiToCache, source: '' }] as AgentOp[];
+    const result = applyOps(board(), ops);
+    expect(result).toMatchObject({ ok: false, error: { code: 'INVALID_OP' } });
+    expect(result.ok ? '' : result.error.message).toMatch(/operation 2/i);
+  });
+
+  it('applies the kind first, then an explicit label — even one that looks like a default', () => {
+    // "API" is the default label of the *old* kind; the AI asked for it explicitly, so it stays.
+    const result = unwrap(
+      applyOps(board(), [{ op: 'updateNode', nodeId: 'api', kind: 'cache', label: 'API' }]),
+    );
+    expect(result.nodes.find((n) => n.id === 'api')).toMatchObject({ kind: 'cache', label: 'API' });
   });
 
   it('rejects an empty list of operations', () => {

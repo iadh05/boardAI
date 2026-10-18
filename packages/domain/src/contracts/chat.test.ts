@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ChatEventSchema, ChatRequestSchema } from './chat.ts';
+import { ChatEventSchema, ChatRequestSchema, MAX_CHAT_BOARD_NODES } from './chat.ts';
 
 const board = { nodes: [], edges: [] };
 
@@ -37,6 +37,19 @@ describe('ChatRequestSchema', () => {
       ChatRequestSchema.safeParse({ board: badBoard, messages: [{ role: 'user', content: 'hi' }] })
         .success,
     ).toBe(false);
+  });
+});
+
+describe('ChatRequestSchema board size', () => {
+  it('rejects a board larger than the chat limit (it is sent to the model every time)', () => {
+    const nodes = Array.from({ length: MAX_CHAT_BOARD_NODES + 1 }, (_, i) => ({
+      id: `n${i}`,
+      kind: 'service',
+      label: 'Service',
+      position: { x: i, y: 0 },
+    }));
+    const request = { board: { nodes, edges: [] }, messages: [{ role: 'user', content: 'hi' }] };
+    expect(ChatRequestSchema.safeParse(request).success).toBe(false);
   });
 });
 
