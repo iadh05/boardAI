@@ -28,6 +28,7 @@ import type { DiagramEdge, DiagramNode, DiagramPosition } from '../types.ts';
 import { BoxNodeView } from './BoxNodeView.tsx';
 import type { DiagramRouter } from '../router/types.ts';
 import { DiagramContext, type DiagramContextValue } from './DiagramContext.ts';
+import { EdgeEditContext, type EdgeEditContextValue } from './EdgeEditContext.ts';
 import { RoutedEdge } from './RoutedEdge.tsx';
 import { RoutesContext } from './RoutesContext.ts';
 import { useRoutes } from './useRoutes.ts';
@@ -53,6 +54,16 @@ export type DiagramProps = {
   onLabelCommit?: (id: string, label: string) => void;
   /** Editing finished (saved or cancelled). */
   onEditEnd?: () => void;
+  /** The arrow whose label is open for editing (controlled). */
+  editingEdgeId?: string | null;
+  maxEdgeLabelLength?: number;
+  /** Text of the toggle that makes an arrow dashed while editing it (e.g. "Async"). */
+  dashedLabel?: string;
+  /** Double-click or Enter on an arrow: asks to edit it. */
+  onEdgeEditStart?: (id: string) => void;
+  onEdgeLabelCommit?: (id: string, label: string) => void;
+  onEdgeDashedChange?: (id: string, dashed: boolean) => void;
+  onEdgeEditEnd?: () => void;
   /**
    * Routes arrows around boxes. Default: libavoid, loaded on first use (simple right-angle
    * arrows until then, or if it can't load). `null`: always simple arrows.
@@ -94,6 +105,13 @@ function DiagramCanvas({
   onEditStart,
   onLabelCommit,
   onEditEnd,
+  editingEdgeId = null,
+  maxEdgeLabelLength = 40,
+  dashedLabel = 'Dashed',
+  onEdgeEditStart,
+  onEdgeLabelCommit,
+  onEdgeDashedChange,
+  onEdgeEditEnd,
   router,
   snapGrid = 20,
   minimap = true,
@@ -126,21 +144,35 @@ function DiagramCanvas({
   };
 
   const isEditable = (id: string) => nodesProp.some((n) => n.id === id && !n.ghost);
-  // React Flow's wrapper around each node is what gets focus; Enter bubbles up to here.
+  const isEditableEdge = (id: string) => edgesProp.some((e) => e.id === id && !e.ghost);
+  // React Flow's wrapper around each node or edge is what gets focus; Enter bubbles up to here.
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const { target } = event;
-    if (event.key !== 'Enter' || !(target instanceof HTMLElement)) return;
-    if (!target.classList.contains('react-flow__node-box')) return;
-    const id = target.dataset.id;
-    if (id && isEditable(id)) onEditStart?.(id);
+    if (event.key !== 'Enter' || !(target instanceof Element)) return;
+    const id = target.getAttribute('data-id');
+    if (!id) return;
+    if (target.classList.contains('react-flow__node-box') && isEditable(id)) onEditStart?.(id);
+    if (target.classList.contains('react-flow__edge') && isEditableEdge(id)) onEdgeEditStart?.(id);
   };
 
   // Every node reads this context, and a new value re-renders all of them — on every drag frame,
   // since this component re-renders then. So: a stable value that changes only with the editing
   // state, and the latest callbacks read through a ref (apps may pass inline functions).
-  const callbacks = useRef({ onLabelCommit, onEditEnd });
+  const callbacks = useRef({
+    onLabelCommit,
+    onEditEnd,
+    onEdgeLabelCommit,
+    onEdgeDashedChange,
+    onEdgeEditEnd,
+  });
   useLayoutEffect(() => {
-    callbacks.current = { onLabelCommit, onEditEnd };
+    callbacks.current = {
+      onLabelCommit,
+      onEditEnd,
+      onEdgeLabelCommit,
+      onEdgeDashedChange,
+      onEdgeEditEnd,
+    };
   });
   const context = useMemo<DiagramContextValue>(
     () => ({
@@ -151,47 +183,63 @@ function DiagramCanvas({
     }),
     [editingNodeId, maxLabelLength],
   );
+  const edgeContext = useMemo<EdgeEditContextValue>(
+    () => ({
+      editingEdgeId,
+      maxLabelLength: maxEdgeLabelLength,
+      dashedLabel,
+      commitLabel: (id, label) => callbacks.current.onEdgeLabelCommit?.(id, label),
+      setDashed: (id, dashed) => callbacks.current.onEdgeDashedChange?.(id, dashed),
+      endEditing: () => callbacks.current.onEdgeEditEnd?.(),
+    }),
+    [editingEdgeId, maxEdgeLabelLength, dashedLabel],
+  );
 
   return (
     <DiagramContext value={context}>
-      <RoutesContext value={routes}>
-        <ReactFlow
-          className="dr-diagram"
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          // Any side can start or end an arrow (handles on 4 sides).
-          connectionMode={ConnectionMode.Loose}
-          isValidConnection={({ source, target }) => canConnect?.(source, target) ?? true}
-          onConnect={({ source, target }) => onConnect?.(source, target)}
-          onDelete={({ nodes: gone, edges: goneEdges }) =>
-            onDelete?.(
-              gone.map((n) => n.id),
-              goneEdges.map((e) => e.id),
-            )
-          }
-          onNodeDoubleClick={(_, node) => {
-            if (isEditable(node.id)) onEditStart?.(node.id);
-          }}
-          onKeyDown={onKeyDown}
-          deleteKeyCode={DELETE_KEYS}
-          snapToGrid={snapGrid !== null}
-          snapGrid={snapGrid === null ? undefined : [snapGrid, snapGrid]}
-          // On an empty diagram the fit happens when the first node appears; without a cap it zooms to 2×.
-          fitView
-          fitViewOptions={FIT_VIEW}
-          aria-label={ariaLabel}
-        >
-          {/* Panels first: they come before the zoom controls when tabbing. */}
-          {children}
-          <Background variant={BackgroundVariant.Dots} gap={snapGrid ?? 20} />
-          <Controls />
-          {minimap && <MiniMap pannable zoomable />}
-        </ReactFlow>
-      </RoutesContext>
+      <EdgeEditContext value={edgeContext}>
+        <RoutesContext value={routes}>
+          <ReactFlow
+            className="dr-diagram"
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            // Any side can start or end an arrow (handles on 4 sides).
+            connectionMode={ConnectionMode.Loose}
+            isValidConnection={({ source, target }) => canConnect?.(source, target) ?? true}
+            onConnect={({ source, target }) => onConnect?.(source, target)}
+            onDelete={({ nodes: gone, edges: goneEdges }) =>
+              onDelete?.(
+                gone.map((n) => n.id),
+                goneEdges.map((e) => e.id),
+              )
+            }
+            onNodeDoubleClick={(_, node) => {
+              if (isEditable(node.id)) onEditStart?.(node.id);
+            }}
+            onEdgeDoubleClick={(_, edge) => {
+              if (isEditableEdge(edge.id)) onEdgeEditStart?.(edge.id);
+            }}
+            onKeyDown={onKeyDown}
+            deleteKeyCode={DELETE_KEYS}
+            snapToGrid={snapGrid !== null}
+            snapGrid={snapGrid === null ? undefined : [snapGrid, snapGrid]}
+            // On an empty diagram the fit happens when the first node appears; without a cap it zooms to 2×.
+            fitView
+            fitViewOptions={FIT_VIEW}
+            aria-label={ariaLabel}
+          >
+            {/* Panels first: they come before the zoom controls when tabbing. */}
+            {children}
+            <Background variant={BackgroundVariant.Dots} gap={snapGrid ?? 20} />
+            <Controls />
+            {minimap && <MiniMap pannable zoomable />}
+          </ReactFlow>
+        </RoutesContext>
+      </EdgeEditContext>
     </DiagramContext>
   );
 }
