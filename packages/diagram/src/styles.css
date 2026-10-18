@@ -14,6 +14,7 @@
     --dr-diagram-muted: #64748b;
     --dr-diagram-focus: #6366f1;
     --dr-diagram-surface: #ffffff;
+    --dr-diagram-danger: #dc2626;
   }
 }
 
@@ -115,4 +116,10 @@
     600 11px/1.3 system-ui,
     sans-serif;
   pointer-events: none;
+}
+
+/* A new arrow over a box it may not connect to (canConnect said no): red, so the refusal is visible. */
+.dr-diagram .react-flow__connection.invalid .react-flow__connection-path {
+  stroke: var(--dr-diagram-danger);
+  stroke-width: 2;
 }
