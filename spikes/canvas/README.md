@@ -43,3 +43,36 @@ Keep React Flow. Add an **"architecture look"** ticket:
 - groups/zones later (after M2), as already planned
 
 Revisit X6 or our own renderer only if routing quality or scale (A5/G3) becomes a real problem.
+
+---
+
+## D-0 — can we ship X6? (2026-10-18)
+
+After the decision to move to X6 behind our own package, two risks were checked before any migration work.
+
+### 1. Can our e2e style drive X6? **Yes.**
+
+`e2e/x6.spec.ts` uses the same style as `apps/web/e2e`: role locators, web-first assertions, no sleeps.
+
+- 5 tests: accessible names on all 18 cells; drag a node and its edge reroutes; connect by dragging from a port; duplicate arrow refused; Delete removes a node with its edges.
+- **25/25 passed** with `--repeat-each 5` (2 workers). No flakes.
+- X6 renders plain SVG with stable `data-cell-id`s, and lets us set our own attributes. The package can give nodes and arrows `role="group"` + `aria-label`, so `getByRole('group', { name: 'Postgres' })` works just as it does with React Flow today.
+- Ports get `data-testid="port-right"` etc. Like React Flow handles, they aren't keyboard-operable, so they get no role.
+- Delete/Backspace need X6's `Selection` + `Keyboard` plugins. X6 removes a node's edges with it.
+
+Run it (spike folder): `pnpm exec playwright test`.
+
+### 2. Bundle size
+
+Built each engine as its own page (`measure/`, `vite build -c measure/vite.config.ts`). Sizes are gzip; React itself (~70 KB) is shared and left out.
+
+| | JS | Extra |
+|---|---|---|
+| React Flow + libavoid glue | 76 KB | libavoid wasm 184 KB, loaded only when routing is on |
+| **X6 + x6-react-shape** | **167 KB** | routing included |
+
+X6 costs about 90 KB more than React Flow alone, and about 90 KB *less* than React Flow + libavoid. That's acceptable for a desktop-first editor; the diagram package can later be lazy-loaded behind the app shell if needed.
+
+### Verdict
+
+**Go.** Neither risk blocks the move to X6 behind `@designroom/diagram`.

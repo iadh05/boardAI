@@ -1,4 +1,4 @@
-import { Graph, MiniMap, Snapline, type Node } from '@antv/x6';
+import { Graph, Keyboard, MiniMap, Selection, Snapline, type Cell, type Node } from '@antv/x6';
 import { register } from '@antv/x6-react-shape';
 import { useEffect, useRef } from 'react';
 import { edges, group, NODE_SIZE, nodes, type Kind } from './board.ts';
@@ -22,7 +22,11 @@ const PORT = {
 };
 const PORTS = {
   groups: Object.fromEntries(
-    ['top', 'right', 'bottom', 'left'].map((side) => [side, { position: side, attrs: { circle: PORT } }]),
+    ['top', 'right', 'bottom', 'left'].map((side) => [
+      side,
+      // Test ids: ports aren't keyboard-operable, so no role (same rule as React Flow handles).
+      { position: side, attrs: { circle: { ...PORT, 'data-testid': `port-${side}` } } },
+    ]),
   ),
   items: ['top', 'right', 'bottom', 'left'].map((side) => ({ group: side })),
 };
@@ -60,6 +64,29 @@ export function X6Variant({ onStats }: { onStats: (s: string) => void }) {
       embedding: { enabled: true },
     });
     graph.use(new Snapline({ enabled: true }));
+    graph.use(new Selection({ enabled: true, showNodeSelectionBox: true, showEdgeSelectionBox: true }));
+    graph.use(new Keyboard({ enabled: true, global: true }));
+    // Delete / Backspace remove the selection; X6 removes a node's edges with it. The zone stays.
+    graph.bindKey(['backspace', 'delete'], () => {
+      graph.removeCells(graph.getSelectedCells().filter((c) => c.id !== group.id));
+      return false;
+    });
+
+    // Accessible names on the SVG groups X6 renders, so role-based locators keep working.
+    const labelOf = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
+    const name = (cell: Cell) => {
+      const el = graph.findViewByCell(cell)?.container;
+      if (!el || cell.id === group.id) return;
+      el.setAttribute('role', 'group');
+      el.setAttribute(
+        'aria-label',
+        cell.isEdge()
+          ? `From ${labelOf(cell.getSourceCellId())} to ${labelOf(cell.getTargetCellId())}`
+          : labelOf(cell.id),
+      );
+    };
+    graph.on('view:mounted', ({ view }) => name(view.cell));
+    graph.on('edge:connected', ({ edge }) => name(edge));
     graph.use(new MiniMap({ container: minimap.current, width: 180, height: 110 }));
 
     const vpc = graph.addNode({
@@ -109,6 +136,7 @@ export function X6Variant({ onStats }: { onStats: (s: string) => void }) {
       });
     }
     graph.zoomToFit({ padding: 30, maxScale: 1 });
+    graph.getCells().forEach(name);
 
     // Show the ports only when hovering a node.
     const setPorts = (node: Node, visible: boolean) =>
