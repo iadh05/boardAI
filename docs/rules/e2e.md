@@ -49,7 +49,7 @@ e2e/
   2. Fix it in the same PR if it's yours.
   3. If it can't be fixed now: mark it `test.fixme('reason + ticket id')`, open a ticket, and link it. **No skipped test without a ticket.**
 - MUST NOT: raise retries, raise timeouts, or add sleeps to make a flaky test pass.
-- MUST: `forbidOnly` in CI — a stray `test.only` can't silently skip the rest.
+- MUST: `forbidOnly` in CI — a stray `test.only` can't silently skip the rest. Lint also rejects any `.only(...)` (`test.describe.only` included) in all e2e files.
 
 ## Test data and isolation
 
@@ -69,6 +69,10 @@ e2e/
 ```bash
 pnpm test:e2e                                       # builds, serves the production build, runs Chromium
 pnpm --filter @designroom/web exec playwright test --ui   # interactive mode while writing tests
+
+# Faster loop while writing tests: build + serve once, Playwright reuses the running server
+pnpm --filter @designroom/web build && pnpm --filter @designroom/web preview --port 4173
+pnpm --filter @designroom/web exec playwright test        # in a second terminal
 BASE_URL=http://localhost:8080 pnpm test:e2e        # same tests through Nginx (M1-14b)
 ```
 

@@ -6,7 +6,7 @@ Builds on [general.md](general.md). Structure explained in [architecture.md §5]
 
 - MUST: business code lives in `modules/<module>/pods/<pod>/`. A pod contains only `components/`, `hooks/`, `mappers/`, optional `lib/`, and `index.ts`. Create a folder only when its first file arrives.
 - MUST: other code imports a pod only through its `index.ts`, and a module only through `modules/<module>/index.ts`.
-- MUST: module dependency direction is `chat → board`. `board` never imports `chat`.
+- MUST: module dependency direction is `chat → board`. `board` never imports `chat`. Every module is listed in `WEB_MODULE_DEPENDENCIES` (eslint.config.js) with the modules it may use; a new module must be added there, or it may use none.
 - MUST: **promotion on the 2nd use** — when a second pod needs something, move it up to the module folder of the same kind (`modules/<m>/hooks/`, `mappers/`, `lib/`). When a second module needs it: to `core/` if it has no business knowledge, to `@designroom/domain` if the server needs it too. Never copy-paste instead.
 - MUST: `core/` knows nothing about boards, chat or any module. If it mentions a node, it doesn't belong in `core/`.
 - MUST: `app/` holds providers and pages; `layout/` holds page templates. No business logic in either.
@@ -53,7 +53,7 @@ Builds on [general.md](general.md). Structure explained in [architecture.md §5]
 
 ## Testing
 
-- MUST: stores, mappers, `lib/` and hooks with logic are TDD'd with Vitest.
+- MUST: stores, mappers, `lib/` and hooks with logic are TDD'd with Vitest. CI enforces ≥ 80 % coverage for `apps/web/src` (`main.tsx` excluded).
 - MUST: component tests use React Testing Library and query by **role/label/text**, not class names or test ids (test ids only as a last resort).
 - MUST: user flows that cross modules (add/connect nodes, chat → proposal → Accept) are covered by Playwright in `apps/web/e2e/`, running against the fake LLM.
 - MUST: Playwright tests follow [e2e.md](e2e.md): Page Object Model, role-based locators, web-first assertions, no sleeps, flaky = failing.

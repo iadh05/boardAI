@@ -26,7 +26,7 @@ Apply everywhere: `apps/*` and `packages/*`. Frontend and backend specifics: [fr
 | Zod schema / type | `XxxSchema` / `Xxx` | `BoardSchema` / `Board` |
 | Constant | `UPPER_SNAKE_CASE` | `KNOWN_KINDS` |
 
-- MUST NOT: folders or files named `shared`, `common`, `misc`, `utils.ts`, `helpers.ts`. Name things by what they are.
+- MUST NOT: folders or files named `shared`, `common`, `misc`, `utils.ts`, `helpers.ts`. Name things by what they are. (ESLint checks code files; a test in `tooling/lint` checks every file git tracks.)
 
 ## Imports and boundaries
 

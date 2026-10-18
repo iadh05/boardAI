@@ -77,6 +77,37 @@ const sameModule = '{{ from.element.captured.module }}';
 const otherModule = `!${sameModule}`;
 const notIndex = '!index.ts';
 const webBusiness = '{web-pod,web-module}';
+
+/**
+ * Which web modules each module may use (through their index.ts). Every module must be listed:
+ * a module missing here may use no other module. Add new modules when you create them.
+ * (architecture §5.2 — the direction is chat → board.)
+ */
+const WEB_MODULE_DEPENDENCIES = {
+  board: [],
+  chat: ['board'],
+};
+
+/** Glob for "any of these names" — braces need 2+ names, so a single name stays plain. */
+const anyOf = (names) => (names.length === 1 ? names[0] : `{${names.join(',')}}`);
+
+/** One policy per module: block every other module that isn't in its list. */
+const webModuleDirectionPolicies = Object.entries(WEB_MODULE_DEPENDENCIES).map(
+  ([module, allowed]) => ({
+    message: allowed.length
+      ? `The ${module} module may only depend on: ${allowed.join(', ')} (WEB_MODULE_DEPENDENCIES in eslint.config.js).`
+      : `The ${module} module must not depend on other modules (WEB_MODULE_DEPENDENCIES in eslint.config.js).`,
+    from: { element: { type: webBusiness, captured: { module } } },
+    disallow: {
+      to: {
+        element: {
+          type: webBusiness,
+          captured: { module: `!${anyOf([module, ...allowed])}` },
+        },
+      },
+    },
+  }),
+);
 const serverModuleCode = '{server-module,server-api,server-application,server-domain,server-infra}';
 
 const appRules = {
@@ -155,13 +186,8 @@ const appRules = {
               },
             },
           },
-          {
-            // Direction: chat → board, never board → chat.
-            message:
-              'board must not depend on chat: the direction is chat → board (architecture §5.2).',
-            from: { element: { type: webBusiness, captured: { module: 'board' } } },
-            disallow: { to: { element: { type: webBusiness, captured: { module: 'chat' } } } },
-          },
+          // Direction between modules: generated from WEB_MODULE_DEPENDENCIES.
+          ...webModuleDirectionPolicies,
           {
             // Modules don't reach up into pages or layouts.
             message: 'Modules must not import pages (app/) or layouts (layout/).',
@@ -298,7 +324,7 @@ export default tseslint.config(
   },
   {
     // E2E specs (docs/rules/e2e.md): page objects come from the fixtures; no sleeps; no test.only.
-    files: ['apps/web/e2e/**/*.spec.ts'],
+    files: ['**/apps/web/e2e/**/*.spec.ts'],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
@@ -315,6 +341,12 @@ export default tseslint.config(
           ],
         },
       ],
+    },
+  },
+  {
+    // All E2E code — specs, page objects, fixtures: no sleeps, no focused tests.
+    files: ['**/apps/web/e2e/**/*.ts'],
+    rules: {
       'no-restricted-syntax': [
         'error',
         {
@@ -323,8 +355,9 @@ export default tseslint.config(
             'No fixed sleeps: wait for a locator, response or URL instead (docs/rules/e2e.md).',
         },
         {
-          selector: "CallExpression[callee.object.name='test'][callee.property.name='only']",
-          message: 'test.only would skip every other test (docs/rules/e2e.md).',
+          // test.only, test.describe.only, it.only … — any `.only(...)` call.
+          selector: "CallExpression[callee.property.name='only']",
+          message: '.only would skip every other test (docs/rules/e2e.md).',
         },
       ],
     },
