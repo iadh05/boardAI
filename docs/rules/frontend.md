@@ -56,7 +56,7 @@ Builds on [general.md](general.md). Structure explained in [architecture.md §5]
 - MUST: stores, mappers, `lib/` and hooks with logic are TDD'd with Vitest.
 - MUST: component tests use React Testing Library and query by **role/label/text**, not class names or test ids (test ids only as a last resort).
 - MUST: user flows that cross modules (add/connect nodes, chat → proposal → Accept) are covered by Playwright in `apps/web/e2e/`, running against the fake LLM.
-- MUST: Playwright tests use role-based locators and web-first assertions (`await expect(locator).toBeVisible()`), never fixed `waitForTimeout`.
+- MUST: Playwright tests follow [e2e.md](e2e.md): Page Object Model, role-based locators, web-first assertions, no sleeps, flaky = failing.
 
 ## Errors and observability
 

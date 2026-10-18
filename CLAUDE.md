@@ -12,6 +12,7 @@ Real-time system-design whiteboard with an AI reviewer. **Learning project**: th
 @docs/rules/general.md
 @docs/rules/frontend.md
 @docs/rules/backend.md
+@docs/rules/e2e.md
 
 ## Commands
 

@@ -15,7 +15,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-01e | Git hooks (Lefthook), commitlint, split CI checks | setup | S | done |
 | M1-02 | Boundary lint rules | setup | M | done |
 | M1-03 | Web shell: Vite + React + Tailwind + providers | setup | S | done |
-| M1-03b | Playwright + smoke test in CI | setup | M | todo |
+| M1-03b | Playwright + smoke test in CI | setup | M | done |
 | M1-04 | `core/ui` kit: atoms + molecules | setup | M | todo |
 | M1-05 | domain: board types + zod | M1a | S | todo |
 | M1-06 | domain: board operations | M1a | M | todo |
@@ -223,20 +223,24 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-03b — Playwright + smoke test in CI
-**Status:** todo · **Size:** M · **Depends on:** M1-03, M1-01b
+**Status:** done · **Size:** M · **Depends on:** M1-03, M1-01b
 
 **Learning goal:** end-to-end testing — what it catches that unit tests can't; locators by role; traces for debugging.
 
 **Tasks**
-- [ ] Playwright in `apps/web` (`e2e/` folder, Chromium only for now); root script `pnpm test:e2e`.
-- [ ] `playwright.config.ts`: `webServer` starts the built app (`vite preview`); `trace: 'on-first-retry'`; 1 retry in CI, 0 locally.
-- [ ] Smoke test: the app loads and the canvas + side panel are visible.
-- [ ] CI job `e2e`: install Playwright browsers (cached) → build → `pnpm test:e2e` → upload the HTML report and traces **when it fails**.
-- [ ] Add `e2e` to the required checks on `main`.
+- [x] Playwright 1.64 in `apps/web` (`e2e/`, Chromium only); root script `pnpm test:e2e`.
+- [x] `playwright.config.ts`: `webServer` builds the app and serves the **production build** (`vite preview`, port 4173); `trace: 'on-first-retry'`; 1 retry in CI, 0 locally; `forbidOnly` in CI; `BASE_URL` override so the same tests can run through Nginx later.
+- [x] Smoke test: title, `h1`, `main` and the "Assistant" panel visible — all by role.
+- [x] CI job `e2e`: browsers cached per Playwright version (`actions/cache`), system libraries installed either way, HTML report + traces uploaded **only when it fails**.
+- [ ] Add `e2e` to the required checks on `main` — right after this PR merges (adding it earlier would block open PRs whose CI has no `e2e` job).
 
 **Acceptance criteria**
-- [ ] Break the page on purpose → `e2e` red in CI; open the uploaded trace and find the failure.
+- [x] Break the page on purpose → `e2e` red. *Verified locally (renamed the panel's label: "element(s) not found"); not forced red in CI.*
 
+**Notes**
+- Vitest now only picks up `src/**/*.test.{ts,tsx}`, so it never runs Playwright's `*.spec.ts`.
+- `e2e/` has its own `tsconfig.json` (Node types); the web `typecheck` script checks both.
+- **E2E rules added** ([docs/rules/e2e.md](../docs/rules/e2e.md)): Page Object Model (`e2e/pages/`, injected through `e2e/fixtures.ts`; locators only in page objects; page objects don't assert), role-based locators, no sleeps, fake LLM only, isolated tests. **Flaky policy:** 0 retries locally, 1 in CI only to record a trace, `failOnFlakyTests` in CI so a test that passes on retry still fails the build; unfixable flake → `test.fixme` + ticket. Lint enforces: specs import from `./fixtures.ts`, no `waitForTimeout`, no `test.only`.
 ---
 
 ## M1-04 — `core/ui` kit: atoms + molecules

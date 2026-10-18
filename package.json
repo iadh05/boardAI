@@ -15,7 +15,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "commitlint": "commitlint",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "test:e2e": "pnpm --filter @designroom/web test:e2e"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
