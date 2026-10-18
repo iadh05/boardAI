@@ -14,7 +14,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-01d | Code quality and security checks in CI | setup | S | done |
 | M1-01e | Git hooks (Lefthook), commitlint, split CI checks | setup | S | done |
 | M1-02 | Boundary lint rules | setup | M | done |
-| M1-03 | Web shell: Vite + React + Tailwind + providers | setup | S | todo |
+| M1-03 | Web shell: Vite + React + Tailwind + providers | setup | S | done |
 | M1-03b | Playwright + smoke test in CI | setup | M | todo |
 | M1-04 | `core/ui` kit: atoms + molecules | setup | M | todo |
 | M1-05 | domain: board types + zod | M1a | S | todo |
@@ -203,17 +203,23 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-03 — Web shell: Vite + React + Tailwind + providers
-**Status:** todo · **Size:** S · **Depends on:** M1-01
+**Status:** done · **Size:** S · **Depends on:** M1-01
 
 **Tasks**
-- [ ] Scaffold `apps/web` (Vite React-TS), extend `tsconfig.base.json`, add Tailwind (Vite plugin).
-- [ ] `app/` with providers: React Query `QueryClientProvider` (client created in `core/api/queryClient.ts`).
-- [ ] `layout/AppShell.tsx`: canvas area left, side panel right.
-- [ ] Vitest + React Testing Library with one test of `AppShell`.
+- [x] `apps/web`: Vite 8 + React 19 + TypeScript (extends `tsconfig.base.json`), Tailwind 4 via `@tailwindcss/vite`.
+- [x] `app/App.tsx` with `QueryClientProvider`; client from `core/api/queryClient.ts` (server state only).
+- [x] `layout/AppShell.tsx`: header, canvas in `<main>` on the left, assistant panel in a labelled `<aside>` on the right.
+- [x] Vitest (jsdom) + React Testing Library: 3 `AppShell` tests, written first, querying by role.
+- [x] ESLint for React: `react-hooks` (recommended-latest) + `react-refresh/only-export-components`, browser globals; boundary rules now apply to real web code. Prettier sorts Tailwind classes (`prettier-plugin-tailwindcss`).
+- [x] `apps/web/CLAUDE.md` and `apps/server/CLAUDE.md` load the frontend/backend rules for anyone working in that folder.
 
 **Acceptance criteria**
-- [ ] `pnpm dev` shows the shell with hot reload; `pnpm test` includes web tests.
+- [x] `pnpm dev` shows the shell with hot reload (checked in the browser: renders, Tailwind applied, no console errors); `pnpm test` includes web tests.
 
+**Notes**
+- The header shows `PRODUCT_NAME` from `@designroom/domain` — proves the web → domain workspace link at runtime and in the build.
+- `strictPort: 5173` because Nginx (M1-14b) will forward to that exact port.
+- The fixed-width side panel (`w-96`) suits a desktop editor; small screens aren't a goal for M1.
 ---
 
 ## M1-03b — Playwright + smoke test in CI
