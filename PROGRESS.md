@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-12 connect and delete
+**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-13 ADRs + M1a checkpoint
 
 ## Done
 
@@ -25,14 +25,15 @@
 | M1-09 | React Flow canvas from the store, ghost-node preview, 60 fps with 100 nodes | #15 |
 | M1-10 | Toolbar: one button per kind, adds mid-view and nudges repeats; fit-view zoom capped at 1× | #16 |
 | M1-11 | Node icon + colour per kind, rename in place (double-click / Enter), Custom opens in edit mode; first board e2e journey | #17 |
+| M1-12 | Connect by dragging (domain `canConnect` for live feedback), Delete/Backspace through the store; demo chain e2e | #18 |
 
 ## In progress
 
-- **M1-12** — connect nodes with arrows, delete nodes and edges.
+- **M1-13** — ADR-001/002/003 and the M1a checkpoint.
 
 ## Next
 
-M1-12…M1-13 board UI (M1a) → M1-14… AI reviewer (M1b).
+M1-13 closes M1a → M1-14… AI reviewer (M1b).
 
 ## Planned reviews
 
