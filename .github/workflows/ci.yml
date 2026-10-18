@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6 # version comes from "packageManager" in package.json
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10 — pnpm version comes from "packageManager"
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
@@ -51,3 +51,23 @@ jobs:
             apps/*/coverage/
             packages/*/coverage/
           if-no-files-found: ignore
+
+  security:
+    name: security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      # Known vulnerabilities in the whole dependency tree (high and critical fail the job).
+      - run: pnpm audit --audit-level=high
+      # On PRs: block dependency changes that add a vulnerable package or a non-permissive licence.
+      - uses: actions/dependency-review-action@v3
+        if: github.event_name == 'pull_request'
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0

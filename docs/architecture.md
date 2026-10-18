@@ -452,10 +452,13 @@ flowchart LR
 | Job | Runs | Notes |
 |---|---|---|
 | `checks` | `pnpm install --frozen-lockfile` → `pnpm lint` → `pnpm typecheck` | Boundary rules fail here |
-| `unit` | `pnpm test:coverage` | Coverage report uploaded as an artifact |
+| `unit` | `pnpm test:coverage` | Coverage report uploaded as an artifact; per-package coverage thresholds fail the job |
+| `security` | `pnpm audit --audit-level=high` + `dependency-review-action` on PRs | Vulnerable or GPL/AGPL dependencies fail the job |
+| `codeql` (own workflow) | CodeQL `security-and-quality` on TypeScript and workflow files | Also weekly; results in Security → Code scanning |
 | `e2e` | build → start server (`LLM_PROVIDER=fake`) + web preview → `playwright test` (Chromium) | Playwright HTML report + traces uploaded on failure. No GPU, no Ollama, no Docker needed in CI |
 
 - pnpm store and Playwright browsers cached between runs.
+- Dependabot opens weekly grouped PRs for npm packages and GitHub Actions; GitHub secret scanning + push protection are on (public repo).
 - e2e in CI talks to the apps directly; a separate local check runs the same tests through Nginx.
 - `main` is protected: PR required, all three jobs required to pass. (GitHub doesn't let you approve your own PR, so solo work requires green checks, not approvals.)
 
