@@ -9,6 +9,7 @@ export default defineConfig({
     strictPort: true, // Nginx (M1-14b) forwards to this exact port.
   },
   test: {
+    include: ['src/**/*.test.{ts,tsx}'], // e2e/*.spec.ts belong to Playwright
     environment: 'jsdom',
     setupFiles: ['./src/testSetup.ts'],
     css: false,
