@@ -14,6 +14,10 @@
 
 <!-- commands and clicks a reviewer can follow -->
 
+## Review
+
+<!-- Local AI review (/code-review): findings, what was fixed (fix(review) commits), what was skipped and why -->
+
 ## Screenshots / recording
 
 <!-- UI changes only -->

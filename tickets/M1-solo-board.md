@@ -93,8 +93,8 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 - [ ] Second run is faster than the first (cache hit visible in logs).
 
 **Notes**
-- Also added in the same PR: the two Claude workflows (automatic PR review + `@claude` on demand) moved from `.github/` to `.github/workflows/` and upgraded from `@beta` to `@v1`. They start working once merged to `main`.
 - `checks` also runs `pnpm format:check`.
+- Decided against a GitHub Action for AI review for now: reviews run locally with `/code-review` and are summarised in the PR description (see docs/workflow.md §5).
 
 ---
 

@@ -35,8 +35,8 @@ Then read your own diff top to bottom (`git diff main...`) as if someone else wr
 
 Reviewers: you (with fresh eyes, ideally the next day) + an AI review. Later, teammates.
 
-- **Automatic:** `.github/workflows/claude-code-review.yml` reviews every non-draft PR when it's opened or updated, with inline comments labelled as below.
-- **On demand:** locally with `/code-review` in Claude Code, or comment `@claude <question>` on the PR (`.github/workflows/claude.yml`).
+- **AI review runs locally**, before the PR is opened: `/code-review` in Claude Code on the branch. Findings are fixed as `fix(review)` commits, and a short summary (what was found, what was fixed, what was skipped and why) goes into the PR description under **Review**.
+- No GitHub Action for AI review for now — it would need a token and app setup, and running it live teaches more. A GitHub-side reviewer can be added later (Claude's GitHub Action) if the repo needs one; the earlier version is in git history (commit `ffd14e2`).
 
 Comments use **Conventional Comments** labels so the author knows what's required:
 
@@ -62,7 +62,7 @@ Example: `blocking: removeNode leaves edges pointing at the deleted node — add
 4. Push → CI runs again → re-request review if someone else reviewed.
 5. Learning-log line: what did the review catch that you missed? Patterns repeating across PRs become new rules or lint checks.
 
-> Using Claude to fix comments: reply `@claude fix this` on a thread and it pushes a `fix(review): …` commit to the branch. Fine — but for learning, read each fix and be able to explain it. Ask "why" before accepting.
+> Using Claude to fix comments: fine — but for learning, read each fix and be able to explain it. Ask "why" before accepting.
 
 ## 7. Merge
 
@@ -74,5 +74,3 @@ Example: `blocking: removeNode leaves edges pointing at the deleted node — add
 - Branch protection on `main`: require a pull request; require status checks `checks`, `unit`, `e2e`; block force-push; require branches to be up to date.
 - Approvals: GitHub doesn't count approving your own PR, so while solo, rely on required checks + the self/AI review above.
 - Merge button: allow **squash merge** only; auto-delete head branches.
-- Secret `CLAUDE_CODE_OAUTH_TOKEN` (Settings → Secrets and variables → Actions), created with `claude setup-token` — used by both Claude workflows. The Claude GitHub app must be installed on the repo (`/install-github-app` in Claude Code does both).
-- The Claude workflows only work once they are on `main`: the action checks that the workflow file matches the default branch. So the PR that adds them gets CI but not yet an AI review.
