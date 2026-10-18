@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-03b Playwright + smoke test in CI
+**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-04 `core/ui` kit
 
 ## Done
 
@@ -15,14 +15,16 @@
 | M1-01e | Lefthook hooks, commitlint, split CI checks | #3 |
 | M1-02 | Architecture boundary rules (packages, web pods/modules, server layers, banned names) | #6 |
 | M1-03 | Web shell: Vite + React + Tailwind + React Query + AppShell | #7 |
+| M1-05 | Board model as zod schemas (`packages/domain`) | #8 |
+| M1-03b | Playwright e2e (production build) + CI job with browser cache | #9 |
 
 ## In progress
 
-- **M1-03b** — Playwright + smoke test in CI.
+- **M1-04** — `core/ui` atoms + molecules.
 
 ## Next
 
-M1-04 `core/ui` kit → M1-05…M1-13 board (M1a) → M1-14… AI reviewer (M1b).
+M1-06 board operations → M1-07 agent ops + API contract → M1-08…M1-13 board UI (M1a) → M1-14… AI reviewer (M1b).
 
 ## Waiting on you
 
