@@ -11,12 +11,14 @@ import {
 import { useCallback, useMemo, useState } from 'react';
 import { useBoardStore } from '../../../store/boardStore.ts';
 import { GhostNode, SystemNode } from '../../node/index.ts';
+import { Toolbar } from '../../toolbar/index.ts';
 import type { FlowNode } from '../../../lib/flowTypes.ts';
 import { canvasChanges, commitNodeChanges, mergeFlowNodes } from '../lib/nodeChanges.ts';
 import { toFlow } from '../mappers/toFlow.ts';
 
 // Defined once, outside any component: a new object each render would remount every node.
 const nodeTypes: NodeTypes = { system: SystemNode, ghost: GhostNode };
+const FIT_VIEW = { maxZoom: 1 };
 
 export type CanvasProps = {
   /** The board store to show; the app's store by default, a test store in tests. */
@@ -58,12 +60,15 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
       onNodesChange={onNodesChange}
       // Deleting with Backspace arrives in M1-12, through the store.
       deleteKeyCode={null}
+      // On an empty board the fit happens when the first node appears — without a cap it zooms to 2×.
       fitView
+      fitViewOptions={FIT_VIEW}
       aria-label="Diagram"
     >
       <Background variant={BackgroundVariant.Dots} gap={16} />
       <Controls />
       <MiniMap pannable zoomable />
+      <Toolbar store={store} />
     </ReactFlow>
   );
 }

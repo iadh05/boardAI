@@ -22,7 +22,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-07 | domain: agent ops, `applyOps`, API contract | M1a | M | done |
 | M1-08 | board module: `boardStore` (Zustand) | M1a | M | done |
 | M1-09 | canvas pod: React Flow + `toFlow` | M1a | M | done |
-| M1-10 | toolbar pod | M1a | S | todo |
+| M1-10 | toolbar pod | M1a | S | done |
 | M1-11 | node pod: SystemNode + editable label | M1a | M | todo |
 | M1-12 | Connect and delete | M1a | M | todo |
 | M1-13 | ADR-001/002/003 + M1a checkpoint | M1a | S | todo |
@@ -397,15 +397,15 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 ---
 
 ## M1-10 — toolbar pod
-**Status:** todo · **Size:** S · **Depends on:** M1-09, M1-04
+**Status:** done · **Size:** S · **Depends on:** M1-09, M1-04
 
 **Tasks**
-- [ ] One `IconButton` per known kind + **Custom**.
-- [ ] Click → add at viewport centre (`screenToFlowPosition`), nudged so repeats don't stack.
-- [ ] Custom → new node opens in label-edit mode.
+- [x] One `IconButton` per known kind + **Custom**.
+- [x] Click → add at viewport centre (`screenToFlowPosition`), nudged so repeats don't stack. *(Done with `viewportCenter` on React Flow's transform, read at click time.)*
+- [ ] ~~Custom → new node opens in label-edit mode.~~ Moved to M1-11, which builds label editing.
 
 **Acceptance criteria**
-- [ ] Every kind addable with its default label; new nodes appear mid-view after pan/zoom; 3 clicks → 3 visible nodes.
+- [x] Every kind addable with its default label; new nodes appear mid-view after pan/zoom; 3 clicks → 3 visible nodes.
 
 ---
 
@@ -418,6 +418,8 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 **Tasks**
 - [ ] `SystemNode`: icon + colour per kind, label, left target / right source handles, selected outline.
 - [ ] `GhostNode` stub (dashed, semi-transparent) — finished in M1-23.
+- [ ] A new **Custom** node (from the toolbar) opens in label-edit mode (moved from M1-10).
+- [ ] Icon per kind from `modules/board/lib/kindIcon.ts` (added in M1-10).
 
 **Acceptance criteria**
 - [ ] Kinds distinguishable at a glance; Custom looks generic.
