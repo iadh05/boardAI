@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+node_modules
+dist
+coverage
+# Docs are hand-formatted for now; revisit when we add a markdown linter.
+*.md

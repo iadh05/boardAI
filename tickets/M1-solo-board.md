@@ -8,7 +8,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 
 | ID | Title | Part | Size | Status |
 |---|---|---|---|---|
-| M1-01 | pnpm monorepo + TypeScript + Vitest + ESLint | setup | S | todo |
+| M1-01 | pnpm monorepo + TypeScript + Vitest + ESLint | setup | S | done |
 | M1-01b | CI: checks + unit tests on GitHub Actions | setup | S | todo |
 | M1-01c | Repo workflow: PR template, branch protection | setup | S | todo |
 | M1-02 | Boundary lint rules | setup | M | todo |
@@ -48,21 +48,27 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 # Setup
 
 ## M1-01 — pnpm monorepo + TypeScript + Vitest + ESLint
-**Status:** todo · **Size:** S · **Depends on:** —
+**Status:** done · **Size:** S · **Depends on:** —
 
 **Learning goal:** how pnpm links workspace packages (`workspace:*`) and why its strict `node_modules` catches undeclared dependencies.
 
 **Tasks**
-- [ ] `git init`, `.gitignore` (node_modules, dist, coverage, .env).
-- [ ] `pnpm-workspace.yaml` (`apps/*`, `packages/*`); pin Node + pnpm (`engines`, `packageManager`).
-- [ ] `tsconfig.base.json` (`strict`, `moduleResolution: "bundler"`, `target: "ES2022"`).
-- [ ] Create `packages/domain` (`@designroom/domain`) with Vitest and one passing test.
-- [ ] `apps/server` placeholder importing a constant from `@designroom/domain`.
-- [ ] ESLint (flat config) + Prettier at the root.
-- [ ] Root scripts: `dev`, `test`, `typecheck`, `lint` via `pnpm -r`.
+- [x] `git init`, `.gitignore` (node_modules, dist, coverage, .env).
+- [x] `pnpm-workspace.yaml` (`apps/*`, `packages/*`); pin Node + pnpm (`engines`, `packageManager`).
+- [x] `tsconfig.base.json` (`strict`, `moduleResolution: "bundler"`, `target: "ES2022"`).
+- [x] Create `packages/domain` (`@designroom/domain`) with Vitest and one passing test.
+- [x] `apps/server` placeholder importing a constant from `@designroom/domain`.
+- [x] ESLint (flat config) + Prettier at the root.
+- [x] Root scripts: `dev`, `test`, `typecheck`, `lint` via `pnpm -r`.
 
 **Acceptance criteria**
-- [ ] `pnpm install`, `pnpm test`, `pnpm typecheck`, `pnpm lint` all pass from the root.
+- [x] `pnpm install`, `pnpm test`, `pnpm typecheck`, `pnpm lint` all pass from the root.
+
+**Notes (what happened)**
+- **pnpm 10.34.7, not 12.** pnpm 11/12 create real symlinks, which Windows only allows with Developer Mode or admin rights ("Access is denied"). pnpm 10 uses junctions, which need neither. Revisit if Developer Mode gets enabled.
+- **TypeScript 6.0.3, not 7.** TypeScript 7 (the new native compiler) is out, but `typescript-eslint` only supports `<6.1`. Upgrade when it does.
+- Lint verified with a throwaway file: `any`, `console`, floating promise and `export default` are all errors.
+- Markdown is excluded from Prettier for now (docs are hand-formatted).
 
 **Hints**
 - Simplest package setup: `"main"`/`"types"` point at `src/index.ts`; no build step.
@@ -390,8 +396,8 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 
 | Model | Size on disk | Capabilities | Fits fully in 16 GB? |
 |---|---|---|---|
-| `qwen3:14b` (Q4_K_M, 14.8B) | 9.3 GB | tools, thinking | ✅ with ~16k context — **default** |
-| `qwen3.5:9b` | 6.6–7.6 GB | tools, thinking, vision | ✅ with more room for context — **challenger** (newer generation) |
+| `qwen3.5:9b` | 6.6–7.6 GB | tools, thinking, vision | ✅ with more room for context — **default** (newer generation, best published agent scores) |
+| `qwen3:14b` (Q4_K_M, 14.8B) | 9.3 GB | tools, thinking | ✅ with ~16k context — **fallback** (already pulled) |
 | `qwen3.6:27b` / `qwen3.5:27b` | 17–20 GB | tools, thinking, vision | ❌ dense model split onto CPU → much slower |
 | `qwen3.6:35b` (MoE, ~3B active) | 23–24 GB | tools, thinking, vision | ❌ but MoE tolerates CPU offload better — optional experiment |
 | `qwen2.5:14b`, `qwen2.5-coder:14b` | ~9 GB | tools | ✅ but older generation, no reason to prefer |
@@ -406,7 +412,9 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 - [ ] **Set the context length explicitly** (Modelfile with `PARAMETER num_ctx 16384` → your own `designroom-qwen` model, or the server-wide context-length setting). Ollama's default context is small, and a too-small context silently cuts off the board, tools or chat history.
 - [ ] `ollama ps`: confirm the model runs **100 % on GPU** (any CPU split makes it several times slower).
 - [ ] `scripts/spike-tool-call.ts`: tiny board as text + one `add_node` tool → print the raw response; send the tool result back → print the follow-up.
-- [ ] If it's a Qwen3 model: check whether "thinking" text (`<think>…</think>` or a reasoning field) appears in the stream, and how to turn it off for this use. Note it — the ai-gateway must handle it (M1-16).
+- [ ] Thinking: Qwen3.5 thinks **by default** and ignores the old `/no_think` switch. Find how Ollama turns it off (native API `think` option; check what its OpenAI-compatible endpoint accepts) and compare speed + tool-call quality with thinking on vs off. The ai-gateway must handle it either way (M1-16).
+- [ ] Use the model card's non-thinking sampling as a starting point (temperature 0.7, top_p 0.8, top_k 20, presence_penalty 1.5) and note what Ollama actually lets you set.
+- [ ] Qwen3.5 mixes linear-attention (Gated DeltaNet) layers with full attention every 4th layer, so its context memory grows slower than Qwen3's. Check how much VRAM 16k vs 32k context really costs (`ollama ps`).
 - [ ] Save one raw streaming response as a fixture for M1-16.
 - [ ] Measure both models: time to first token and tokens/sec (`ollama run <model> --verbose` shows the eval rate).
 - [ ] Run the same 3 tool-call prompts on both; count correct calls. This is your first tiny eval.
