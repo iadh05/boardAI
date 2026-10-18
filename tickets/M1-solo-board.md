@@ -28,7 +28,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-13 | ADR-001/002/003 + M1a checkpoint | M1a | S | doing |
 | M1-D1 | ADR-004 + `@designroom/diagram` skeleton | diagram | S | done |
 | M1-D2 | `<Diagram>`: the canvas inside the package | diagram | M | done |
-| M1-D3 | Orthogonal routing with libavoid | diagram | M | todo |
+| M1-D3 | Orthogonal routing with libavoid | diagram | M | done |
 | M1-D4 | The app uses the package | diagram | M | todo |
 | M1-D5 | Edge meaning in the domain | diagram | S | todo |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | todo |
@@ -504,16 +504,22 @@ Inserted after M1a (2026-10-18): the board read like a flowchart, not an archite
 - Not visible in the app yet: M1-D4 switches the board to it.
 
 ## M1-D3 — Orthogonal routing with libavoid
-**Status:** todo · **Size:** M · **Depends on:** M1-D2
+**Status:** done · **Size:** M · **Depends on:** M1-D2
 
 **Tests first** (Vitest in Node — libavoid-js ships a Node build)
-- [ ] No route crosses a node it doesn't connect; routes are orthogonal; parallel routes are nudged apart.
+- [x] No route crosses a node it doesn't connect; routes are orthogonal; parallel routes are nudged apart.
 
 **Tasks**
-- [ ] Typed adapter (`router/avoid.ts`) — the only file that touches libavoid-js; pinned version.
-- [ ] Lazy wasm load on first use; hashed asset, cached once per version.
-- [ ] Fallback to `smoothstep` edges if the wasm can't load.
-- [ ] Label on the longest segment.
+- [x] Typed adapter (`router/avoid.ts`) — the only file that touches libavoid-js; pinned version.
+- [x] Lazy wasm load on first use; hashed asset, cached once per version.
+- [x] Fallback to `smoothstep` edges if the wasm can't load.
+- [x] Label on the longest segment.
+
+**Notes**
+- Arrows leave and enter by the facing sides (one pin class per side), and go around every other box.
+- `<Diagram router>`: default libavoid (lazy), `null` for simple arrows, or any `DiagramRouter` (the component tests use a fake one).
+- Routing tests run in Node with the real wasm. A planted bug (polyline routing) fails 2 of them.
+- Package README documents the API, theming and the LGPL notice.
 
 ## M1-D4 — The app uses the package
 **Status:** todo · **Size:** M · **Depends on:** M1-D3

@@ -266,3 +266,54 @@ it('has zoom controls', () => {
   render(<Harness />);
   expect(screen.getByRole('button', { name: /zoom in/i })).toBeInTheDocument();
 });
+
+describe('Diagram — routing', () => {
+  // The path geometry has no accessible handle: reading the edge's <path> is the only way.
+  const edgePath = (container: HTMLElement) =>
+    container.querySelector('.react-flow__edge path.react-flow__edge-path')?.getAttribute('d');
+
+  it('draws each arrow along the route its router gives', async () => {
+    const route = [
+      { x: 160, y: 30 },
+      { x: 230, y: 30 },
+      { x: 230, y: 130 },
+      { x: 300, y: 130 },
+    ];
+    const router = { route: vi.fn(() => new Map([['e1', route]])) };
+    const { container } = render(<Harness router={router} />);
+
+    await screen.findByLabelText('From Orders API to Postgres');
+
+    expect(edgePath(container)).toMatch(/^M 160 30 L .* Q 230 30 .* L 300 130$/);
+    expect(router.route).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ id: 'api', x: 0, y: 0 })]),
+      expect.arrayContaining([expect.objectContaining({ id: 'e1', source: 'api', target: 'db' })]),
+    );
+  });
+
+  it('puts the edge label on the route', async () => {
+    const router = {
+      route: () =>
+        new Map([
+          [
+            'e1',
+            [
+              { x: 0, y: 0 },
+              { x: 200, y: 0 },
+            ],
+          ],
+        ]),
+    };
+    render(<Harness router={router} initialEdges={[{ ...link, label: 'SQL' }]} />);
+
+    expect(await screen.findByText('SQL')).toHaveStyle({
+      transform: 'translate(-50%, -50%) translate(100px, 0px)',
+    });
+  });
+
+  it('without a router, draws simple right-angle arrows', async () => {
+    const { container } = render(<Harness router={null} />);
+    await screen.findByLabelText('From Orders API to Postgres');
+    expect(edgePath(container)).toMatch(/^M/);
+  });
+});

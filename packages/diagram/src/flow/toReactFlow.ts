@@ -65,7 +65,8 @@ export const toReactFlow = (
       target: e.target,
       sourceHandle,
       targetHandle,
-      type: 'smoothstep',
+      // Drawn by RoutedEdge: along its route around boxes, or a simple path until there is one.
+      type: 'routed',
       label: e.label,
       markerEnd: e.ghost ? GHOST_ARROW : ARROW,
       ariaLabel: `From ${source?.label ?? e.source} to ${target?.label ?? e.target}`,
