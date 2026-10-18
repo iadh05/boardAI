@@ -237,6 +237,15 @@ describe('boardStore — removeElements (what the Delete key removes)', () => {
     expect(state().lastError).toBeNull();
   });
 
+  it('skips nodes that are already gone, and still removes the rest', () => {
+    const { api, db } = seedApiAndDb();
+
+    state().removeElements(['gone', db], []);
+
+    expect(state().board.nodes.map((n) => n.id)).toEqual([api]);
+    expect(state().lastError).toBeNull();
+  });
+
   it('ends label editing when the edited node is removed', () => {
     const { api } = seedApiAndDb();
     state().startEditing(api);
