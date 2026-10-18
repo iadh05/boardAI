@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Board, BoardNode } from './board.ts';
+import { BoardSchema, type Board, type BoardNode } from './board.ts';
 import {
   addNode,
   canConnect,
@@ -17,7 +17,7 @@ import type { Result } from '../result.ts';
 // ── helpers ────────────────────────────────────────────────────────────────────────────
 
 /** Unwraps an ok result, failing the test with the error otherwise. */
-const ok = <T>(result: Result<T>): T => {
+const unwrap = <T>(result: Result<T>): T => {
   if (!result.ok) throw new Error(`expected ok, got ${result.error.code}: ${result.error.message}`);
   return result.value;
 };
@@ -62,7 +62,7 @@ describe('createNode', () => {
 
 describe('addNode', () => {
   it('adds a node to the board', () => {
-    const board = ok(addNode(frozen(emptyBoard()), api));
+    const board = unwrap(addNode(frozen(emptyBoard()), api));
     expect(board.nodes).toEqual([api]);
   });
 
@@ -82,13 +82,13 @@ describe('addNode', () => {
 
 describe('removeNode', () => {
   it('removes the node and every edge touching it', () => {
-    const board = ok(removeNode(sampleBoard(), 'n1')); // n1 has 3 edges
+    const board = unwrap(removeNode(sampleBoard(), 'n1')); // n1 has 3 edges
     expect(board.nodes.map((n) => n.id)).toEqual(['n2', 'n3', 'n4']);
     expect(board.edges).toEqual([]);
   });
 
   it('keeps edges that do not touch the node', () => {
-    const board = ok(removeNode(sampleBoard(), 'n2'));
+    const board = unwrap(removeNode(sampleBoard(), 'n2'));
     expect(board.edges.map((e) => e.id)).toEqual(['e2', 'e3']);
   });
 
@@ -104,12 +104,12 @@ describe('canConnect / connect', () => {
   const board = (): Board => frozen({ nodes: [api, db], edges: [] });
 
   it('connects two existing nodes', () => {
-    const result = ok(connect(board(), 'e1', 'n1', 'n2'));
+    const result = unwrap(connect(board(), 'e1', 'n1', 'n2'));
     expect(result.edges).toEqual([{ id: 'e1', source: 'n1', target: 'n2' }]);
   });
 
   it('allows the opposite direction of an existing edge', () => {
-    const once = ok(connect(board(), 'e1', 'n1', 'n2'));
+    const once = unwrap(connect(board(), 'e1', 'n1', 'n2'));
     expect(connect(once, 'e2', 'n2', 'n1').ok).toBe(true);
   });
 
@@ -123,7 +123,7 @@ describe('canConnect / connect', () => {
   });
 
   it('rejects a duplicate connection', () => {
-    const once = ok(connect(board(), 'e1', 'n1', 'n2'));
+    const once = unwrap(connect(board(), 'e1', 'n1', 'n2'));
     expect(connect(once, 'e2', 'n1', 'n2')).toMatchObject({
       ok: false,
       error: { code: 'DUPLICATE_EDGE' },
@@ -131,10 +131,17 @@ describe('canConnect / connect', () => {
   });
 
   it('rejects a duplicate edge id', () => {
-    const once = ok(connect(frozen({ nodes: [api, db, cache], edges: [] }), 'e1', 'n1', 'n2'));
+    const once = unwrap(connect(frozen({ nodes: [api, db, cache], edges: [] }), 'e1', 'n1', 'n2'));
     expect(connect(once, 'e1', 'n1', 'n3')).toMatchObject({
       ok: false,
       error: { code: 'DUPLICATE_ID' },
+    });
+  });
+
+  it('blames the right id when the source id is malformed', () => {
+    expect(connect(board(), 'e1', 'n 1', 'n2')).toMatchObject({
+      ok: false,
+      error: { code: 'NODE_NOT_FOUND' },
     });
   });
 
@@ -146,9 +153,18 @@ describe('canConnect / connect', () => {
   });
 });
 
+describe('ids', () => {
+  it('node ids and edge ids are separate namespaces, like BoardSchema', () => {
+    const board = unwrap(connect(frozen({ nodes: [api, db], edges: [] }), 'n9', 'n1', 'n2'));
+    // An edge called "n9" doesn't stop a node called "n9" — and the result is a valid board.
+    const withNode = unwrap(addNode(board, createNode('n9', 'queue', { x: 0, y: 0 })));
+    expect(BoardSchema.safeParse(withNode).success).toBe(true);
+  });
+});
+
 describe('removeEdge', () => {
   it('removes only that edge', () => {
-    const board = ok(removeEdge(sampleBoard(), 'e2'));
+    const board = unwrap(removeEdge(sampleBoard(), 'e2'));
     expect(board.edges.map((e) => e.id)).toEqual(['e1', 'e3']);
     expect(board.nodes).toHaveLength(4);
   });
@@ -163,12 +179,12 @@ describe('removeEdge', () => {
 
 describe('renameNode', () => {
   it('trims and sets the label', () => {
-    const board = ok(renameNode(sampleBoard(), 'n1', '  Orders API  '));
+    const board = unwrap(renameNode(sampleBoard(), 'n1', '  Orders API  '));
     expect(board.nodes[0]?.label).toBe('Orders API');
   });
 
   it('falls back to the kind default label when empty', () => {
-    const board = ok(renameNode(sampleBoard(), 'n1', '   '));
+    const board = unwrap(renameNode(sampleBoard(), 'n1', '   '));
     expect(board.nodes[0]?.label).toBe('API');
   });
 
@@ -193,14 +209,19 @@ describe('renameNode', () => {
 
 describe('changeKind', () => {
   it('changes the kind and keeps id, label and position', () => {
-    const renamed = ok(renameNode(sampleBoard(), 'n2', 'Orders DB'));
-    const board = ok(changeKind(renamed, 'n2', 'cache'));
+    const renamed = unwrap(renameNode(sampleBoard(), 'n2', 'Orders DB'));
+    const board = unwrap(changeKind(renamed, 'n2', 'cache'));
     expect(board.nodes[1]).toEqual({
       id: 'n2',
       kind: 'cache',
       label: 'Orders DB',
       position: { x: 200, y: 0 },
     });
+  });
+
+  it('updates the label when it was still the old kind default', () => {
+    const board = unwrap(changeKind(sampleBoard(), 'n1', 'cache')); // n1 is labelled "API"
+    expect(board.nodes[0]?.label).toBe('Cache');
   });
 
   it('reports an unknown node', () => {
@@ -213,7 +234,7 @@ describe('changeKind', () => {
 
 describe('moveNode', () => {
   it('moves the node', () => {
-    const board = ok(moveNode(sampleBoard(), 'n3', { x: 10, y: 20 }));
+    const board = unwrap(moveNode(sampleBoard(), 'n3', { x: 10, y: 20 }));
     expect(board.nodes[2]?.position).toEqual({ x: 10, y: 20 });
   });
 
@@ -237,19 +258,19 @@ describe('immutability', () => {
     const board = sampleBoard();
     const snapshot = JSON.stringify(board);
 
-    ok(addNode(board, createNode('n9', 'queue', { x: 0, y: 0 })));
-    ok(removeNode(board, 'n1'));
-    ok(connect(board, 'e9', 'n2', 'n3'));
-    ok(removeEdge(board, 'e1'));
-    ok(renameNode(board, 'n1', 'Orders API'));
-    ok(changeKind(board, 'n1', 'service'));
-    ok(moveNode(board, 'n1', { x: 5, y: 5 }));
+    unwrap(addNode(board, createNode('n9', 'queue', { x: 0, y: 0 })));
+    unwrap(removeNode(board, 'n1'));
+    unwrap(connect(board, 'e9', 'n2', 'n3'));
+    unwrap(removeEdge(board, 'e1'));
+    unwrap(renameNode(board, 'n1', 'Orders API'));
+    unwrap(changeKind(board, 'n1', 'service'));
+    unwrap(moveNode(board, 'n1', { x: 5, y: 5 }));
 
     expect(JSON.stringify(board)).toBe(snapshot);
   });
 
   it('returns a new board object on success', () => {
     const board = sampleBoard();
-    expect(ok(moveNode(board, 'n1', { x: 5, y: 5 }))).not.toBe(board);
+    expect(unwrap(moveNode(board, 'n1', { x: 5, y: 5 }))).not.toBe(board);
   });
 });

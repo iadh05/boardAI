@@ -105,7 +105,8 @@ describe('board operations (property-based)', () => {
           board = result.value;
         }
       }),
-      { numRuns: RUNS },
+      // Fixed seed: this is a statistical check, so it must not depend on luck (no flaky CI).
+      { numRuns: RUNS, seed: 20261018 },
     );
     expect(connects).toBeGreaterThan(RUNS);
     expect(removalsOfConnectedNodes).toBeGreaterThan(RUNS / 5);

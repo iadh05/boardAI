@@ -39,9 +39,9 @@ export const createNode = (id: string, kind: NodeKind, position: Position): Boar
   position: { ...position },
 });
 
+// Node ids and edge ids are separate namespaces — the same rule as BoardSchema.
 const hasNode = (board: Board, id: string): boolean => board.nodes.some((n) => n.id === id);
-const hasId = (board: Board, id: string): boolean =>
-  hasNode(board, id) || board.edges.some((e) => e.id === id);
+const hasEdge = (board: Board, id: string): boolean => board.edges.some((e) => e.id === id);
 
 const nodeNotFound = (id: string) => fail('NODE_NOT_FOUND', `No node with id "${id}"`);
 
@@ -60,7 +60,9 @@ export const addNode = (board: Board, node: BoardNode): BoardResult => {
   if (!parsed.success) {
     return fail('INVALID_NODE', parsed.error.issues[0]?.message ?? 'Invalid node');
   }
-  if (hasId(board, node.id)) return fail('DUPLICATE_ID', `Id "${node.id}" is already used`);
+  if (hasNode(board, node.id)) {
+    return fail('DUPLICATE_ID', `A node with id "${node.id}" already exists`);
+  }
   return ok({ ...board, nodes: [...board.nodes, parsed.data] });
 };
 
@@ -68,6 +70,7 @@ export const addNode = (board: Board, node: BoardNode): BoardResult => {
 export const removeNode = (board: Board, id: string): BoardResult => {
   if (!hasNode(board, id)) return nodeNotFound(id);
   return ok({
+    ...board,
     nodes: board.nodes.filter((n) => n.id !== id),
     edges: board.edges.filter((e) => e.source !== id && e.target !== id),
   });
@@ -93,18 +96,21 @@ export const connect = (
   source: string,
   target: string,
 ): BoardResult => {
-  const edge: BoardEdge = { id: edgeId, source, target };
-  if (!BoardEdgeSchema.safeParse(edge).success) {
+  if (!BoardEdgeSchema.shape.id.safeParse(edgeId).success) {
     return fail('INVALID_ID', `"${edgeId}" is not a valid edge id`);
   }
+  // A malformed source/target can't match any node, so canConnect reports NODE_NOT_FOUND for it.
   const allowed = canConnect(board, source, target);
   if (!allowed.ok) return allowed;
-  if (hasId(board, edgeId)) return fail('DUPLICATE_ID', `Id "${edgeId}" is already used`);
+  if (hasEdge(board, edgeId)) {
+    return fail('DUPLICATE_ID', `An edge with id "${edgeId}" already exists`);
+  }
+  const edge: BoardEdge = { id: edgeId, source, target };
   return ok({ ...board, edges: [...board.edges, edge] });
 };
 
 export const removeEdge = (board: Board, id: string): BoardResult => {
-  if (!board.edges.some((e) => e.id === id)) {
+  if (!hasEdge(board, id)) {
     return fail('EDGE_NOT_FOUND', `No edge with id "${id}"`);
   }
   return ok({ ...board, edges: board.edges.filter((e) => e.id !== id) });
@@ -123,9 +129,16 @@ export const renameNode = (board: Board, id: string, label: string): BoardResult
   return updateNode(board, id, (n) => ({ ...n, label: parsed.data }));
 };
 
-/** Changes what a node is; keeps its id, label and position. */
+/**
+ * Changes what a node is; keeps its id and position. A label the user chose is kept; a label
+ * that was still the old kind's default follows the new kind ("API" → "Cache").
+ */
 export const changeKind = (board: Board, id: string, kind: NodeKind): BoardResult =>
-  updateNode(board, id, (n) => ({ ...n, kind }));
+  updateNode(board, id, (n) => ({
+    ...n,
+    kind,
+    label: n.label === KIND_DEFAULT_LABEL[n.kind] ? KIND_DEFAULT_LABEL[kind] : n.label,
+  }));
 
 export const moveNode = (board: Board, id: string, position: Position): BoardResult => {
   if (!PositionSchema.safeParse(position).success) {
