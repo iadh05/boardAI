@@ -3,6 +3,7 @@ import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import { RUNTIME_METRIC_VIEWS, startRuntimeMetrics } from './runtimeMetrics.ts';
 import { BatchSpanProcessor, NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import type { MiddlewareHandler } from 'hono';
@@ -53,6 +54,7 @@ export const startTelemetry = (
 
   const meterProvider = new MeterProvider({
     resource,
+    views: RUNTIME_METRIC_VIEWS,
     readers: [
       new PeriodicExportingMetricReader({
         exporter: new OTLPMetricExporter({ url: otlpUrl(config.endpoint, 'metrics') }),
@@ -62,8 +64,11 @@ export const startTelemetry = (
     ],
   });
   metrics.setGlobalMeterProvider(meterProvider);
+  // The process's own health: event loop, heap, CPU, memory (M1-26e).
+  const stopRuntimeMetrics = startRuntimeMetrics(meterProvider);
 
   return async () => {
+    stopRuntimeMetrics();
     await Promise.all([tracerProvider.shutdown(), meterProvider.shutdown()]);
   };
 };
@@ -82,6 +87,13 @@ export const observeRequests = (): MiddlewareHandler => {
     .createHistogram('http_server_request_duration_seconds', {
       description: 'Time to answer a request (for the chat: until the stream starts).',
       unit: 's',
+      // In seconds, from a millisecond to a minute. OTel's default buckets (0, 5, 10, 25…) are
+      // meant for milliseconds: with seconds, every request fell in the first one (M1-26e).
+      advice: {
+        explicitBucketBoundaries: [
+          0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60,
+        ],
+      },
     });
   return (c, next) =>
     tracer.startActiveSpan(

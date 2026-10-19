@@ -1,0 +1,123 @@
+# DesignRoom alert rules (M1-26e), loaded by Grafana at startup. They fire in Grafana's Alerting
+# page and on the "DesignRoom overview" dashboard (Alerts panel). Locally nothing is sent anywhere
+# (no email server); a contact point (email, Slack, webhook) is a later step.
+#
+# Each rule: A = the PromQL query, B = its last value, C = the threshold. "for" = how long it must
+# stay true before firing, so one slow request doesn't wake anyone.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: designroom
+    folder: DesignRoom
+    interval: 1m
+    rules:
+      - uid: designroom-bugs
+        title: Bugs reported
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: critical }
+        annotations:
+          summary: 'The server reported about {{ printf "%.0f" $values.B.Value }} unexpected error(s) in 10 minutes.'
+          description: 'Stack traces in GlitchTip: http://localhost:8000'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              { refId: A, instant: true, expr: 'sum(increase(server_errors_reported_total[10m]))' }
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions: [{ evaluator: { type: gt, params: [0.5] } }]
+
+      - uid: designroom-server-errors
+        title: Server errors (5xx)
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: critical }
+        annotations:
+          summary: 'More than 5% of requests answer 5xx ({{ $values.B }}%).'
+          description: 'See "Errors" on the DesignRoom overview, then GlitchTip for the stack.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: '100 * sum(rate(http_server_request_duration_seconds_count{status=~"5.."}[5m])) / clamp_min(sum(rate(http_server_request_duration_seconds_count[5m])), 1e-9)'
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions: [{ evaluator: { type: gt, params: [5] } }]
+
+      - uid: designroom-model-slow
+        title: Model slow (p95 over 30 s)
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: warning }
+        annotations:
+          summary: 'Model calls p95 is {{ $values.B }} s. Is Ollama on the GPU (ollama ps)?'
+          description: 'On the CPU, the model is ~10x slower. Start the Ollama app, not `ollama serve`.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'histogram_quantile(0.95, sum by (le) (rate(llm_request_duration_seconds_bucket{outcome="ok"}[10m])))'
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions: [{ evaluator: { type: gt, params: [30] } }]
+
+      - uid: designroom-event-loop
+        title: Event loop blocked (p99 over 200 ms)
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: warning }
+        annotations:
+          summary: 'Node runs callbacks {{ $values.B }} s late: every route is slowed.'
+          description: 'Something synchronous and long is running on the server (big JSON, a loop, sync I/O).'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model: { refId: A, instant: true, expr: 'max(nodejs_eventloop_delay_p99_seconds)' }
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions: [{ evaluator: { type: gt, params: [0.2] } }]

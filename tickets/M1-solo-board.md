@@ -58,6 +58,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | done |
 | M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | doing |
 | M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | todo |
+| M1-26e | God eye: overview dashboard (RED + USE), alerts, runtime metrics | obs | M | doing |
 | M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | todo |
 | M1-27 | ADR-004…007, demo, retro | close | S | todo |
 
@@ -1185,6 +1186,27 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 **Notes**
 - The metrics API has no proxy (traces do): a meter taken before the SDK is registered stays a no-op. So instruments are created by `createGateway`, `createAgent` and `observeRequests`, after `startTelemetry` — never at import.
 - Labels stay a short, fixed list: route not raw path, a tool name the model made up becomes `unknown` (span names too).
+
+### M1-26e — The god eye: overview, alerts, server health
+**Status:** doing · **Size:** M · **Depends on:** M1-26b, M1-25b
+
+*Why (2026-10-19, owner):* "we need a god eye" — Grafana only showed the AI path. Best practice: the four golden signals; **RED** (rate, errors, duration) for every route, **USE** for resources; an overview first, then per-feature dashboards; alerts so nobody has to stare.
+
+**Tasks**
+- [x] Runtime metrics (official OTel): event-loop delay/utilization, heap, GC (`instrumentation-runtime-node`); process CPU and memory (`instrumentation-host-metrics`, process groups only).
+- [x] `server_errors_reported_total` by where (http, chat_stream): every bug counted with or without a DSN; starts at 0.
+- [x] "DesignRoom overview" dashboard, Grafana's home: at a glance (6 stats + firing alerts), traffic, errors, latency per route, AI summary, server health; links to GlitchTip, AI reviewer, traces, alert rules.
+- [x] 4 provisioned alert rules: bugs reported, 5xx > 5 % (2 min), model p95 > 30 s (5 min), event loop p99 > 200 ms (2 min).
+- [x] `GET /api/debug/boom` behind `ENABLE_DEBUG_ROUTES` (off by default): a real bug to check the whole chain.
+- [ ] Later: a contact point (email/Slack/webhook) so alerts reach a person; browser metrics (Web Vitals); GPU/Ollama saturation.
+
+**Acceptance criteria**
+- [x] With live traffic, every overview panel shows data; a bug from `/api/debug/boom` reaches GlitchTip, the counters and fires "Bugs reported".
+
+**Found while checking it live**
+- **One NaN dropped every metric:** `process.cpu.utilization` is sometimes NaN; JSON sends it as null and the collector rejected the *whole* batch ("Bad Request") — only the first export ever landed. Seen thanks to the SDK warnings logged since M1-26a, and a relay that showed the collector's reason. Dropped with a view; CPU = `rate(process.cpu.time)`.
+- **Latency per route was invented (M1-26b bug):** OTel's default histogram buckets are for milliseconds; recorded in seconds, every request fell in the first bucket and every route read p50 2.5 s / p95 4.75 s. Buckets in seconds now: `/api/health` reads ~1 ms. The first test passed against the bad buckets too, so it was rewritten to fail on them.
+- Counters that first appear at 1 are invisible to `increase()`: the bug counter starts at 0.
 
 ### M1-26d — Logs to Loki
 **Status:** todo · **Size:** S · **Depends on:** M1-26b

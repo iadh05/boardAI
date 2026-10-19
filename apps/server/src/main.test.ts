@@ -9,11 +9,32 @@ const config = {
   logLevel: 'info',
   errorTracking: null,
   telemetry: null,
+  debugRoutes: false,
 } as const;
 const logger = createLogger({ level: 'error', write: () => {} });
 const app = createApp({ config, logger });
 
 describe('createApp', () => {
+  it('has no debug routes unless ENABLE_DEBUG_ROUTES turns them on', async () => {
+    expect((await app.request('/api/debug/boom')).status).toBe(404);
+  });
+
+  it('with debug routes on, /api/debug/boom is a real bug: a bland 500, and reported', async () => {
+    const reported: unknown[] = [];
+    const debugApp = createApp({
+      config: { ...config, debugRoutes: true },
+      logger,
+      reporter: { report: (error) => reported.push(error) },
+    });
+
+    const res = await debugApp.request('/api/debug/boom');
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toMatchObject({ error: { code: 'INTERNAL' } }); // nothing leaks
+    expect(reported).toHaveLength(1);
+    expect(String(reported[0])).toMatch(/on purpose/);
+  });
+
   it('answers the health check', async () => {
     const res = await app.request('/api/health');
     expect(res.status).toBe(200);
