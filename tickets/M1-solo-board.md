@@ -42,8 +42,8 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-17 | `packages/agent`: tools + board-to-text | M1b | M | done |
 | M1-18 | `packages/agent`: the loop | M1b | L | done |
 | M1-19 | Server `chat` module (four layers + SSE) | M1b | M | done |
-| M1-19b | Fake-LLM scenarios + chat e2e | M1b | M | doing |
-| M1-20 | `core/api` SSE stream reader | M1b | S | todo |
+| M1-19b | Fake-LLM scenarios + chat e2e | M1b | M | done |
+| M1-20 | `core/api` SSE stream reader | M1b | S | doing |
 | M1-21 | web `chat` module: `chatStore` + `useSendMessage` | M1b | M | todo |
 | M1-22 | conversation pod (chat UI) | M1b | M | todo |
 | M1-23 | proposal pod + ghost nodes | M1b | M | todo |
@@ -824,7 +824,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-19b — Fake-LLM scenarios + chat e2e
-**Status:** doing · **Size:** M · **Depends on:** M1-19, M1-03b (UI parts finished in M1-23)
+**Status:** done · **Size:** M · **Depends on:** M1-19, M1-03b (UI parts finished in M1-23)
 
 **Why:** CI has no GPU. The main flow must still be tested end to end, deterministically.
 
@@ -854,16 +854,21 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-20 — `core/api` SSE stream reader
-**Status:** todo · **Size:** S · **Depends on:** M1-07
+**Status:** doing · **Size:** S · **Depends on:** M1-07
 
 **Learning goal:** reading `fetch` bodies as streams; why `EventSource` doesn't fit (no POST).
 
 **Tests first**
-- [ ] Bytes → events; an event split across chunks is reassembled; two events in one chunk both emitted.
-- [ ] Invalid JSON → error item, no crash.
+- [x] Bytes → events; an event split across chunks is reassembled; two events in one chunk both emitted.
+- [x] Invalid JSON → error item, no crash.
 
 **Tasks**
-- [ ] Generic reader in `core/api` (no knowledge of `ChatEvent`); validation with the domain schema happens in the chat module.
+- [x] Generic reader in `core/api` (no knowledge of `ChatEvent`); validation with the domain schema happens in the chat module.
+
+**Notes (2026-10-19)**
+- `core/api/readSseJson.ts`: yields a `Result` per event (`ok` + parsed JSON, or `INVALID_JSON`), so one bad event never ends the chat; the chat module (M1-21) checks values with `ChatEventSchema`.
+- Why not `EventSource`: it can only GET, and the chat POSTs the board.
+- ai-gateway has a similar SSE reader, but the web app may not import ai-gateway (the browser never talks to LLMs) and this one parses JSON per event. A shared SSE package is a question for the end-of-M1 packages review.
 
 ---
 
