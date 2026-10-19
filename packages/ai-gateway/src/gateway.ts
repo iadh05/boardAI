@@ -4,7 +4,7 @@
 
 import { context, type Context } from '@opentelemetry/api';
 import { cancelledError, LlmError } from './errors.ts';
-import { recordFailure, startLlmSpan, usageAttributes } from './telemetry.ts';
+import { createLlmMetrics, recordFailure, startLlmSpan, usageAttributes } from './telemetry.ts';
 import type { AiGateway, ChatInput, LlmChunk, LlmProvider } from './types.ts';
 
 export type GatewayOptions = {
@@ -65,6 +65,7 @@ export const createGateway = (options: GatewayOptions): AiGateway => {
   const now = options.now ?? (() => performance.now());
   const sleep = options.sleep ?? sleepUnlessAborted;
   const backoffMs = options.backoffMs ?? 500;
+  const metered = createLlmMetrics();
 
   /** The call itself: retries, timeout, cancellation, usage. */
   async function* call(input: ChatInput): AsyncIterable<LlmChunk> {
@@ -118,14 +119,20 @@ export const createGateway = (options: GatewayOptions): AiGateway => {
 
   /** The call inside its span, ended however the stream ends: done, failed, or abandoned. */
   async function* traced(input: ChatInput, parent: Context): AsyncIterable<LlmChunk> {
-    const span = startLlmSpan(input.model ?? options.model, parent);
+    const model = input.model ?? options.model;
+    const span = startLlmSpan(model, parent);
+    const started = now();
     try {
       for await (const chunk of call(input)) {
-        if (chunk.type === 'usage') span.setAttributes(usageAttributes(chunk.usage));
+        if (chunk.type === 'usage') {
+          span.setAttributes(usageAttributes(chunk.usage));
+          metered.succeeded(model ?? 'unknown', chunk.usage);
+        }
         yield chunk;
       }
     } catch (error) {
       recordFailure(span, error);
+      metered.failed(model ?? 'unknown', error, now() - started);
       throw error;
     } finally {
       span.end();

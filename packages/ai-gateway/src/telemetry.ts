@@ -1,4 +1,5 @@
 import {
+  metrics,
   SpanKind,
   SpanStatusCode,
   trace,
@@ -53,4 +54,44 @@ export const recordFailure = (span: Span, error: unknown) => {
     code: SpanStatusCode.ERROR,
     message: error instanceof Error ? error.message : String(error),
   });
+};
+
+/** Seconds: a local model answers in 1–60 s; the default buckets stop at 10 ms resolution. */
+const SECONDS_BUCKETS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 20, 30, 60, 120];
+
+/**
+ * The gateway's metrics (architecture §9): what Grafana's "AI reviewer" dashboard plots.
+ * Created by createGateway, not at import: the metrics API has no proxy, so a meter taken before
+ * the server registers its SDK would stay a no-op for good.
+ */
+export const createLlmMetrics = () => {
+  const meter = metrics.getMeter('@designroom/ai-gateway');
+  const duration = meter.createHistogram('llm_request_duration_seconds', {
+    description: 'One model call, from the request to the last chunk, retries included.',
+    unit: 's',
+    advice: { explicitBucketBoundaries: SECONDS_BUCKETS },
+  });
+  const firstToken = meter.createHistogram('llm_time_to_first_token_seconds', {
+    description: 'From the request to the first text or tool call: what the user waits for.',
+    unit: 's',
+    advice: { explicitBucketBoundaries: SECONDS_BUCKETS },
+  });
+  const tokens = meter.createCounter('llm_tokens_total', {
+    description: 'Tokens sent to (input) and produced by (output) the model.',
+    unit: '{token}',
+  });
+  return {
+    succeeded: (model: string, usage: Usage) => {
+      const labels = { model, outcome: 'ok' };
+      duration.record(usage.latencyMs / 1000, labels);
+      if (usage.timeToFirstTokenMs !== null)
+        firstToken.record(usage.timeToFirstTokenMs / 1000, labels);
+      tokens.add(usage.inputTokens, { model, direction: 'input' });
+      tokens.add(usage.outputTokens, { model, direction: 'output' });
+    },
+    failed: (model: string, error: unknown, ms: number) => {
+      const outcome = error instanceof LlmError ? error.code : 'BUG';
+      duration.record(ms / 1000, { model, outcome });
+    },
+  };
 };
