@@ -10,7 +10,10 @@ import { fitHistory, type ChatPolicyErrorCode } from '../domain/chatPolicy.ts';
 /** The port this use case needs; infra/ builds it from @designroom/agent and the gateway. */
 export type ReviewAgent = { run(input: AgentInput): AsyncIterable<AgentEvent> };
 
-export type ReviewBoardDeps = { agent: ReviewAgent; logger: Logger };
+export type ReviewBoardDeps = { agent: ReviewAgent };
+
+/** Per request: the request's own logger (it carries the request id) and its cancel signal. */
+export type ReviewOptions = { logger: Logger; signal?: AbortSignal };
 
 /** What the user reads when the model fails: what happened and what to do (general.md). */
 const USER_MESSAGE: Record<LlmErrorCode, string> = {
@@ -24,10 +27,10 @@ const USER_MESSAGE: Record<LlmErrorCode, string> = {
 const SOMETHING_WENT_WRONG = 'Something went wrong on our side. Please try again.';
 
 export const createReviewBoard =
-  ({ agent, logger }: ReviewBoardDeps) =>
+  ({ agent }: ReviewBoardDeps) =>
   (
     request: ChatRequest,
-    signal?: AbortSignal,
+    { logger, signal }: ReviewOptions,
   ): Result<AsyncIterable<ChatEvent>, ChatPolicyErrorCode> => {
     const boardChars = boardToText(request.board, createAliases(request.board)).length;
     const history = fitHistory(request.messages, { boardChars });
@@ -53,7 +56,9 @@ export const createReviewBoard =
               break;
             }
             case 'error':
-              logger.warn('model failed', { code: event.code, error: event.message });
+              // A closed tab is normal use, not an outage: keep warnings for real failures.
+              if (event.code === 'ABORTED') logger.info('chat cancelled');
+              else logger.warn('model failed', { code: event.code, error: event.message });
               yield { type: 'error', message: USER_MESSAGE[event.code] };
               break;
             case 'done':

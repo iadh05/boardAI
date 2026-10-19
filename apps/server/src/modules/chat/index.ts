@@ -8,7 +8,7 @@ import { createReviewBoard, type ReviewAgent } from './application/reviewBoard.t
 export type ChatModuleDeps = { agent: ReviewAgent; logger: Logger };
 
 export const createChatModule = ({ agent, logger }: ChatModuleDeps) => ({
-  routes: createChatRoutes(createReviewBoard({ agent, logger })),
+  routes: createChatRoutes(createReviewBoard({ agent }), logger),
 });
 
 export type { ReviewAgent } from './application/reviewBoard.ts';

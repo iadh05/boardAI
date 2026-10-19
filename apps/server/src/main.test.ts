@@ -41,9 +41,10 @@ describe('createApp', () => {
   });
 
   it('wires the chat: gateway → agent → module, streaming the model’s answer', async () => {
+    const lines: string[] = [];
     const chatApp = createApp({
       config,
-      logger,
+      logger: createLogger({ level: 'info', write: (l) => lines.push(l) }),
       llmProvider: createFakeProvider([[{ type: 'text', delta: 'Add a cache.' }]]),
     });
 
@@ -60,5 +61,12 @@ describe('createApp', () => {
     const text = await res.text();
     expect(text).toContain('data: {"type":"text","delta":"Add a cache."}');
     expect(text.trim().endsWith('data: {"type":"done"}')).toBe(true);
+
+    // The chat's own log lines carry the request id, so they join the access log and Nginx's.
+    const requestId = res.headers.get('X-Request-Id');
+    const round = lines
+      .map((l) => JSON.parse(l) as { msg: string; requestId?: string })
+      .find((l) => l.msg === 'agent round');
+    expect(round?.requestId).toBe(requestId);
   });
 });

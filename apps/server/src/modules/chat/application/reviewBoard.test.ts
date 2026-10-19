@@ -38,7 +38,12 @@ const setup = (script: (AgentEvent | Error)[]) => {
   const lines: string[] = [];
   const logger = createLogger({ level: 'debug', write: (l) => lines.push(l), now: () => 0 });
   const { agent, inputs } = fakeAgent(script);
-  return { review: createReviewBoard({ agent, logger }), inputs, lines };
+  const review = createReviewBoard({ agent });
+  return {
+    review: (req: ChatRequest, signal?: AbortSignal) => review(req, { logger, signal }),
+    inputs,
+    lines,
+  };
 };
 
 const collect = async (review: ReturnType<typeof setup>['review'], req = request) => {
@@ -90,6 +95,21 @@ describe('reviewBoard', () => {
         inputTokens: 300,
       }),
     );
+  });
+
+  it('logs a cancel as such, not as a model failure', async () => {
+    const { review, lines } = setup([
+      { type: 'error', code: 'ABORTED', message: 'The request was cancelled.' },
+      { type: 'done' },
+    ]);
+
+    await collect(review);
+
+    const logged = lines.map((l) => JSON.parse(l) as { level: string; msg: string });
+    expect(logged).toContainEqual(
+      expect.objectContaining({ level: 'info', msg: 'chat cancelled' }),
+    );
+    expect(logged.some((l) => l.level === 'warn')).toBe(false);
   });
 
   it.each([

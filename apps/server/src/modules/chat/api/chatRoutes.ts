@@ -1,8 +1,11 @@
 import { ChatRequestSchema } from '@designroom/domain';
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { streamSSE } from 'hono/streaming';
 import type { z } from 'zod';
 import { AppError } from '../../../core/errors.ts';
+import type { Logger } from '../../../core/logger.ts';
+import type { RequestVariables } from '../../../core/requestContext.ts';
 import type { createReviewBoard } from '../application/reviewBoard.ts';
 
 // POST /api/chat (architecture §4.4): validate the request, then stream the review as
@@ -17,8 +20,20 @@ const details = (error: z.ZodError) =>
 const isBoardTooLarge = (error: z.ZodError) =>
   error.issues.some((issue) => issue.code === 'custom' && issue.path.join('.') === 'board');
 
-export const createChatRoutes = (reviewBoard: ReviewBoard) =>
-  new Hono().post('/', async (c) => {
+/** Same as Nginx's client_max_body_size: the server is also reached directly (dev, CI). */
+const MAX_BODY_BYTES = 1024 * 1024;
+
+const tooLarge = bodyLimit({
+  maxSize: MAX_BODY_BYTES,
+  onError: () => {
+    throw new AppError('BOARD_TOO_LARGE', 'The request is too large (1 MB at most).');
+  },
+});
+
+export const createChatRoutes = (reviewBoard: ReviewBoard, moduleLogger: Logger) =>
+  new Hono<{ Variables: RequestVariables }>().post('/', tooLarge, async (c) => {
+    // The request's logger carries its id (requestContext); the module's is the fallback.
+    const logger = c.get('logger') ?? moduleLogger;
     const json: unknown = await c.req.json().catch(() => {
       throw new AppError('VALIDATION_FAILED', 'The request body must be JSON.');
     });
@@ -34,7 +49,7 @@ export const createChatRoutes = (reviewBoard: ReviewBoard) =>
     }
 
     // The browser closing the tab aborts this signal: the agent and the model call stop with it.
-    const started = reviewBoard(parsed.data, c.req.raw.signal);
+    const started = reviewBoard(parsed.data, { logger, signal: c.req.raw.signal });
     if (!started.ok) throw new AppError('BOARD_TOO_LARGE', started.error.message);
 
     // Nginx buffers responses unless told not to; the chat must arrive token by token (§14).

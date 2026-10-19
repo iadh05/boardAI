@@ -112,6 +112,12 @@ describe('POST /api/chat', () => {
     expect((await post(appWith([]).app, { board, messages })).status).toBe(400);
   });
 
+  it('refuses a body over 1 MB before reading it, even without Nginx in front', async () => {
+    const res = await post(appWith([]).app, { ...body, padding: 'x'.repeat(1_100_000) });
+    expect(res.status).toBe(413);
+    expect(await res.json()).toMatchObject({ error: { code: 'BOARD_TOO_LARGE' } });
+  });
+
   it('answers 413 when the board is too large for the assistant', async () => {
     const nodes = Array.from({ length: MAX_CHAT_BOARD_NODES + 1 }, (_, i) => ({
       ...board.nodes[0],
