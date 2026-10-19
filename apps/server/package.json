@@ -15,6 +15,7 @@
     "@designroom/ai-gateway": "workspace:*",
     "@designroom/domain": "workspace:*",
     "@hono/node-server": "^2.1.5",
+    "@sentry/node": "^11.8.0",
     "hono": "^4.13.13",
     "zod": "^4.6.7"
   },

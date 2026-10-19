@@ -14,7 +14,15 @@ describe('loadConfig', () => {
         timeoutMs: 60_000,
       },
       logLevel: 'info',
+      errorTracking: null, // off unless SENTRY_DSN is set
     });
+  });
+
+  it('turns error tracking on with a Sentry DSN', () => {
+    expect(
+      loadConfig({ ...valid, SENTRY_DSN: 'https://key@o1.ingest.sentry.io/1' }).errorTracking,
+    ).toEqual({ dsn: 'https://key@o1.ingest.sentry.io/1', environment: 'development' });
+    expect(() => loadConfig({ ...valid, SENTRY_DSN: 'not a url' })).toThrow(/SENTRY_DSN/);
   });
 
   it('reads PORT as a number', () => {

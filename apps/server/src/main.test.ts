@@ -7,6 +7,7 @@ const config = {
   port: 3000,
   llm: { provider: 'fake', model: 'test', timeoutMs: 5_000 },
   logLevel: 'info',
+  errorTracking: null,
 } as const;
 const logger = createLogger({ level: 'error', write: () => {} });
 const app = createApp({ config, logger });
