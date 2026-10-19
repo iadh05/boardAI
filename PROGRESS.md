@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-19 chat module → M1-19b fake-LLM scenarios + chat e2e next (M1-13 structure verdict pending)
+**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-19b fake scenarios → M1-20 SSE reader in the web app next (M1-13 structure verdict pending)
 
 ## Done
 
@@ -32,7 +32,8 @@
 | M1-16 | `packages/ai-gateway`: OpenAI-compatible + fake providers, SSE reader, idle timeout, retry before first chunk, cancellation, usage | #32 |
 | M1-17 | `packages/agent`: tools (add/update/connect, no delete) on a draft, short aliases instead of UUIDs, `boardToText` | #33 |
 | M1-18 | Agent loop: rounds of model → tools → results, one proposal, max rounds, per-round metering; board as delimited data in the last message | #34 |
-| M1-19 | Server chat module: `POST /api/chat` streams the review (SSE); chat policy (context budget), user-facing model errors, per-request logger, 1 MB limit | this PR |
+| M1-19 | Server chat module: `POST /api/chat` streams the review (SSE); chat policy (context budget), user-facing model errors, per-request logger, 1 MB limit | #35 |
+| M1-19b | Fake model with scenario files (stateless, parallel-safe), e2e server on :3100 behind `vite preview`, AI review e2e at API level (UI journeys after M1-23) | this PR |
 
 ## In progress
 

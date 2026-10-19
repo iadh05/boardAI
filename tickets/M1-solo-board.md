@@ -41,8 +41,8 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-16 | `packages/ai-gateway` | M1b | L | done |
 | M1-17 | `packages/agent`: tools + board-to-text | M1b | M | done |
 | M1-18 | `packages/agent`: the loop | M1b | L | done |
-| M1-19 | Server `chat` module (four layers + SSE) | M1b | M | doing |
-| M1-19b | Fake-LLM scenarios + chat e2e | M1b | M | todo |
+| M1-19 | Server `chat` module (four layers + SSE) | M1b | M | done |
+| M1-19b | Fake-LLM scenarios + chat e2e | M1b | M | doing |
 | M1-20 | `core/api` SSE stream reader | M1b | S | todo |
 | M1-21 | web `chat` module: `chatStore` + `useSendMessage` | M1b | M | todo |
 | M1-22 | conversation pod (chat UI) | M1b | M | todo |
@@ -794,7 +794,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-19 — Server `chat` module (four layers + SSE)
-**Status:** doing · **Size:** M · **Depends on:** M1-14, M1-18
+**Status:** done · **Size:** M · **Depends on:** M1-14, M1-18
 
 **Learning goal:** four layers in practice; SSE with Hono's `streamSSE`; dependency injection.
 
@@ -824,24 +824,32 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-19b — Fake-LLM scenarios + chat e2e
-**Status:** todo · **Size:** M · **Depends on:** M1-19, M1-03b (UI parts finished in M1-23)
+**Status:** doing · **Size:** M · **Depends on:** M1-19, M1-03b (UI parts finished in M1-23)
 
 **Why:** CI has no GPU. The main flow must still be tested end to end, deterministically.
 
 **Learning goal:** test doubles at system level; making non-deterministic systems testable.
 
 **Tasks**
-- [ ] `LLM_PROVIDER=ollama|fake` in server config; `fake` loads a scenario file (e.g. `e2e/fixtures/llm/missing-cache.json`: stream text, then `add_node(cache)`, then `connect_nodes(api → cache)`).
+- [x] `LLM_PROVIDER=ollama|fake` in server config; `fake` loads a scenario file (e.g. `e2e/fixtures/llm/missing-cache.json`: stream text, then `add_node(cache)`, then `connect_nodes(api → cache)`).
 - [ ] e2e test (enable fully once M1-23 is done): draw Client→LB→API→Database, send "review my design", see streamed text, see the ghost Cache node, Accept → real node + edge.
 - [ ] e2e test: the "proposal out of date" path.
-- [ ] CI `e2e` job starts the server with `LLM_PROVIDER=fake`.
+- [x] CI `e2e` job starts the server with `LLM_PROVIDER=fake`.
 - [ ] Locally: run the same suite through Nginx (`BASE_URL=http://localhost:8080`) to check streaming isn't buffered.
 
 **Acceptance criteria**
-- [ ] Chat e2e green in CI without Ollama.
+- [x] Chat e2e green in CI without Ollama (API level now; UI journeys with M1-23).
 - [ ] Turning `proxy_buffering` back on in Nginx makes the local streaming check fail (then turn it off again).
 
-- [ ] `LLM_PROVIDER=fake` today uses an empty script, so every chat ends in "Something went wrong" (M1-19 review): the scenario files replace it.
+- [x] `LLM_PROVIDER=fake` today uses an empty script, so every chat ends in "Something went wrong" (M1-19 review): the scenario files replace it.
+
+**Notes (2026-10-19)**
+- Scenarios live in `apps/web/e2e/fixtures/llm/scenarios.json` (`LLM_SCENARIO_FILE`): picked by text in the latest user message ("review" → missing-cache, "outage" → model down). The provider is **stateless** — the round is counted from the conversation — so parallel e2e workers can't disturb each other. A broken file stops the server at startup, naming the file.
+- Playwright starts its own fake-model server on **:3100** (never reuses the dev server on :3000, which talks to the real Qwen); `vite preview` forwards `/api` to it (`API_URL`).
+- `ai-review.spec.ts` checks the whole server path through the app's origin now; the two UI journeys (Accept → real node + edge; "out of date") are `test.fixme` until M1-23 — left unticked above.
+- Review: scenario matched on the question, not board labels; a catch-all scenario must be last; `ChatApi` fails with the HTTP error; `vite preview` defaults to the fake server (:3100) so a reused preview can't reach the real model. Deferred: a `hang` step for the cancel e2e (M1-23).
+- Not done here: the run through Nginx and the `proxy_buffering` check need Docker, which can't start on this laptop yet (Virtual Machine Platform).
+- Local flakiness seen with 4 workers was memory (2 GB free of 16 with other apps open), not the tests: `main` failed the same way; `--workers 2` gave 33/33 three times.
 
 ---
 
@@ -898,6 +906,8 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 
 **Acceptance criteria**
 - [ ] Demo steps 7 and 8 pass.
+
+- [ ] Add a `hang` step to the scenario provider (answers nothing until cancelled) and an e2e test that closing the chat/stopping a review stops the model (M1-19b review).
 
 ---
 

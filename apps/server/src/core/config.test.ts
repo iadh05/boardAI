@@ -37,6 +37,15 @@ describe('loadConfig', () => {
     });
   });
 
+  it('reads the fake model’s scenario file', () => {
+    expect(
+      loadConfig({ LLM_PROVIDER: 'fake', LLM_SCENARIO_FILE: 'scenarios.json' }).llm,
+    ).toMatchObject({
+      provider: 'fake',
+      scenarioFile: 'scenarios.json',
+    });
+  });
+
   it('reads the model timeout in milliseconds, and refuses one too short to load a model', () => {
     expect(loadConfig({ ...valid, LLM_TIMEOUT_MS: '90000' }).llm.timeoutMs).toBe(90_000);
     expect(() => loadConfig({ ...valid, LLM_TIMEOUT_MS: '10' })).toThrow(/LLM_TIMEOUT_MS/);
