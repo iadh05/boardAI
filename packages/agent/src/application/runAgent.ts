@@ -9,7 +9,7 @@ import type {
 import type { Board, ChatMessage, Proposal } from '@designroom/domain';
 import { boardToText } from '../domain/boardToText.ts';
 import { createLeakWatch } from '../domain/leakWatch.ts';
-import { buildMessages, SYSTEM_PROMPT } from '../domain/prompt.ts';
+import { buildMessages, REFUSAL_WORDING, SYSTEM_PROMPT } from '../domain/prompt.ts';
 import { OUT_OF_SCOPE_REPLY, type Scope } from '../domain/scope.ts';
 import { summarize } from '../domain/summary.ts';
 import { AGENT_TOOLS, createDraft, runToolCall } from '../domain/tools.ts';
@@ -106,7 +106,8 @@ export const createAgent = (deps: AgentDeps) => {
       // Output guard: the answer is cut where it starts reciting the prompt (OWASP LLM07).
       const watch = createLeakWatch({
         prompt: SYSTEM_PROMPT,
-        allowed: OUT_OF_SCOPE_REPLY,
+        // Refusals repeat the prompt's wording on purpose: that is the guard working.
+        allowed: `${OUT_OF_SCOPE_REPLY}\n${REFUSAL_WORDING}`,
         ...(deps.canary ? { canary: deps.canary } : {}),
       });
       let spoke = false; // an earlier round wrote something

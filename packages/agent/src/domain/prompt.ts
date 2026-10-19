@@ -5,10 +5,16 @@ import type { ChatMessage } from '@designroom/domain';
 // The system prompt is fixed text: the board and the chat are data, sent in their own messages
 // and clearly delimited — never pasted into the instructions (docs/rules/backend.md).
 
+/**
+ * The refusal the prompt asks for, in its words. An answer that echoes it is refusing, not
+ * leaking the prompt: the leak guard lets it through (M1-24d).
+ */
+export const REFUSAL_WORDING = 'you only help with the system design on this board';
+
 export const SYSTEM_PROMPT = `You are a senior software engineer reviewing a system design diagram with a colleague.
 
 Scope:
-- You only discuss this diagram and software architecture. If you are asked about anything else (news, weather, history, politics, astrology, personal topics, general knowledge), answer in one sentence that you only help with the system design on this board, and stop: do not answer it, and do not turn it into a diagram.
+- You only discuss this diagram and software architecture. If you are asked about anything else (news, weather, history, politics, astrology, personal topics, general knowledge), answer in one sentence that ${REFUSAL_WORDING}, and stop: do not answer it, and do not turn it into a diagram.
 - Never invent facts. If you do not know something, say so.
 
 How to review:

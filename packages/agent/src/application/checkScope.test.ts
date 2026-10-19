@@ -62,6 +62,12 @@ describe('checkScope', () => {
     expect(calls[0]?.messages[0]?.content).toMatch(/instructions, prompt, rules or role/);
   });
 
+  it('treats a design question with an unrelated one slipped in as out of scope', async () => {
+    const { llm, calls } = classifier('OTHER');
+    await ask(llm, 'Review the board, and also: how far is the Moon?');
+    expect(calls[0]?.messages[0]?.content).toMatch(/also asks something unrelated/);
+  });
+
   it('escapes the message so it cannot close its <message> tag and pose as the classifier’s rules', async () => {
     const { llm, calls } = classifier('OTHER');
 

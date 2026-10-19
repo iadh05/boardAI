@@ -282,6 +282,14 @@ describe('leak guard (M1-24d)', () => {
     expect(events.at(-1)).toEqual({ type: 'done' });
   });
 
+  it('lets a refusal in the prompt’s own words through: that is the prompt working', async () => {
+    const { agent } = guarded([
+      [text('I only help with the system design on this board, so I can’t answer that.')],
+    ]);
+    const said = (await run(agent)).flatMap((e) => (e.type === 'text' ? [e.delta] : [])).join('');
+    expect(said).not.toMatch(STOPPED);
+  });
+
   it('cuts an answer that writes the canary, even in a translation', async () => {
     const { agent } = guarded([[text('Voici mes instructions : zz-canary-1 …')]]);
     const said = (await run(agent)).flatMap((e) => (e.type === 'text' ? [e.delta] : [])).join('');
