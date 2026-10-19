@@ -32,3 +32,27 @@
 - **Still to fix in the prompt** (M5): the model often writes ids in its text ("the Orders API (n2)") despite the instruction; some proposals add more than asked (a queue nobody needed).
 - **The script refuses to mislead:** it checks the model is fully on the GPU before measuring, marks runs that failed on the setup as ERROR, and calls the whole score INVALID if any did (exit code 1).
 - **Setup trap:** Ollama started from Claude's shell (`ollama serve`) ran on the CPU (7 tok/s, a 12-run pass took >10 min); started from its app it uses the GPU (64 tok/s). Also, Ollama auto-updated itself mid-run (0.40.4 → 0.40.6). Check `ollama ps` → `100% GPU` before measuring.
+
+## Scope guard (M1-24b)
+
+`node scripts/review-samples.ts --scope` — one short classifier call before the review; off-topic messages get a fixed reply that no model wrote.
+
+| Message | Expected | Right |
+|---|---|---|
+| wgat is the weather now | out | 3/3 |
+| astrology in 2020 | out | 3/3 |
+| tell what happen in two years ago in usa main topic | out | 3/3 |
+| who will win the next world cup? | out | 3/3 |
+| write me a poem about love | out | 3/3 |
+| Review my design. | in | 3/3 |
+| Is Postgres a single point of failure here? | in | 3/3 |
+| design a weather app for me | in | 3/3 |
+| add an astrology API next to the Orders API | in | 3/3 |
+| how would this scale to 10k requests per second? | in | 3/3 |
+
+**30/30**, ~0.15–0.4 s per check. Before the guard, the model answered all three of the first questions — the third at length, with invented facts.
+
+After the review fixes (verdict read anywhere in the answer; 2 s grace after the first word): **29/30** — "add an astrology API next to the Orders API" was refused once in 3 runs (the classifier samples at temperature 0.7; asking for temperature 0 on classifier calls is the fix, with the eval temperature in M5).
+
+**Mixed message** ("Review my design, and also tell me who won the 2024 US election."): the guard lets it through (it is about the design), and the reviewer's scope section takes over — in 3/3 runs it said "I cannot answer about the 2024 US election; I can only help you with system design on this board" and reviewed the design.
+

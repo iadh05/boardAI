@@ -49,6 +49,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-22 | conversation pod (chat UI) | M1b | M | done |
 | M1-23 | proposal pod + ghost nodes | M1b | M | done |
 | M1-24 | System prompt + sample-boards script | M1b | M | doing |
+| M1-24b | Scope guardrail: system design only | M1b | S | doing |
 | M1-25 | Sentry (web + server) | obs | S | todo |
 | M1-26 | OpenTelemetry + Grafana | obs | L | todo |
 | M1-27 | ADR-004…007, demo, retro | close | S | todo |
@@ -982,6 +983,32 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 
 ---
 
+## M1-24b — Scope guardrail: system design only
+**Status:** doing · **Size:** S · **Found in:** manual test with the real model
+
+**Why:** asked "what's the weather", "astrology in 2020" and "what happened in the USA two years ago", the assistant answered — the last one at length, with made-up facts. A design reviewer must stay on the design; a prompt alone is not a guard (backend.md: safety enforced in code).
+
+**Tests first**
+- [x] `checkScope`: a design/architecture message → in scope; weather, news, politics, astrology → out; "design a weather app" → in (a system *about* anything is fine); an unclear answer from the classifier → in (fail open: the prompt is the second line).
+- [x] `runAgent`: out of scope → a fixed reply, no model review, no tools, no proposal, then `done`.
+
+**Tasks**
+- [x] `domain/scope.ts` (classifier prompt + reading its one-word answer, pure) + `application/checkScope.ts` (the call), a guard step at the start of `runAgent`.
+- [x] Stricter system prompt: scope, one-sentence refusal, never invent facts.
+- [x] `scripts/review-samples.ts --scope`: on/off-topic messages against the real model.
+
+**Acceptance criteria**
+- [x] The three questions above get the fixed reply in the app; a design question still gets a review.
+
+**Result (2026-10-19)**
+- Real model, `node scripts/review-samples.ts --scope`: **30/30** — weather, astrology, "two years ago in the USA", the World Cup and a poem are stopped; "Review my design", "Is Postgres a single point of failure?", "design a weather app", "add an astrology API" and a scaling question go through. The guard costs ~0.15–0.4 s per message.
+- The design samples still pass as before (they now run through the guard).
+- In the app: the three questions get the fixed reply; "Review my design" gets a review.
+- Fails open (unclear answer or model error → the review runs, with the stricter prompt as the second guard): blocking real design questions would be worse than missing an odd one.
+- Review: the verdict is read anywhere in the answer ("Classification: OTHER"); a classifier that stalls after its first words gets 2 s, then fails open (the e2e Stop journey caught it hanging the review); an e2e journey checks the fixed reply. Mixed messages pass the guard and the review prompt refuses the off-topic part (3/3). After the fixes: 29/30 — one false refusal of "add an astrology API" (temperature 0.7). Deferred: temperature 0 for classifier calls (with M5's eval temperature), metering the guard call (M1-26), a French refusal.
+
+---
+
 # Observability
 
 ## M1-25 — Sentry (web + server)
@@ -1023,6 +1050,8 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - [ ] Accepting a proposal shows up as positive feedback on its trace; rejecting as negative.
 
 - [ ] The access-log line for `/api/chat` is written when SSE headers go out (~40 ms, status 200), not when the stream ends: measure chat duration and outcome in the span, not the access log (M1-19 review).
+
+- [ ] Meter the scope guard's model call too (a `round`-like event or its own span): today it is invisible in logs and metrics (M1-24b review).
 
 ---
 

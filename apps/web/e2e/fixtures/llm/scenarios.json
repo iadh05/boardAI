@@ -1,6 +1,18 @@
 {
   "scenarios": [
     {
+      "name": "off-topic",
+      "when": "tell me a joke",
+      "rounds": [
+        [
+          {
+            "type": "text",
+            "delta": "OTHER"
+          }
+        ]
+      ]
+    },
+    {
       "name": "missing-cache",
       "when": "review",
       "rounds": [
