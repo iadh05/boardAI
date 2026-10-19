@@ -7,9 +7,12 @@ import type { Aliases } from './aliases.ts';
 //   n3 [api] "Orders API" -> n4, n5 (async, "order events")
 //   zone z1 "VPC": n2, n3, n4
 //
-// Labels are user text: JSON-quoted, so a label can't close its quotes and pose as more board.
+// Labels are user text: JSON-quoted, so a label can't close its quotes and pose as more board, and
+// with < and > escaped (<, >, as JSON allows), so it can't close the <board> tag the
+// listing is sent in and pose as instructions after it (M1-24d).
 
-const quote = (text: string) => JSON.stringify(text);
+const quote = (text: string) =>
+  JSON.stringify(text).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e');
 
 const arrow = (edge: BoardEdge, aliases: Aliases) => {
   const details = [edge.mode === 'async' ? 'async' : '', edge.label ? quote(edge.label) : ''];
