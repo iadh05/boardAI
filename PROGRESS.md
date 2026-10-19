@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-26b metrics + Grafana (Docker works now) → M1-25b GlitchTip, M1-24e prompt v3 (co-written)
+**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-25b GlitchTip → M1-26d logs, M1-26c Phoenix, M1-24e prompt v3 (co-written)
 
 ## Done
 
@@ -46,6 +46,7 @@
 | M1-24c | Context 128k (9.9 GB, 100% GPU), chat budget from `LLM_CONTEXT_TOKENS`; found a review regression since M1-24b ("no proposal") → M1-24e | #49 |
 | M1-24d | Guardrails v2: red-team set (58 cases, `scripts/red-team.ts`), classifier at temperature 0 with examples, escaped tags, leak watch with a canary — 84/84 attacks stopped, 0 leaks, 0 false refusals | #50 |
 | M1-26b | Metrics (LLM latency, time to first token, tokens, tool calls, rounds, scope verdicts, HTTP) + Grafana LGTM in docker-compose + "AI reviewer" dashboard | #46 |
+| M1-25b | GlitchTip (Sentry-compatible) in docker-compose, ~235 MB, `scripts/glitchtip-setup.ts`; test errors from web and server arrive — M1-25 closed locally | #52 |
 
 ## In progress
 
