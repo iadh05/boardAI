@@ -2,7 +2,7 @@
   "uid": "designroom-ai-reviewer",
   "title": "AI reviewer",
   "tags": ["designroom"],
-  "description": "DesignRoom's AI path: model calls, tokens, tools, scope guard (M1-26b). Traces: Explore \u2192 Tempo.",
+  "description": "DesignRoom's AI path: model calls, tokens, tools, scope guard (M1-26b). Traces: Explore → Tempo.",
   "schemaVersion": 39,
   "version": 1,
   "editable": true,
@@ -191,7 +191,8 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "noValue": "0"
         },
         "overrides": []
       },
@@ -309,8 +310,8 @@
     {
       "id": 7,
       "type": "piechart",
-      "title": "Scope guard verdicts",
-      "description": "Questions in scope (reviewed) vs out of scope (fixed reply), over the dashboard's time range.",
+      "title": "Scope guard verdicts since the server started",
+      "description": "Questions in scope (reviewed) vs out of scope (fixed reply). A plain count: increase() would miss each counter's first value, which Prometheus never sees at 0.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -335,7 +336,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (verdict) (increase(agent_scope_checks_total[$__range]))",
+          "expr": "sum by (verdict) (agent_scope_checks_total)",
           "legendFormat": "{{verdict}}"
         }
       ]

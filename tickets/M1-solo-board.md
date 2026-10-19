@@ -1175,10 +1175,10 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
   - agent: `agent_rounds`, `agent_tool_calls_total` (by tool, outcome — replaces `tool_call_errors_total`: one counter gives both the rate and the errors), `agent_scope_checks_total` (by verdict).
   - server: `http_server_request_duration_seconds` (by method, route, status).
 - [x] Grafana dashboard "AI reviewer", provisioned from `infra/grafana/dashboards/`.
-- [ ] Check it in Grafana with real data (needs Docker); fix queries and export the JSON from Grafana if edited.
+- [x] Check it in Grafana with real data (2026-10-19, Docker working): every metric arrived under the expected Prometheus name; 7/8 panels showed data at once. Fixed: "Failed model calls" shows 0 instead of "No data"; scope verdicts use the plain count — `increase()` missed each counter's first value (Prometheus never sees it at 0), showing out = 0 after a refused question.
 
 **Acceptance criteria**
-- [ ] The trace and the dashboard of demo step 10 (Grafana half).
+- [x] The trace and the dashboard of demo step 10 (Grafana half). Real run, 4 questions on the real model: model call p50 1.6 s / p95 4.1 s, first token 0.19 s, ~3.9 model calls per review, scope verdicts 3 in / 1 out.
 
 **Notes**
 - The metrics API has no proxy (traces do): a meter taken before the SDK is registered stays a no-op. So instruments are created by `createGateway`, `createAgent` and `observeRequests`, after `startTelemetry` — never at import.
