@@ -4,8 +4,10 @@
 #   ollama create designroom-qwen -f infra/ollama/Modelfile
 FROM qwen3.5:9b
 
-# 16k context: ~680 tokens per request today, room for big boards and long chats; 6.1 GB of VRAM.
-PARAMETER num_ctx 16384
+# 128k context (M1-24c): 9.9 GB of VRAM, all on the GPU. Only 8 of the model's 32 layers keep a
+# per-token cache, so it grows slowly (16k: 6.1 GB, 64k: 7.7 GB). The VRAM is reserved once at load;
+# each request costs what it sends. Keep LLM_CONTEXT_TOKENS in apps/server/.env equal to this.
+PARAMETER num_ctx 131072
 
 # Non-thinking sampling from the Qwen model card.
 PARAMETER temperature 0.7
