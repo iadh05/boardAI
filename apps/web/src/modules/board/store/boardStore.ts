@@ -29,6 +29,7 @@ import {
 } from '@designroom/domain';
 import { create } from 'zustand';
 import { createId } from '../../../core/lib/ids.ts';
+import { withPlacements, type Placements } from '../lib/placement.ts';
 
 // The board module's single source of client state (architecture §5.3). Actions delegate every
 // rule to @designroom/domain, so the UI never re-implements them. In M2 the same actions will
@@ -40,6 +41,8 @@ export type BoardState = {
   proposal: Proposal | null;
   /** Why accepting the proposal failed (e.g. the board changed under it). */
   proposalError: string | null;
+  /** Where the proposal's new nodes go, decided once by the canvas: ghost and Accept agree. */
+  placements: Placements | null;
   /** The last editing action that was refused, for the UI to show. */
   lastError: DomainError | null;
   /** The node whose label is open for editing. Shared by the toolbar (new Custom node) and the node pod. */
@@ -81,6 +84,8 @@ export type BoardActions = {
   changeKind: (id: string, kind: NodeKind) => void;
   moveNode: (id: string, position: Position) => void;
   setProposal: (proposal: Proposal) => void;
+  /** Records where the pending proposal's new nodes go; ignored without a proposal. */
+  placeProposal: (placements: Placements) => void;
   acceptProposal: () => void;
   rejectProposal: () => void;
   /** Opens a node's label for editing (one node at a time); ignored for unknown ids. */
@@ -112,6 +117,7 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
       board: initialBoard,
       proposal: null,
       proposalError: null,
+      placements: null,
       lastError: null,
       editingNodeId: null,
       editingZoneId: null,
@@ -190,13 +196,23 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
         commit(moveNode(get().board, id, position));
       },
 
-      setProposal: (proposal) => set({ proposal, proposalError: null, lastError: null }),
+      setProposal: (proposal) =>
+        set({ proposal, placements: null, proposalError: null, lastError: null }),
+      placeProposal: (placements) => {
+        if (get().proposal) set({ placements });
+      },
       acceptProposal: () => {
-        const { proposal, board } = get();
+        const { proposal, board, placements } = get();
         if (!proposal) return;
-        const result = applyOps(board, proposal.ops);
+        const result = applyOps(board, proposal.ops, withPlacements(placements));
         if (result.ok) {
-          set({ board: result.value, proposal: null, proposalError: null, lastError: null });
+          set({
+            board: result.value,
+            proposal: null,
+            placements: null,
+            proposalError: null,
+            lastError: null,
+          });
           return;
         }
         // Keep the proposal visible so the user sees what couldn't be applied. Missing nodes or
@@ -211,7 +227,8 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
           lastError: null,
         });
       },
-      rejectProposal: () => set({ proposal: null, proposalError: null, lastError: null }),
+      rejectProposal: () =>
+        set({ proposal: null, placements: null, proposalError: null, lastError: null }),
 
       startEditing: (id) => {
         if (get().board.nodes.some((n) => n.id === id)) set({ editingNodeId: id });

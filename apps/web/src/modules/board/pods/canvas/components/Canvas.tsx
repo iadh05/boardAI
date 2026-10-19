@@ -42,7 +42,11 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
 
   // useMemo: toDiagram previews the proposal with applyOps, and the diagram expects stable
   // arrays between renders.
-  const { nodes, edges, zones } = useMemo(() => toDiagram(board, proposal), [board, proposal]);
+  const placements = store((s) => s.placements);
+  const { nodes, edges, zones } = useMemo(
+    () => toDiagram(board, proposal, placements),
+    [board, proposal, placements],
+  );
 
   return (
     <div className="relative h-full">

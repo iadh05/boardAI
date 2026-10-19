@@ -1,5 +1,5 @@
 import { KIND_DEFAULT_LABEL, NODE_KINDS } from '@designroom/domain';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { createBoardStore } from '../../../store/boardStore.ts';
@@ -94,5 +94,20 @@ describe('Zones from the toolbar', () => {
     const [a, b] = store.getState().board.nodes;
     store.getState().connect(a?.id ?? '', b?.id ?? '');
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+  });
+
+  it('places an AI proposal as soon as it arrives: right of the node it is near', async () => {
+    const store = renderBoard();
+    const api = store.getState().addNode('api', { x: 0, y: 0 }) ?? '';
+
+    act(() =>
+      store.getState().setProposal({
+        id: 'p1',
+        summary: 'Add cache "Redis"',
+        ops: [{ op: 'addNode', nodeId: 'cache', kind: 'cache', label: 'Redis', near: api }],
+      }),
+    );
+
+    await waitFor(() => expect(store.getState().placements?.cache?.x).toBeGreaterThan(0));
   });
 });

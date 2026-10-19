@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-22 chat panel → M1-23 proposal card (Accept / Reject) next (M1-13 structure verdict pending)
+**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-23 proposals → M1-24 system prompt + sample boards next (M1-13 structure verdict pending)
 
 ## Done
 
@@ -37,7 +37,8 @@
 | M1-20 | Web `core/api` SSE reader: bytes → JSON events, split chunks reassembled, bad event = error item | #37 |
 | M1-21 | Web chat module: `chatStore`, `sendMessage` (stream → store, proposal → board, every failure explained), `useSendMessage` with cancel | #38 |
 | M1-22 | Chat panel: conversation log, "Thinking…", streaming answer, inline errors, Enter to send, Stop, auto-scroll | #39 |
-| M1-UX2 | Nothing hides boxes: no fit on the first box, spawn avoids the toolbar, hints in the toolbar panel | this PR |
+| M1-UX2 | Nothing hides boxes: no fit on the first box, spawn avoids the toolbar, hints in the toolbar panel | #40 |
+| M1-23 | Proposal card (Accept / Reject / out of date), ghosts placed once and accepted where shown, demo e2e journeys, Stop e2e | this PR |
 
 ## In progress
 

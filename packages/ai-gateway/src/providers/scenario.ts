@@ -4,7 +4,7 @@
 // stateless: the scenario comes from the latest user message, the round from the conversation.
 
 import { z } from 'zod';
-import { LlmError, type LlmErrorCode } from '../errors.ts';
+import { cancelledError, LlmError, type LlmErrorCode } from '../errors.ts';
 import type { LlmMessage, LlmProvider, ProviderChunk } from '../types.ts';
 
 const ERROR_CODES = [
@@ -22,6 +22,8 @@ const ScenarioStepSchema = z.discriminatedUnion('type', [
     arguments: z.record(z.string(), z.unknown()),
   }),
   z.object({ type: z.literal('error'), code: z.enum(ERROR_CODES), message: z.string() }),
+  /** Answers nothing more until the call is cancelled: tests "Stop" end to end. */
+  z.object({ type: z.literal('hang') }),
 ]);
 
 const ScenarioSchema = z.object({
@@ -53,7 +55,7 @@ const roundIndex = (messages: readonly LlmMessage[]) => {
 };
 
 export const createScenarioProvider = (file: ScenarioFile): LlmProvider => ({
-  async *stream({ messages }) {
+  async *stream({ messages, signal }) {
     await Promise.resolve(); // a provider answers asynchronously
     const latest = messages.findLast((m) => m.role === 'user')?.content ?? '';
     // The agent sends the board listing in the same message: match only what follows it, so a
@@ -76,6 +78,14 @@ export const createScenarioProvider = (file: ScenarioFile): LlmProvider => ({
     let call = 0;
     for (const step of scenario.rounds[round] ?? []) {
       if (step.type === 'error') throw new LlmError(step.code, step.message);
+      if (step.type === 'hang') {
+        await new Promise<never>((_, reject) => {
+          const stop = () => reject(cancelledError());
+          if (signal.aborted) stop();
+          else signal.addEventListener('abort', stop, { once: true });
+        });
+        continue; // never reached: the cancel rejects
+      }
       const chunk: ProviderChunk =
         step.type === 'text'
           ? step

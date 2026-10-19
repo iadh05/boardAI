@@ -70,6 +70,11 @@ describe('toDiagram', () => {
     expect(toDiagram(board, null).zones).toEqual([]);
   });
 
+  it('draws ghosts at their placements, when the canvas has placed them', () => {
+    const { nodes } = toDiagram(board, proposal, { cache: { x: 640, y: 320 } });
+    expect(nodes.find((n) => n.id === 'cache')?.position).toEqual({ x: 640, y: 320 });
+  });
+
   it('shows a proposal as ghosts, exactly where accepting would put them', () => {
     const { nodes, edges } = toDiagram(board, proposal);
     const ghost = nodes.find((n) => n.id === 'cache');

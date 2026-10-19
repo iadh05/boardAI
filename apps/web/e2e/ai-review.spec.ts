@@ -1,9 +1,9 @@
 import { demoBoard } from './data/boards.ts';
 import { expect, test } from './fixtures.ts';
+import type { AppPage } from './pages/AppPage.ts';
 
 // The AI reviewer, end to end, on the fake model (e2e/fixtures/llm/scenarios.json): the app's
 // origin → server → agent → gateway → scripted model, deterministic and without a GPU.
-// The browser-side journeys need the chat UI and the ghost nodes (M1-20…M1-23).
 
 test(
   'reviewing the demo board proposes a cache connected to the API',
@@ -30,6 +30,68 @@ test('a model outage reaches the user as a message they can act on', async ({ ch
   ]);
 });
 
-test.fixme('accepting the proposal adds the cache node and its arrow — needs the chat UI (M1-23)', () => {});
+/** The M1 demo, drawn by hand: the model sees Client, Load Balancer, API, Database as n1…n4. */
+const drawDemo = async (app: AppPage) => {
+  const chain = ['Client', 'Load Balancer', 'API', 'Database'];
+  for (const [i, kind] of chain.entries()) {
+    await app.board.addNode(kind);
+    await app.board.move(kind, (i - 1.5) * 160, (i - 1.5) * 70);
+  }
+  await app.board.connect('Client', 'Load Balancer');
+  await app.board.connect('Load Balancer', 'API');
+  await app.board.connect('API', 'Database');
+};
 
-test.fixme('a proposal the board has moved past says "out of date" and changes nothing — M1-23', () => {});
+test(
+  'accepting the proposal adds the cache node and its arrow',
+  { tag: '@smoke' },
+  async ({ app }) => {
+    await app.open();
+    await drawDemo(app);
+
+    await app.chat.sendMessage('Please review my design');
+
+    await expect(app.chat.conversation).toContainText('Every read goes straight to the database');
+    await expect(app.chat.proposal).toContainText('Add cache "Cache"');
+    await expect(app.board.node('Proposed: Cache')).toBeVisible(); // a ghost until accepted
+
+    await app.chat.accept();
+
+    await expect(app.board.node('Cache')).toBeVisible();
+    await expect(app.board.node('Proposed: Cache')).toHaveCount(0);
+    // Attached, not "visible": the cache sits right of the API, so the arrow is a straight line
+    // whose box is 0 px tall — Playwright never calls that visible (seen in M1-12).
+    await expect(app.board.edge('API', 'Cache')).toBeAttached();
+    await expect(app.chat.proposal).toHaveCount(0);
+  },
+);
+
+test('a proposal the board has moved past says "out of date" and changes nothing', async ({
+  app,
+}) => {
+  await app.open();
+  await drawDemo(app);
+  await app.chat.sendMessage('Please review my design');
+  await expect(app.board.node('Proposed: Cache')).toBeVisible();
+
+  await app.board.delete(app.board.node('API')); // the proposal connects the cache to it
+
+  await app.chat.accept();
+  await expect(app.chat.proposalProblem()).toContainText('out of date');
+  await expect(app.board.node('Cache')).toHaveCount(0);
+
+  await app.chat.reject();
+  await expect(app.chat.proposal).toHaveCount(0);
+});
+
+test('Stop ends an answer that is taking too long, without an error', async ({ app }) => {
+  await app.open();
+
+  await app.chat.sendMessage('Please take your time');
+  await expect(app.chat.conversation).toContainText('Let me think about this carefully');
+
+  await app.chat.stop();
+
+  await expect(app.chat.sendButton).toBeVisible(); // ready for the next question
+  await expect(app.chat.conversation.getByRole('alert')).toHaveCount(0);
+});

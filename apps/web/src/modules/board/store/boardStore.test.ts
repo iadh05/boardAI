@@ -116,6 +116,28 @@ describe('boardStore — proposals', () => {
     ],
   });
 
+  it('accepting puts each new node exactly where it was placed (where its ghost was)', () => {
+    const { api } = seedApiAndDb();
+    state().setProposal(proposalFor(api));
+
+    state().placeProposal({ cache: { x: 640, y: 320 } });
+    state().acceptProposal();
+
+    expect(state().board.nodes.find((n) => n.id === 'cache')?.position).toEqual({ x: 640, y: 320 });
+  });
+
+  it('a new proposal starts unplaced; placing without a proposal does nothing', () => {
+    const { api } = seedApiAndDb();
+    state().placeProposal({ cache: { x: 1, y: 1 } });
+    expect(state().placements).toBeNull();
+
+    state().setProposal(proposalFor(api));
+    state().placeProposal({ cache: { x: 640, y: 320 } });
+    state().setProposal({ ...proposalFor(api), id: 'p2' });
+
+    expect(state().placements).toBeNull();
+  });
+
   it('setProposal stores it without touching the board', () => {
     const { api } = seedApiAndDb();
     const before = state().board;

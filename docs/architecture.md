@@ -236,7 +236,7 @@ src/
 
 1. `proposal` event → `board.setProposal(p)`.
 2. `toDiagram` (canvas mapper) passes proposed nodes and edges to `<Diagram>` as `ghost` (faded, dashed, read-only).
-3. AI-added nodes have no position; `placement` puts them right of `near`, else at viewport centre (LLMs are bad at coordinates).
+3. AI-added nodes have no position; `placement` puts them right of `near`, else at viewport centre, never on a box or under the toolbar (LLMs are bad at coordinates). Placed once when the proposal arrives; the ghost preview and Accept use the same placements.
 4. **Accept** → `applyOps(currentBoard, ops)`; if it no longer fits (you edited meanwhile) → "proposal out of date", nothing applied.
 5. **Reject** → cleared.
 
