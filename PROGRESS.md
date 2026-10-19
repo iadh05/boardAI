@@ -39,7 +39,8 @@
 | M1-22 | Chat panel: conversation log, "Thinking…", streaming answer, inline errors, Enter to send, Stop, auto-scroll | #39 |
 | M1-UX2 | Nothing hides boxes: no fit on the first box, spawn avoids the toolbar, hints in the toolbar panel | #40 |
 | M1-23 | Proposal card (Accept / Reject / out of date), ghosts placed once and accepted where shown, demo e2e journeys, Stop e2e | #41 |
-| M1-24 | Prompt v2 from sample boards (1/4 → 3/4, injection never obeyed), `scripts/review-samples.ts`, summary never shows an id | this PR |
+| M1-24 | Prompt v2 from sample boards (1/4 → 3/4, injection never obeyed), `scripts/review-samples.ts`, summary never shows an id | #42 |
+| M1-24b | Scope guard: system design only — a classifier call before the review, fixed reply when off topic (30/30), stricter prompt | this PR |
 
 ## In progress
 

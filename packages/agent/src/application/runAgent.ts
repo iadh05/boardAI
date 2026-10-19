@@ -8,8 +8,10 @@ import type {
 import type { Board, ChatMessage, Proposal } from '@designroom/domain';
 import { boardToText } from '../domain/boardToText.ts';
 import { buildMessages } from '../domain/prompt.ts';
+import { OUT_OF_SCOPE_REPLY, type Scope } from '../domain/scope.ts';
 import { summarize } from '../domain/summary.ts';
 import { AGENT_TOOLS, createDraft, runToolCall } from '../domain/tools.ts';
+import { checkScope, type ScopeQuestion } from './checkScope.ts';
 
 // The agent loop (architecture §7): the model answers; its tool calls run on a draft of the board;
 // the results go back to the model; repeat until it stops calling tools or the round limit.
@@ -30,6 +32,8 @@ export type AgentDeps = {
   newId: () => string;
   /** Most model calls per request (chatPolicy): a model that keeps calling tools is stopped. */
   maxRounds?: number;
+  /** The scope guard; by default one short call to `llm`. Injected in tests. */
+  checkScope?: (question: ScopeQuestion) => Promise<Scope>;
 };
 
 export type AgentInput = {
@@ -50,6 +54,21 @@ const isGatewayError = (error: unknown): error is GatewayError =>
 
 export const createAgent = (deps: AgentDeps) => ({
   async *run({ board, messages, signal }: AgentInput): AsyncIterable<AgentEvent> {
+    // Scope guard first: a message about something else gets a fixed reply, and the reviewer
+    // (with its tools) never runs. Enforced here, in code — not left to the prompt.
+    const question = messages.findLast((m) => m.role === 'user')?.content ?? '';
+    const previousAnswer = messages.findLast((m) => m.role === 'assistant')?.content;
+    const scope = await (deps.checkScope ?? ((q) => checkScope(deps.llm, q)))({
+      question,
+      ...(previousAnswer === undefined ? {} : { previousAnswer }),
+      ...(signal ? { signal } : {}),
+    });
+    if (scope === 'out') {
+      yield { type: 'text', delta: OUT_OF_SCOPE_REPLY };
+      yield { type: 'done' };
+      return;
+    }
+
     const maxRounds = deps.maxRounds ?? DEFAULT_MAX_ROUNDS;
     let draft = createDraft(board);
     const conversation: LlmMessage[] = buildMessages(boardToText(board, draft.aliases), messages);

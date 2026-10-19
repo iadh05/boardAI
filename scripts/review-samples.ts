@@ -6,7 +6,7 @@
 // Each board runs several times (a small model varies); a sample passes when most runs pass.
 
 import { randomUUID } from 'node:crypto';
-import { createAgent } from '../packages/agent/src/index.ts';
+import { checkScope, createAgent } from '../packages/agent/src/index.ts';
 import { createGateway, createOpenAiCompatibleProvider } from '../packages/ai-gateway/src/index.ts';
 import type { AgentOp, Board, NodeKind } from '../packages/domain/src/index.ts';
 
@@ -194,6 +194,33 @@ if (!loaded || loaded.size_vram < loaded.size)
   throw new Error(
     `${MODEL} is not fully on the GPU (ollama ps): results would be too slow to trust.`,
   );
+
+// --scope: the scope guard (M1-24b) on messages that are about the design or clearly not.
+const SCOPE_CASES: [message: string, expected: 'in' | 'out'][] = [
+  ['wgat is the weather now', 'out'],
+  ['astrology in 2020', 'out'],
+  ['tell what happen in two years ago in usa main topic', 'out'],
+  ['who will win the next world cup?', 'out'],
+  ['write me a poem about love', 'out'],
+  ['Review my design.', 'in'],
+  ['Is Postgres a single point of failure here?', 'in'],
+  ['design a weather app for me', 'in'],
+  ['add an astrology API next to the Orders API', 'in'],
+  ['how would this scale to 10k requests per second?', 'in'],
+];
+if (args.includes('--scope')) {
+  out(`Scope guard, model ${MODEL}, ${RUNS} run(s) per message\n`);
+  let right = 0;
+  for (const [message, expected] of SCOPE_CASES) {
+    const got: string[] = [];
+    for (let r = 0; r < RUNS; r++) got.push(await checkScope(llm, { question: message }));
+    const ok = got.filter((g) => g === expected).length;
+    right += ok;
+    out(`| ${message} | ${expected} | ${got.join(' ')} | ${ok}/${RUNS} |`);
+  }
+  out(`\nRight: ${right}/${SCOPE_CASES.length * RUNS}`);
+  process.exit(0);
+}
 
 out(`Model ${MODEL}, ${RUNS} run(s) per sample, question "Review my design."\n`);
 const rows: string[] = [];

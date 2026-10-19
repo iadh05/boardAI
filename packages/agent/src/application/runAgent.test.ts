@@ -1,6 +1,7 @@
 import type { AiGateway, ChatInput, LlmChunk, LlmErrorCode } from '@designroom/ai-gateway';
 import { applyOps, type Board } from '@designroom/domain';
 import { describe, expect, it } from 'vitest';
+import { OUT_OF_SCOPE_REPLY } from '../domain/scope.ts';
 import { createAgent, type AgentEvent } from './runAgent.ts';
 
 /** One step of a scripted round: a chunk, a gateway failure, or silence until cancelled. */
@@ -49,12 +50,22 @@ const tool = (id: string, name: string, args: unknown): Step => ({
 });
 
 /** An agent on a scripted model: each inner array is one round's answer. */
-const setup = (answers: Step[][], maxRounds = 5) => {
+const setup = (answers: Step[][], maxRounds = 5, scope: 'in' | 'out' = 'in') => {
   const { llm, calls } = scriptedLlm(answers);
   const fake = { calls };
   let n = 0;
-  const agent = createAgent({ llm, newId: () => `id-${++n}`, maxRounds });
-  return { agent, fake };
+  const scopeAsked: { question: string; previousAnswer?: string }[] = [];
+  const agent = createAgent({
+    llm,
+    newId: () => `id-${++n}`,
+    maxRounds,
+    // The scope guard is its own model call (tested in checkScope.test.ts); here, scripted.
+    checkScope: (q) => {
+      scopeAsked.push(q);
+      return Promise.resolve(scope);
+    },
+  });
+  return { agent, fake, scopeAsked };
 };
 
 const run = async (agent: ReturnType<typeof setup>['agent'], signal?: AbortSignal) => {
@@ -221,6 +232,35 @@ describe('runAgent', () => {
 
     expect(events.map((e) => e.type)).toEqual(['text', 'round', 'error', 'done']);
     expect(events[2]).toMatchObject({ code: 'ABORTED' });
+  });
+});
+
+describe('scope guard', () => {
+  it('a message about something else gets the fixed reply: no review, no tools, no proposal', async () => {
+    const { agent, fake } = setup([[text('The weather is sunny.')]], 5, 'out');
+
+    const events = await run(agent);
+
+    expect(events).toEqual([{ type: 'text', delta: OUT_OF_SCOPE_REPLY }, { type: 'done' }]);
+    expect(fake.calls).toHaveLength(0); // the reviewer was never asked
+  });
+
+  it('is asked about the latest message, with the last answer for context', async () => {
+    const { agent, scopeAsked } = setup([[text('ok')]]);
+
+    for await (const event of agent.run({
+      board,
+      messages: [
+        { role: 'user', content: 'Review it' },
+        { role: 'assistant', content: 'Shall I add a cache?' },
+        { role: 'user', content: 'yes, do it' },
+      ],
+    }))
+      void event;
+
+    expect(scopeAsked).toEqual([
+      { question: 'yes, do it', previousAnswer: 'Shall I add a cache?' },
+    ]);
   });
 });
 

@@ -45,7 +45,11 @@ describe('createApp', () => {
     const chatApp = createApp({
       config,
       logger: createLogger({ level: 'info', write: (l) => lines.push(l) }),
-      llmProvider: createFakeProvider([[{ type: 'text', delta: 'Add a cache.' }]]),
+      // First the scope guard's call ("is this about the design?"), then the review itself.
+      llmProvider: createFakeProvider([
+        [{ type: 'text', delta: 'DESIGN' }],
+        [{ type: 'text', delta: 'Add a cache.' }],
+      ]),
     });
 
     const res = await chatApp.request('/api/chat', {
