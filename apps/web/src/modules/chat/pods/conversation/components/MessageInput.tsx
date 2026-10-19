@@ -3,14 +3,18 @@ import { useState, type FormEvent } from 'react';
 import { IconButton, Input } from '../../../../../core/ui/index.ts';
 
 export type MessageInputProps = {
-  /** An answer is streaming: typing waits, Stop replaces Send. */
+  /** An answer is streaming: the next question can be typed, not sent; Stop replaces Send. */
   streaming: boolean;
   /** Resolves to text to show again when the message was refused (fix it and resend). */
   onSend: (text: string) => Promise<string | null>;
   onStop: () => void;
 };
 
-/** Molecule: the chat's input line. Enter sends; the text is the view's own state. */
+/**
+ * Molecule: the chat's input line. Enter sends; the text is the view's own state. It is never
+ * disabled: a disabled input drops keyboard focus, and typing the next question while the answer
+ * streams is fine — only sending waits.
+ */
 export function MessageInput({ streaming, onSend, onStop }: MessageInputProps) {
   const [text, setText] = useState('');
 
@@ -18,8 +22,12 @@ export function MessageInput({ streaming, onSend, onStop }: MessageInputProps) {
     event.preventDefault();
     if (streaming || text.trim() === '') return;
     setText('');
-    const giveBack = await onSend(text);
-    if (giveBack) setText(giveBack);
+    try {
+      const giveBack = await onSend(text);
+      if (giveBack) setText(giveBack);
+    } catch {
+      setText(text); // never lose what the user typed
+    }
   };
 
   return (
@@ -29,7 +37,6 @@ export function MessageInput({ streaming, onSend, onStop }: MessageInputProps) {
         placeholder="Ask about your design…"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        disabled={streaming}
         autoComplete="off"
       />
       {streaming ? (

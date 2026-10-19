@@ -901,7 +901,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 **Status:** doing · **Size:** M · **Depends on:** M1-21, M1-04
 
 **Tasks**
-- [x] Message list (user / assistant), auto-scroll, input + send on Enter, disabled while streaming.
+- [x] Message list (user / assistant), auto-scroll, input + send on Enter, disabled while streaming (sending is; the input stays editable — see review note).
 - [x] Streaming text renders as it arrives; inline errors ("Can't reach the model — is Ollama running?").
 
 **Acceptance criteria**
@@ -910,6 +910,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 **Notes (2026-10-19)**
 - `pods/conversation`: `Conversation` (Panel organism) = `MessageList` (`role="log"`, bubbles, "Thinking…" before the first word, inline `role="alert"` errors) + `MessageInput` (Enter sends, disabled while streaming, Stop instead of Send, a refused message comes back into the input) + `useAutoScroll` (follows the answer unless the reader scrolled up). `Panel` gained a `bodyRef`.
 - Checked in the browser with the real Qwen (production build + server on :3100): question → "Thinking…" → streamed answer → ghost Cache node with dashed arrows on the canvas. With the model unreachable: inline "Can't reach the model — is Ollama running?", the input and the board keep working.
+- Review: the input is no longer disabled while answering (that dropped keyboard focus): the next question can be typed, only sending waits; the log is `aria-busy` while streaming (one announcement, not one per token); auto-scroll follows errors too; a send that throws gives the text back; one bubble element; on phones the chat gets 2/5 of the height.
 - Seen on the way, not this ticket: the toolbar covers a new box at the top-left of the view, and the canvas hint overlaps boxes; the model still writes ids ("n4") in its text (M1-24); answers are plain text (markdown rendering could come later).
 - Dev without Docker: the Vite dev server no longer forwards `/api` (Nginx does), so the chat can't be tried on :5173 until Docker runs; the production build (`vite preview`, forwards to :3100) works.
 

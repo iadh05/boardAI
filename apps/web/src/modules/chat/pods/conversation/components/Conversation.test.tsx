@@ -76,17 +76,29 @@ describe('Conversation', () => {
     expect(within(log).queryByRole('status')).not.toBeInTheDocument();
   });
 
-  it('keeps the input busy while answering, and offers Stop instead of Send', async () => {
-    const { input, user } = renderChat();
+  it('while answering: the next question can be typed but not sent, and Stop replaces Send', async () => {
+    const { input, user, fetchFn } = renderChat();
 
     await user.type(input, 'Review it{Enter}');
+    await user.type(input, 'And the API?{Enter}');
 
-    expect(input).toBeDisabled();
+    expect(fetchFn).toHaveBeenCalledTimes(1); // one answer at a time
+    expect(input).toHaveValue('And the API?'); // kept, to send when the answer is done
+    expect(input).toHaveFocus(); // the keyboard never leaves the chat
     expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Stop' }));
 
-    await waitFor(() => expect(input).toBeEnabled());
-    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Send' })).toBeInTheDocument();
+  });
+
+  it('marks the log busy while the answer streams, so screen readers read it once', async () => {
+    const { input, log, user, answer } = renderChat();
+
+    await user.type(input, 'Review it{Enter}');
+    expect(log).toHaveAttribute('aria-busy', 'true');
+
+    answer(sse({ type: 'done' }));
+    await waitFor(() => expect(log).toHaveAttribute('aria-busy', 'false'));
   });
 
   it('does not send an empty message', async () => {
@@ -110,7 +122,7 @@ describe('Conversation', () => {
     expect(await within(log).findByRole('alert')).toHaveTextContent(
       "Can't reach the model — is Ollama running?",
     );
-    expect(input).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'Send' })).toBeInTheDocument();
   });
 
   it('gives a refused message back to the input, so it can be fixed and resent', async () => {

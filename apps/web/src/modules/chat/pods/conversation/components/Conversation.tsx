@@ -17,7 +17,10 @@ export function Conversation({ deps = chatAppDeps }: ConversationProps) {
   const streaming = useStore(deps.chat, (s) => s.streaming);
   const error = useStore(deps.chat, (s) => s.error);
   const { send, cancel } = useSendMessage(deps);
-  const bodyRef = useAutoScroll<HTMLDivElement>(messages);
+  // Follow new text, and an error too: it can arrive without the messages changing.
+  const bodyRef = useAutoScroll<HTMLDivElement>(
+    `${messages.length}:${messages.at(-1)?.content.length}:${error}`,
+  );
 
   return (
     <Panel
