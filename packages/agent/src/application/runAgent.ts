@@ -1,0 +1,107 @@
+import type {
+  AiGateway,
+  LlmErrorCode,
+  LlmMessage,
+  LlmToolCall,
+  Usage,
+} from '@designroom/ai-gateway';
+import type { Board, ChatMessage, Proposal } from '@designroom/domain';
+import { boardToText } from '../domain/boardToText.ts';
+import { buildMessages } from '../domain/prompt.ts';
+import { summarize } from '../domain/summary.ts';
+import { AGENT_TOOLS, createDraft, runToolCall } from '../domain/tools.ts';
+
+// The agent loop (architecture §7): the model answers; its tool calls run on a draft of the board;
+// the results go back to the model; repeat until it stops calling tools or the round limit.
+// The board is never changed here: the outcome is at most one proposal the user accepts or not.
+
+export type AgentEvent =
+  | { type: 'text'; delta: string }
+  | { type: 'proposal'; proposal: Proposal }
+  /** One per model call: what it cost and how its tool calls went (metering, M1-24). */
+  | { type: 'round'; round: number; usage: Usage | null; toolCalls: number; toolErrors: number }
+  | { type: 'error'; code: LlmErrorCode; message: string }
+  | { type: 'done' };
+
+export type AgentDeps = {
+  /** Injected so the agent itself does no I/O: the server passes the real gateway, tests a fake. */
+  llm: AiGateway;
+  /** Ids for new nodes, edges and the proposal (crypto.randomUUID in the server). */
+  newId: () => string;
+  /** Most model calls per request (chatPolicy): a model that keeps calling tools is stopped. */
+  maxRounds?: number;
+};
+
+export type AgentInput = {
+  board: Board;
+  messages: readonly ChatMessage[];
+  signal?: AbortSignal;
+};
+
+const DEFAULT_MAX_ROUNDS = 5;
+
+type GatewayError = Error & { code: LlmErrorCode };
+
+/** The gateway throws LlmError; the agent may only import its types, so it checks the shape. */
+const isGatewayError = (error: unknown): error is GatewayError =>
+  error instanceof Error &&
+  error.name === 'LlmError' &&
+  typeof (error as GatewayError).code === 'string';
+
+export const createAgent = (deps: AgentDeps) => ({
+  async *run({ board, messages, signal }: AgentInput): AsyncIterable<AgentEvent> {
+    const maxRounds = deps.maxRounds ?? DEFAULT_MAX_ROUNDS;
+    let draft = createDraft(board);
+    const conversation: LlmMessage[] = buildMessages(boardToText(board, draft.aliases), messages);
+    let spoke = false;
+
+    for (let round = 1; round <= maxRounds; round++) {
+      const calls: LlmToolCall[] = [];
+      let said = '';
+      let usage: Usage | null = null;
+      try {
+        // A copy: the conversation grows after this call, the request must not change with it.
+        const request = { messages: [...conversation], tools: AGENT_TOOLS, signal };
+        for await (const chunk of deps.llm.chat(request)) {
+          if (chunk.type === 'text') {
+            // A new round's text starts a new paragraph, not glued to the last sentence.
+            if (!said && spoke && chunk.delta.trim()) yield { type: 'text', delta: '\n\n' };
+            said += chunk.delta;
+            spoke ||= chunk.delta.trim() !== '';
+            yield { type: 'text', delta: chunk.delta };
+          } else if (chunk.type === 'toolCall') calls.push(chunk.call);
+          else usage = chunk.usage;
+        }
+      } catch (error) {
+        if (!isGatewayError(error)) throw error; // a bug, not a model failure
+        yield { type: 'error', code: error.code, message: error.message };
+        yield { type: 'done' };
+        return;
+      }
+
+      let toolErrors = 0;
+      if (calls.length > 0) {
+        conversation.push({ role: 'assistant', content: said, toolCalls: calls });
+        for (const call of calls) {
+          const outcome = runToolCall(draft, call, deps);
+          draft = outcome.draft;
+          if (!outcome.ok) toolErrors++;
+          conversation.push({ role: 'tool', toolCallId: call.id, content: outcome.reply });
+        }
+      }
+      yield { type: 'round', round, usage, toolCalls: calls.length, toolErrors };
+      if (calls.length === 0) break;
+    }
+
+    if (draft.ops.length > 0)
+      yield {
+        type: 'proposal',
+        proposal: {
+          id: deps.newId(),
+          summary: summarize(draft.ops, board, draft.board),
+          ops: draft.ops,
+        },
+      };
+    yield { type: 'done' };
+  },
+});
