@@ -28,6 +28,11 @@ export default defineConfig({
               // Module ids use forward slashes on every OS.
               test: /\/node_modules\/.*\/(@xyflow|libavoid-js|d3-[a-z]+|classcat)\//,
             },
+            {
+              // Sentry in its own file too: it changes only on upgrades, and its size shows here.
+              name: 'error-tracking',
+              test: /\/node_modules\/.*\/@sentry(-internal)?\//,
+            },
           ],
         },
       },

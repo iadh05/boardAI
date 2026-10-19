@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/react';
+import { init } from '@sentry/react';
 
 // Error tracking for the browser (architecture §9: Sentry = "something broke, here's why").
 // The only place Sentry is started (frontend.md). Without a DSN it stays off, so tests, the e2e
@@ -7,7 +7,7 @@ import * as Sentry from '@sentry/react';
 /** Starts Sentry when a DSN is set (VITE_SENTRY_DSN at build time). Returns whether it did. */
 export const startErrorTracking = (
   dsn: string | undefined,
-  sentry: Pick<typeof Sentry, 'init'> = Sentry,
+  sentry: { init: typeof init } = { init },
 ): boolean => {
   if (!dsn) return false;
   sentry.init({

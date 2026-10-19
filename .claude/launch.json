@@ -12,6 +12,24 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@designroom/server", "dev"],
       "port": 3000
+    },
+    {
+      "name": "web-preview",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@designroom/web",
+        "exec",
+        "vite",
+        "preview",
+        "--port",
+        "4180",
+        "--strictPort"
+      ],
+      "env": {
+        "API_URL": "http://localhost:3000"
+      },
+      "port": 4180
     }
   ]
 }

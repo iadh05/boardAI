@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/react';
+import { ErrorBoundary as SentryErrorBoundary } from '@sentry/react';
 import type { ReactNode } from 'react';
 
 export type ErrorBoundaryProps = {
@@ -16,8 +16,8 @@ export type ErrorBoundaryProps = {
  */
 export function ErrorBoundary({ fallback, onError, children }: ErrorBoundaryProps) {
   return (
-    <Sentry.ErrorBoundary fallback={<>{fallback}</>} onError={(error) => onError?.(error)}>
+    <SentryErrorBoundary fallback={<>{fallback}</>} onError={(error) => onError?.(error)}>
       {children}
-    </Sentry.ErrorBoundary>
+    </SentryErrorBoundary>
   );
 }
