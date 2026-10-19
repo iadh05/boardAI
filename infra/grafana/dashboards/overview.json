@@ -1128,7 +1128,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(process_cpu_utilization)",
+          "expr": "sum(rate(process_cpu_time_seconds_total[$__rate_interval]))",
           "legendFormat": "process CPU"
         },
         {

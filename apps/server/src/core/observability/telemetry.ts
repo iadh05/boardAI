@@ -3,7 +3,7 @@ import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
-import { startRuntimeMetrics } from './runtimeMetrics.ts';
+import { RUNTIME_METRIC_VIEWS, startRuntimeMetrics } from './runtimeMetrics.ts';
 import { BatchSpanProcessor, NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import type { MiddlewareHandler } from 'hono';
@@ -54,6 +54,7 @@ export const startTelemetry = (
 
   const meterProvider = new MeterProvider({
     resource,
+    views: RUNTIME_METRIC_VIEWS,
     readers: [
       new PeriodicExportingMetricReader({
         exporter: new OTLPMetricExporter({ url: otlpUrl(config.endpoint, 'metrics') }),

@@ -1,6 +1,6 @@
 import { MeterProvider, MetricReader } from '@opentelemetry/sdk-metrics';
 import { afterEach, describe, expect, it } from 'vitest';
-import { startRuntimeMetrics } from './runtimeMetrics.ts';
+import { RUNTIME_METRIC_VIEWS, startRuntimeMetrics } from './runtimeMetrics.ts';
 
 /** Reads metrics on demand: what the exporter would send, without sending it. */
 class TestReader extends MetricReader {
@@ -33,11 +33,26 @@ describe('startRuntimeMetrics', () => {
       expect.arrayContaining([
         'nodejs.eventloop.delay.p99', // a blocked event loop slows every route at once
         'v8js.memory.heap.used',
-        'process.cpu.utilization',
+        'process.cpu.time', // CPU in Grafana: rate(cpu seconds) = cores in use
         'process.memory.usage',
       ]),
     );
     // Process only: no per-core or per-network-card series.
     expect(names.some((n) => n.startsWith('system.'))).toBe(false);
+  });
+
+  it('drops process.cpu.utilization: it can be NaN, and one NaN made the collector reject every metric', async () => {
+    const reader = new TestReader();
+    stop = startRuntimeMetrics(
+      new MeterProvider({ readers: [reader], views: RUNTIME_METRIC_VIEWS }),
+    );
+
+    const { resourceMetrics } = await reader.collect();
+    const names = resourceMetrics.scopeMetrics.flatMap((s) =>
+      s.metrics.map((m) => m.descriptor.name),
+    );
+
+    expect(names).toContain('process.cpu.time');
+    expect(names).not.toContain('process.cpu.utilization');
   });
 });
