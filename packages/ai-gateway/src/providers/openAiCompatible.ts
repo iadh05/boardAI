@@ -3,7 +3,7 @@
 // ProviderChunks. Timeouts and retries are the gateway's job, not this file's.
 
 import { z } from 'zod';
-import { LlmError } from '../errors.ts';
+import { cancelledError, LlmError } from '../errors.ts';
 import { readSseData } from '../sse.ts';
 import type {
   LlmMessage,
@@ -30,6 +30,9 @@ const ToolCallDeltaSchema = z.object({
   id: z.string().optional(),
   function: z.object({ name: z.string().optional(), arguments: z.string().optional() }).optional(),
 });
+
+// Servers report a failure mid-stream as an event of its own (Ollama: the model runner stopped).
+const StreamErrorSchema = z.object({ error: z.object({ message: z.string() }) });
 
 const StreamChunkSchema = z.object({
   choices: z.array(
@@ -108,8 +111,8 @@ const createToolCallCollector = () => {
     flush(): ProviderChunk[] {
       const calls = [...pending.entries()]
         .sort(([a], [b]) => a - b)
-        .map(([, c]): LlmToolCall => ({
-          id: c.id,
+        .map(([index, c]): LlmToolCall => ({
+          id: c.id || `call_${index}`, // the reply to the call must refer to an id
           name: c.name,
           arguments: parseArguments(c.args),
         }));
@@ -146,8 +149,7 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
           signal: input.signal,
         });
       } catch (error) {
-        if (isAbort(error) || input.signal.aborted)
-          throw new LlmError('ABORTED', 'The request was cancelled.', { cause: error });
+        if (isAbort(error) || input.signal.aborted) throw cancelledError(error);
         throw new LlmError(
           'UNAVAILABLE',
           `Can't reach the model at ${options.baseUrl} — is Ollama running?`,
@@ -155,6 +157,8 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
         );
       }
 
+      if (response.ok && !response.body)
+        throw new LlmError('BAD_RESPONSE', `The model answered ${response.status} with no body.`);
       if (!response.ok || !response.body) {
         const message = await providerMessage(response);
         const transient = response.status === 429 || response.status >= 500;
@@ -168,14 +172,23 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
       try {
         for await (const data of readSseData(response.body)) {
           if (data === '[DONE]') break;
-          let chunk: z.infer<typeof StreamChunkSchema>;
+          let json: unknown;
           try {
-            chunk = StreamChunkSchema.parse(JSON.parse(data));
+            json = JSON.parse(data);
           } catch (error) {
             throw new LlmError('BAD_RESPONSE', 'The model sent a chunk we cannot read.', {
               cause: error,
             });
           }
+          const failed = StreamErrorSchema.safeParse(json);
+          if (failed.success)
+            throw new LlmError('UNAVAILABLE', `The model failed: ${failed.data.error.message}`);
+          const parsed = StreamChunkSchema.safeParse(json);
+          if (!parsed.success)
+            throw new LlmError('BAD_RESPONSE', 'The model sent a chunk we cannot read.', {
+              cause: parsed.error,
+            });
+          const chunk = parsed.data;
           for (const choice of chunk.choices) {
             // `delta.reasoning` (thinking) is deliberately not read: it is never the answer.
             if (choice.delta?.content) yield { type: 'text', delta: choice.delta.content };
@@ -191,8 +204,7 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
         }
       } catch (error) {
         if (error instanceof LlmError) throw error;
-        if (isAbort(error) || input.signal.aborted)
-          throw new LlmError('ABORTED', 'The request was cancelled.', { cause: error });
+        if (isAbort(error) || input.signal.aborted) throw cancelledError(error);
         throw new LlmError('UNAVAILABLE', 'The connection to the model dropped mid-answer.', {
           cause: error,
         });

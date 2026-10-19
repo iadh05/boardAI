@@ -1,7 +1,7 @@
 // A provider that replays scripted answers: agent and server tests run on it, with no network
 // and no GPU (docs/rules/general.md). Later the e2e runs use it too (LLM_PROVIDER=fake).
 
-import { LlmError } from '../errors.ts';
+import { cancelledError, type LlmError } from '../errors.ts';
 import type { ChatInput, LlmProvider, ProviderChunk } from '../types.ts';
 
 /** One step of a scripted answer: a chunk, a failure, or "never answer" (until cancelled). */
@@ -14,7 +14,7 @@ export type FakeProvider = LlmProvider & {
 
 const untilAborted = (signal: AbortSignal) =>
   new Promise<never>((_, reject) => {
-    const abort = () => reject(new LlmError('ABORTED', 'The request was cancelled.'));
+    const abort = () => reject(cancelledError());
     if (signal.aborted) abort();
     else signal.addEventListener('abort', abort, { once: true });
   });

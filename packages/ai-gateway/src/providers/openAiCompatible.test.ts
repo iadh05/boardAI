@@ -114,6 +114,14 @@ describe('openAiCompatible provider — reading the stream', () => {
     });
   });
 
+  it('gives a tool call an id when the provider sent none, so the reply can refer to it', async () => {
+    const body =
+      'data: {"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"name":"n","arguments":"{}"}}]},"finish_reason":"tool_calls"}]}\n\ndata: [DONE]\n\n';
+    expect(await run(replying(body))).toEqual([
+      { type: 'toolCall', call: { id: 'call_0', name: 'n', arguments: {} } },
+    ]);
+  });
+
   it('still delivers tool calls when the stream ends without a finish reason', async () => {
     const body =
       'data: {"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"c","function":{"name":"n","arguments":"{}"}}]},"finish_reason":null}]}\n\ndata: [DONE]\n\n';
@@ -225,6 +233,19 @@ describe('openAiCompatible provider — failures', () => {
     expect(await failure(replying('data: {"choices":"nope"}\n\n'))).toMatchObject({
       code: 'BAD_RESPONSE',
     });
+  });
+
+  it('passes on the provider’s own message when it streams an error event', async () => {
+    const body =
+      'data: {"choices":[{"index":0,"delta":{"content":"Start"}}]}\n\ndata: {"error":{"message":"model runner has unexpectedly stopped"}}\n\n';
+    const error = await failure(replying(body));
+    expect(error).toMatchObject({ code: 'UNAVAILABLE' });
+    expect((error as LlmError).message).toMatch(/unexpectedly stopped/);
+  });
+
+  it('reports a successful status with no body as an unreadable response', async () => {
+    const error = await failure(vi.fn<typeof fetch>(() => Promise.resolve(new Response(null))));
+    expect(error).toMatchObject({ code: 'BAD_RESPONSE', transient: false });
   });
 
   it('reports a connection that drops mid-stream as transient', async () => {

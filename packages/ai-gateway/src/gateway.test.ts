@@ -170,7 +170,7 @@ describe('gateway — retries', () => {
 });
 
 describe('gateway — timeouts and cancellation', () => {
-  it('times out when the model goes silent, and cancels the call', async () => {
+  it('times out when the model goes silent, cancels the call, and does not retry', async () => {
     vi.useFakeTimers();
     const fake = createFakeProvider([[text('Thinking about'), { type: 'hang' }]]);
     const providerSignals: AbortSignal[] = [];
@@ -180,14 +180,17 @@ describe('gateway — timeouts and cancellation', () => {
         return fake.stream(i);
       },
     };
-    const { gateway } = setup(spy, { timeoutMs: 30_000, retries: 0 });
+    const { gateway, sleeps } = setup(spy, { timeoutMs: 30_000, retries: 2 });
 
     const result = drain(gateway.chat(input));
-    const assertion = expect(result).rejects.toMatchObject({ code: 'TIMEOUT', transient: true });
+    const assertion = expect(result).rejects.toMatchObject({ code: 'TIMEOUT', transient: false });
     await vi.advanceTimersByTimeAsync(30_000);
 
     await assertion;
     expect(providerSignals[0]?.aborted).toBe(true);
+    // A silent model is busy or stuck: asking again would make the user wait another 30 s.
+    expect(sleeps).toEqual([]);
+    expect(providerSignals).toHaveLength(1);
   });
 
   it('measures silence, not total time: a slow but steady stream is fine', async () => {
@@ -257,6 +260,26 @@ describe('gateway — timeouts and cancellation', () => {
 });
 
 describe('gateway — defaults', () => {
+  it('stops waiting to retry as soon as the caller cancels', async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const fake = createFakeProvider([[{ type: 'error', error: down() }], [text('never')]]);
+    const gateway = createGateway({
+      provider: fake,
+      timeoutMs: 30_000,
+      retries: 1,
+      backoffMs: 10_000,
+    });
+
+    const result = drain(gateway.chat({ ...input, signal: controller.signal }));
+    const assertion = expect(result).rejects.toMatchObject({ code: 'ABORTED' });
+    await vi.advanceTimersByTimeAsync(1); // the first attempt failed; now waiting 10 s to retry
+    controller.abort();
+
+    await assertion; // without the 10 s passing
+    expect(fake.calls).toHaveLength(1);
+  });
+
   it('waits on real timers and reads the real clock when none are injected', async () => {
     vi.useFakeTimers(); // fakes both setTimeout and performance.now
     const gateway = createGateway({
