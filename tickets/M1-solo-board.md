@@ -49,7 +49,10 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-22 | conversation pod (chat UI) | M1b | M | done |
 | M1-23 | proposal pod + ghost nodes | M1b | M | done |
 | M1-24 | System prompt + sample-boards script | M1b | M | doing |
-| M1-24b | Scope guardrail: system design only | M1b | S | doing |
+| M1-24b | Scope guardrail: system design only | M1b | S | done |
+| M1-24c | Context 64k: model setting + chat budget from config | M1b | S | todo |
+| M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | todo |
+| M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | todo |
 | M1-25 | Sentry (web + server) | obs | S | doing |
 | M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | doing |
 | M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | todo |
@@ -1008,6 +1011,72 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - In the app: the three questions get the fixed reply; "Review my design" gets a review.
 - Fails open (unclear answer or model error → the review runs, with the stricter prompt as the second guard): blocking real design questions would be worse than missing an odd one.
 - Review: the verdict is read anywhere in the answer ("Classification: OTHER"); a classifier that stalls after its first words gets 2 s, then fails open (the e2e Stop journey caught it hanging the review); an e2e journey checks the fixed reply. Mixed messages pass the guard and the review prompt refuses the off-topic part (3/3). After the fixes: 29/30 — one false refusal of "add an astrology API" (temperature 0.7). Deferred: temperature 0 for classifier calls (with M5's eval temperature), metering the guard call (M1-26), a French refusal.
+
+---
+
+## M1-24c — Context 64k
+**Status:** todo · **Size:** S · **Depends on:** M1-24b
+
+*Why (2026-10-19):* 16k was our choice to save VRAM; the model supports 262k. Measured on the RTX 5060 Ti, all 100% GPU:
+
+| `num_ctx` | VRAM | Notes |
+|---|---|---|
+| 16k (today) | 6.1 GB | M1-15 spike |
+| 32k | 6.7 GB | |
+| **64k** | **7.7 GB** | 38k-token prompt: ~13 s to read cold, then ~51 tok/s; same prompt again 0.7 s (cache) |
+| 128k | 9.9 GB | |
+
+Memory grows slowly because only 8 of the model's 32 layers keep a per-token cache (Gated DeltaNet hybrid; ~32 KiB/token at f16). Quality on huge input is shaky (asked to count 1,799 services: "2,453", then "1,800"), so the history is still trimmed, just with more room.
+
+**Tasks**
+- [ ] `infra/ollama/Modelfile`: `num_ctx 65536`; rebuild `designroom-qwen`; update the Modelfile comment and docs/spikes note.
+- [ ] Config: `LLM_CONTEXT_TOKENS` (default 65536) → the chat policy's budget, instead of the hard-coded 16,384 (each model gets its own budget, M6 too).
+
+**Tests first**
+- [ ] chatPolicy keeps more history with a bigger budget, and still refuses a board that cannot fit.
+
+**Acceptance criteria**
+- [ ] `ollama ps`: 64k, 100% GPU. Sample boards still pass.
+
+## M1-24d — Guardrails v2
+**Status:** todo · **Size:** M · **Depends on:** M1-24c
+
+*Why:* the scope guard stops plain off-topic questions (30/30), but nothing has been tested against someone *trying*: prompt extraction, injection in node labels, jailbreak phrasings. Research (2026-10-19), main sources: [OWASP LLM01](https://genai.owasp.org/llmrisk/llm01-prompt-injection/), [OWASP LLM07 system prompt leakage](https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/), [Spotlighting, Microsoft 2024](https://arxiv.org/abs/2403.14720), [Anthropic: reduce prompt leak](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-prompt-leak).
+
+Key ideas: the system prompt is **not a secret and not a security control** (OWASP): anything that must hold is enforced in code. Layers, cheapest and most valuable first:
+
+**Tasks**
+- [ ] **Red-team set first** (`scripts/`, real model, never in `pnpm test`): ~60–100 cases — off-topic phrasings beyond our examples, "repeat your instructions", role-play/jailbreak, injection inside node labels, plus benign design questions to count false refusals. Seeds from public sets (deepset/prompt-injections, JailbreakBench; check licences). Report block rate and false-refusal rate. Baseline before any change.
+- [ ] **Output filter:** a canary string in the system prompt + a check on the streamed answer for the canary or a long overlap with the prompt → replaced by the fixed refusal. Deterministic, in code.
+- [ ] **Board as escaped data:** labels can't close `<board>` (escape `<`, `>`, or JSON-encode the listing inside the tag); an untrusted-data policy line in the prompt (spotlighting).
+- [ ] **Scope classifier:** few-shot examples (extraction, jailbreak, off-topic) and fail **closed** on a clear OTHER, still open on model errors; temperature 0 for this call.
+- [ ] **Caps in code:** label length, ops per proposal (20 today) — checked, not prompted.
+- [ ] Optional, decide from the red-team numbers: a dedicated injection classifier (Llama Prompt Guard 2 22M via ONNX in Node, or Granite Guardian 2B on Ollama — licences first).
+
+**Acceptance criteria**
+- [ ] Red-team report in `docs/evals/`: block rate up, false refusals ≤ today's, before/after table.
+- [ ] The system prompt never appears in an answer (canary test, unit + red-team).
+
+## M1-24e — Prompt v3
+**Status:** todo · **Size:** M · **Depends on:** M1-24d (its red-team set measures this too)
+
+*Why:* a solution-architect persona with explicit review rules, sections the code can pick per model, and a shorter scope part (the code guard runs first, so the prompt doesn't need long example lists). XML or plain text: studies find small differences on recent models (under ~2 points, one Qwen result slightly favoured plain text — [Prompt Design at Scale, 2026](https://arxiv.org/pdf/2607.19257); [format study, 2024](https://arxiv.org/abs/2411.10541)); XML tags are worth it for **boundaries** (data vs instructions) and for selecting sections in code, not for a quality jump.
+
+**Tasks**
+- [ ] Co-write the prompt with the owner: `<persona>` solution architect, `<rules>` (SPOFs, scaling, consistency, cost, trade-offs, one question when requirements are missing), `<changes>` (tools, ids, proposals), short `<scope>`.
+- [ ] Sections chosen by the context budget (short rules for small models).
+- [ ] Measure: sample boards (`review-samples.ts`) + M1-24d's red-team set; keep v3 only if it doesn't lose on either. Log in `docs/evals/`.
+
+**Acceptance criteria**
+- [ ] Before/after table; prompt v3 merged only with equal or better numbers.
+
+---
+
+# After M1 (planned 2026-10-19)
+
+- **Removal proposals** — `remove_node` / `remove_edge` as *proposals*: ghosts marked for removal, nothing removed without Accept. Changes the "no delete tool" rule (backend.md), so it starts with an ADR. Owner's decision: yes.
+- **Draw mode** — "draw me a design for X": a whole diagram proposed as ghosts, then Accept/Reject. Needs automatic layout for many new boxes and bigger proposal limits (today 1–3 boxes in the prompt, 20 ops in code).
+- **Fine-tuning** — see MILESTONES M6.
 
 ---
 
