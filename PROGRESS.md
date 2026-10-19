@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-25b GlitchTip → M1-26d logs, M1-26c Phoenix, M1-24e prompt v3 (co-written)
+**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** closing M1 — M1-24e prompt v3 (co-written; fixes the "no proposal" regression the M1 demo needs) → M1-26d logs → your decisions (M1-13, M1-24d review, branch protection) → M1-27
 
 ## Done
 
