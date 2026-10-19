@@ -10,6 +10,7 @@ import {
 } from '@opentelemetry/sdk-trace-base';
 import { MeterProvider, MetricReader, type DataPoint } from '@opentelemetry/sdk-metrics';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { PROPOSE_NUDGE } from '../domain/nudge.ts';
 import { SYSTEM_PROMPT } from '../domain/prompt.ts';
 import { OUT_OF_SCOPE_REPLY } from '../domain/scope.ts';
 import { createAgent, type AgentEvent } from './runAgent.ts';
@@ -99,11 +100,11 @@ const textOf = (events: AgentEvent[]) =>
 
 describe('runAgent', () => {
   it('without tool calls: streams the text and ends with done, no proposal', async () => {
-    const { agent } = setup([[text('Looks good. '), text('Add a cache later.')]]);
+    const { agent } = setup([[text('Looks good. '), text('Nothing to change for now.')]]);
 
     const events = await run(agent);
 
-    expect(textOf(events)).toBe('Looks good. Add a cache later.');
+    expect(textOf(events)).toBe('Looks good. Nothing to change for now.');
     expect(of(events, 'proposal')).toEqual([]);
     expect(events.at(-1)).toEqual({ type: 'done' });
   });
@@ -242,6 +243,87 @@ describe('runAgent', () => {
 
     expect(events.map((e) => e.type)).toEqual(['text', 'round', 'error', 'done']);
     expect(events[2]).toMatchObject({ code: 'ABORTED' });
+  });
+});
+
+describe('proposal nudge (M1-24e)', () => {
+  // A small model often recommends a fix in words and calls no tool: nothing the user can accept.
+  // The loop asks it once to propose what it recommended — enforced in code, not left to the prompt.
+
+  it('recommends a change in words, no tool call → asked once, and the proposal arrives', async () => {
+    const { agent, fake } = setup([
+      [text('Every read hits Postgres: add a Redis cache.')],
+      [tool('c1', 'add_node', { kind: 'cache', label: 'Redis', near: 'n1' })],
+      [tool('c2', 'connect_nodes', { source: 'n1', target: 'n3' })],
+      [text('Proposed.')],
+    ]);
+
+    const events = await run(agent);
+
+    expect(fake.calls).toHaveLength(4);
+    const nudge = fake.calls[1]?.messages.slice(-2);
+    expect(nudge?.[0]).toEqual({
+      role: 'assistant',
+      content: 'Every read hits Postgres: add a Redis cache.',
+    });
+    expect(nudge?.[1]).toMatchObject({ role: 'user', content: PROPOSE_NUDGE });
+    expect(of(events, 'proposal')[0]?.proposal.ops.map((o) => o.op)).toEqual([
+      'addNode',
+      'connect',
+    ]);
+  });
+
+  it('already proposed → no nudge, no extra call', async () => {
+    const { agent, fake } = setup([
+      [text('Add a cache.'), tool('c1', 'add_node', { kind: 'cache', label: 'Redis' })],
+      [text('A cache would also help later.')],
+    ]);
+    await run(agent);
+    expect(fake.calls).toHaveLength(2);
+  });
+
+  it('an answer that recommends nothing (a question, an explanation) → no nudge', async () => {
+    const { agent, fake } = setup([[text('How many users do you expect?')]]);
+    await run(agent);
+    expect(fake.calls).toHaveLength(1);
+  });
+
+  it('still no tool call after the nudge → stops after one try, no loop', async () => {
+    const { agent, fake } = setup([
+      [text('You need a load balancer.')],
+      [text('Sure, a load balancer would help.')],
+    ]);
+
+    const events = await run(agent);
+
+    expect(fake.calls).toHaveLength(2);
+    expect(of(events, 'proposal')).toEqual([]);
+    expect(events.at(-1)).toEqual({ type: 'done' });
+  });
+
+  it('the user cancels during the nudge → stops quietly', async () => {
+    const controller = new AbortController();
+    const { agent } = setup([[text('Add a cache.')], [{ type: 'hang' }]]);
+
+    const events: AgentEvent[] = [];
+    for await (const event of agent.run({
+      board,
+      messages: [{ role: 'user', content: 'Review my design' }],
+      signal: controller.signal,
+    })) {
+      events.push(event);
+      if (event.type === 'round') controller.abort();
+    }
+
+    expect(events.at(-2)).toMatchObject({ type: 'error', code: 'ABORTED' });
+    expect(events.at(-1)).toEqual({ type: 'done' });
+  });
+
+  it('needs a round left: at the limit, the answer stands as it is', async () => {
+    const { agent, fake } = setup([[text('Add a cache.')], [text('ok')]], 1);
+    const events = await run(agent);
+    expect(fake.calls).toHaveLength(1);
+    expect(textOf(events)).toBe('Add a cache.'); // no "I stopped here" for a nudge never sent
   });
 });
 

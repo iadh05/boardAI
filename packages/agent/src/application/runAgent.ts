@@ -9,6 +9,7 @@ import type {
 import type { Board, ChatMessage, Proposal } from '@designroom/domain';
 import { boardToText } from '../domain/boardToText.ts';
 import { createLeakWatch } from '../domain/leakWatch.ts';
+import { PROPOSE_NUDGE, recommendsChange } from '../domain/nudge.ts';
 import { buildMessages, REFUSAL_WORDING, SYSTEM_PROMPT } from '../domain/prompt.ts';
 import { OUT_OF_SCOPE_REPLY, type Scope } from '../domain/scope.ts';
 import { summarize } from '../domain/summary.ts';
@@ -117,6 +118,7 @@ export const createAgent = (deps: AgentDeps) => {
       });
       let spoke = false; // an earlier round wrote something
       let finished = false; // the model stopped calling tools by itself
+      let nudged = false; // asked once to propose what it recommended in words (M1-24e)
 
       // Valid ops so far, as one proposal: also sent when a later round fails, because the text the
       // user already read may say "I've added a cache".
@@ -204,6 +206,21 @@ export const createAgent = (deps: AgentDeps) => {
           });
           yield { type: 'round', round, usage, toolCalls: calls.length, toolErrors };
           finished = calls.length === 0;
+          // Advice in words only, nothing proposed yet: ask once for the proposal (M1-24e).
+          // Only with a round left: otherwise the user would read "I stopped here" for nothing.
+          if (
+            finished &&
+            !nudged &&
+            round < maxRounds &&
+            draft.ops.length === 0 &&
+            recommendsChange(said)
+          ) {
+            nudged = true;
+            finished = false;
+            agent.span.setAttribute('designroom.agent.nudged', true);
+            conversation.push({ role: 'assistant', content: said });
+            conversation.push({ role: 'user', content: PROPOSE_NUDGE });
+          }
         } finally {
           step.span.end();
         }
