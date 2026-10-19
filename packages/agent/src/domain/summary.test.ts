@@ -39,6 +39,15 @@ describe('summarize', () => {
     ).toBe('Add queue "Jobs"; change "Queue": rename to "Jobs"');
   });
 
+  it('names a box added in the proposal as the board stores it (trimmed, or the default)', () => {
+    expect(
+      summaryOf([
+        { op: 'addNode', nodeId: 'q', kind: 'queue', label: '  ' },
+        { op: 'updateNode', nodeId: 'q', label: 'Jobs' },
+      ]),
+    ).toBe('Add queue "Jobs"; change "Queue": rename to "Jobs"');
+  });
+
   it('describes a change by the name the user knows now', () => {
     expect(
       summaryOf([{ op: 'updateNode', nodeId: 'api', label: 'Orders API', kind: 'service' }]),

@@ -1,4 +1,4 @@
-import type { AgentOp, Board } from '@designroom/domain';
+import { KIND_DEFAULT_LABEL, type AgentOp, type Board } from '@designroom/domain';
 
 // The proposal's summary is for the person deciding Accept or Reject: it names boxes by their
 // labels, never by ids or aliases. Built from the ops, so it says exactly what Accept will do.
@@ -17,7 +17,8 @@ type NamesSoFar = Map<string, string>;
 const describe = (op: AgentOp, after: Board, names: NamesSoFar): string => {
   switch (op.op) {
     case 'addNode':
-      names.set(op.nodeId, op.label);
+      // As the board stores it: trimmed, or the kind's default name when empty (applyOps' rule).
+      names.set(op.nodeId, op.label.trim() || KIND_DEFAULT_LABEL[op.kind]);
       return `add ${op.kind} ${labelOf(after, op.nodeId)}`;
     case 'updateNode': {
       const parts = [

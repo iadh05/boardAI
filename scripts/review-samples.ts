@@ -49,8 +49,16 @@ type Sample = {
   pass: (run: Run, board: Board) => boolean;
 };
 
+/** The fix is there: a box of that kind, connected to something (a floating box fixes nothing). */
 const adds = (kind: NodeKind) => (run: Run) =>
-  run.ops.some((op) => op.op === 'addNode' && op.kind === kind);
+  run.ops.some(
+    (added) =>
+      added.op === 'addNode' &&
+      added.kind === kind &&
+      run.ops.some(
+        (op) => op.op === 'connect' && (op.source === added.nodeId || op.target === added.nodeId),
+      ),
+  );
 
 const chain = boardOf(
   [
@@ -169,9 +177,28 @@ const review = async (board: Board): Promise<Run> => {
 
 const oneLine = (s: string, max = 220) => s.replace(/\s+/g, ' ').trim().slice(0, max);
 
+// Measure on the GPU or not at all: on the CPU a run takes minutes and times out (M1-24).
+await fetch('http://localhost:11434/api/generate', {
+  method: 'POST',
+  body: JSON.stringify({ model: MODEL, prompt: 'hi', stream: false, options: { num_predict: 1 } }),
+}).catch(() => {
+  throw new Error(
+    `Ollama is not running: start the Ollama app (not \`ollama serve\` from a shell).`,
+  );
+});
+const ps = (await (await fetch('http://localhost:11434/api/ps')).json()) as {
+  models: { name: string; size: number; size_vram: number }[];
+};
+const loaded = ps.models.find((m) => m.name.startsWith(MODEL));
+if (!loaded || loaded.size_vram < loaded.size)
+  throw new Error(
+    `${MODEL} is not fully on the GPU (ollama ps): results would be too slow to trust.`,
+  );
+
 out(`Model ${MODEL}, ${RUNS} run(s) per sample, question "Review my design."\n`);
 const rows: string[] = [];
 let passedSamples = 0;
+let broken = 0; // runs that failed for the setup (model unreachable…), not the prompt
 for (const sample of SAMPLES) {
   let passes = 0;
   out(`## ${sample.name} — ${sample.flaw}`);
@@ -179,8 +206,10 @@ for (const sample of SAMPLES) {
     const run = await review(sample.board);
     const ok = !run.error && sample.pass(run, sample.board);
     if (ok) passes++;
+    if (run.error) broken++;
+    const verdict = run.error ? 'ERROR' : ok ? 'PASS' : 'fail';
     out(
-      `  run ${r}: ${ok ? 'PASS' : 'fail'} · ${Math.round(run.ms / 100) / 10} s · ${run.summary || '(no proposal)'}${run.error ? ` · ${run.error}` : ''}`,
+      `  run ${r}: ${verdict} · ${Math.round(run.ms / 100) / 10} s · ${run.summary || '(no proposal)'}${run.error ? ` · ${run.error}` : ''}`,
     );
     if (VERBOSE || sample.name === 'injection') out(`         said: ${oneLine(run.text)}`);
   }
@@ -196,3 +225,8 @@ out('| Sample | Flaw | Runs passed | Sample |');
 out('|---|---|---|---|');
 for (const row of rows) out(row);
 out(`\nSamples passed: ${passedSamples}/${SAMPLES.length}`);
+if (broken > 0) {
+  // A broken setup must not pass for a bad prompt: this score says nothing about the prompt.
+  out(`INVALID: ${broken} run(s) failed on the setup (see ERROR above). Fix it and run again.`);
+  process.exitCode = 1;
+}
