@@ -87,6 +87,13 @@ export const observeRequests = (): MiddlewareHandler => {
     .createHistogram('http_server_request_duration_seconds', {
       description: 'Time to answer a request (for the chat: until the stream starts).',
       unit: 's',
+      // In seconds, from a millisecond to a minute. OTel's default buckets (0, 5, 10, 25…) are
+      // meant for milliseconds: with seconds, every request fell in the first one (M1-26e).
+      advice: {
+        explicitBucketBoundaries: [
+          0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60,
+        ],
+      },
     });
   return (c, next) =>
     tracer.startActiveSpan(

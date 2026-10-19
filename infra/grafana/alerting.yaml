@@ -19,7 +19,7 @@ groups:
         execErrState: Error
         labels: { severity: critical }
         annotations:
-          summary: 'The server reported {{ $values.B }} unexpected error(s) in 10 minutes.'
+          summary: 'The server reported about {{ printf "%.0f" $values.B.Value }} unexpected error(s) in 10 minutes.'
           description: 'Stack traces in GlitchTip: http://localhost:8000'
         data:
           - refId: A

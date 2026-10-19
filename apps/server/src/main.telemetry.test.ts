@@ -128,5 +128,15 @@ describe('telemetry of a request', () => {
     const labels = (metric?.dataPoints ?? []).map((p: DataPoint<unknown>) => p.attributes);
     expect(labels).toContainEqual({ method: 'GET', route: '/api/health', status: 200 });
     expect(labels).toContainEqual({ method: 'GET', route: '/*', status: 404 }); // not the raw path
+
+    // Buckets in seconds, from a millisecond to a minute. OTel's defaults (0, 5, 10, 25…) are
+    // meant for milliseconds: in seconds, every request landed in the first bucket, and every
+    // route's p50/p95 read 2.5 s / 4.75 s, a fast /api/health included (M1-26e).
+    const boundaries = (metric?.dataPoints[0]?.value as { buckets?: { boundaries: number[] } })
+      ?.buckets?.boundaries;
+    const underOneSecond = (boundaries ?? []).filter((b) => b > 0 && b < 1);
+    expect(underOneSecond.length).toBeGreaterThanOrEqual(5); // tells a 2 ms route from a 300 ms one
+    expect(boundaries?.at(-1)).toBeGreaterThanOrEqual(30); // and still bounds a long chat
+    expect(boundaries?.at(-1)).toBeLessThanOrEqual(120);
   });
 });
