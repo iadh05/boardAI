@@ -10,6 +10,8 @@ const EnvSchema = z
     LLM_PROVIDER: z.enum(['openai-compatible', 'fake']).default('openai-compatible'),
     LLM_BASE_URL: z.url().optional(),
     LLM_MODEL: z.string().min(1).default('designroom-qwen'), // infra/ollama/Modelfile
+    // Longest silence from the model; the first call after a pause waits ~20 s for Ollama to load it.
+    LLM_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(600_000).default(60_000),
     LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
   })
   .superRefine((env, ctx) => {
@@ -23,8 +25,8 @@ const EnvSchema = z
   });
 
 export type LlmConfig =
-  | { provider: 'openai-compatible'; baseUrl: string; model: string }
-  | { provider: 'fake'; model: string };
+  | { provider: 'openai-compatible'; baseUrl: string; model: string; timeoutMs: number }
+  | { provider: 'fake'; model: string; timeoutMs: number };
 
 export type Config = { port: number; llm: LlmConfig; logLevel: LogLevel };
 
@@ -38,8 +40,13 @@ export const loadConfig = (env: Record<string, string | undefined>): Config => {
   const e = parsed.data;
   const llm: LlmConfig =
     e.LLM_PROVIDER === 'fake' || !e.LLM_BASE_URL
-      ? { provider: 'fake', model: e.LLM_MODEL }
-      : { provider: 'openai-compatible', baseUrl: e.LLM_BASE_URL, model: e.LLM_MODEL };
+      ? { provider: 'fake', model: e.LLM_MODEL, timeoutMs: e.LLM_TIMEOUT_MS }
+      : {
+          provider: 'openai-compatible',
+          baseUrl: e.LLM_BASE_URL,
+          model: e.LLM_MODEL,
+          timeoutMs: e.LLM_TIMEOUT_MS,
+        };
   return { port: e.PORT, llm, logLevel: e.LOG_LEVEL };
 };
 

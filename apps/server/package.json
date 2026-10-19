@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@designroom/agent": "workspace:*",
+    "@designroom/ai-gateway": "workspace:*",
     "@designroom/domain": "workspace:*",
     "@hono/node-server": "^2.1.5",
     "hono": "^4.13.13",

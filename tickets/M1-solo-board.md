@@ -40,8 +40,8 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-15 | Spike: Qwen tool call end to end | M1b | S | done |
 | M1-16 | `packages/ai-gateway` | M1b | L | done |
 | M1-17 | `packages/agent`: tools + board-to-text | M1b | M | done |
-| M1-18 | `packages/agent`: the loop | M1b | L | doing |
-| M1-19 | Server `chat` module (four layers + SSE) | M1b | M | todo |
+| M1-18 | `packages/agent`: the loop | M1b | L | done |
+| M1-19 | Server `chat` module (four layers + SSE) | M1b | M | doing |
 | M1-19b | Fake-LLM scenarios + chat e2e | M1b | M | todo |
 | M1-20 | `core/api` SSE stream reader | M1b | S | todo |
 | M1-21 | web `chat` module: `chatStore` + `useSendMessage` | M1b | M | todo |
@@ -767,7 +767,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-18 — `packages/agent`: the loop
-**Status:** doing · **Size:** L · **Depends on:** M1-17
+**Status:** done · **Size:** L · **Depends on:** M1-17
 
 **Learning goal:** the agent loop — model → tool calls → results → model.
 
@@ -794,25 +794,32 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-19 — Server `chat` module (four layers + SSE)
-**Status:** todo · **Size:** M · **Depends on:** M1-14, M1-18
+**Status:** doing · **Size:** M · **Depends on:** M1-14, M1-18
 
 **Learning goal:** four layers in practice; SSE with Hono's `streamSSE`; dependency injection.
 
 **Tests first** (`app.request`, agent built on the fake provider)
-- [ ] Invalid body → 400 with zod details.
-- [ ] `chatPolicy`: too many messages / too big a board → 413 or 400.
-- [ ] Valid body → `text/event-stream`; events in order; each parses as `ChatEvent`.
+- [x] Invalid body → 400 with zod details.
+- [x] `chatPolicy`: too many messages / too big a board → 413 or 400.
+- [x] Valid body → `text/event-stream`; events in order; each parses as `ChatEvent`.
 
 **Tasks**
-- [ ] `domain/chatPolicy.ts`, `application/reviewBoard.ts`, `api/chatRoutes.ts`, `infra/` wiring, `index.ts` (`createChatModule(deps)`).
-- [ ] `main.ts` creates gateway → agent → chat module.
+- [x] `domain/chatPolicy.ts`, `application/reviewBoard.ts`, `api/chatRoutes.ts`, `infra/` wiring, `index.ts` (`createChatModule(deps)`).
+- [x] `main.ts` creates gateway → agent → chat module.
 
 **Acceptance criteria**
-- [ ] `curl -N` against the running server streams real Qwen output.
+- [x] `curl -N` against the running server streams real Qwen output.
 
 **From the M1-18 review**
-- [ ] **Terminal event on bugs:** the agent rethrows non-model errors (bugs). The chat module turns them into `error` + `done` (and Sentry), so the browser's stream never just stops — test it.
-- [ ] **Context budget:** the history (up to 50 × 4,000 chars) + board + tool results can exceed the 16k context, and Ollama then silently drops the start of the prompt (the system prompt!). `chatPolicy` keeps only the most recent messages that fit a token budget (estimate ~4 chars/token), and tests it.
+- [x] **Terminal event on bugs:** the agent rethrows non-model errors (bugs). The chat module turns them into `error` + `done` (and Sentry), so the browser's stream never just stops — test it.
+- [x] **Context budget:** the history (up to 50 × 4,000 chars) + board + tool results can exceed the 16k context, and Ollama then silently drops the start of the prompt (the system prompt!). `chatPolicy` keeps only the most recent messages that fit a token budget (estimate ~4 chars/token), and tests it.
+
+**Notes (2026-10-19)**
+- `curl -N` with the real Qwen: 83 text events, a proposal, `done` (18.8 s, of which ~16 s Ollama loading the model on the first call — hence `LLM_TIMEOUT_MS` default 60 s). Cancelling after 3 s: `chat cancelled` logged, GPU back to 0 %.
+- Context budget: 16,384 tokens − 4,000 reserved (prompt, tools, rounds, answer) ≈ 49k characters for board + history; with the contract's limits a real board always fits, the 413 is a guard.
+- Each request gets a logger with its `requestId` (requestContext → `c.get('logger')`): `agent round` lines join the access log and Nginx's.
+- Server-side 1 MB body limit (Hono `bodyLimit`), same as Nginx: the server is also reached directly in dev and CI.
+- Review: per-request logger, body limit, cancel logged as info — fixed. Deferred: the fake provider has no answers yet (M1-19b), the access log times SSE headers not the stream (M1-24), the 413 detection keys on zod's issue shape.
 
 ---
 
@@ -833,6 +840,8 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 **Acceptance criteria**
 - [ ] Chat e2e green in CI without Ollama.
 - [ ] Turning `proxy_buffering` back on in Nginx makes the local streaming check fail (then turn it off again).
+
+- [ ] `LLM_PROVIDER=fake` today uses an empty script, so every chat ends in "Something went wrong" (M1-19 review): the scenario files replace it.
 
 ---
 
@@ -945,6 +954,8 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - [ ] Demo step 10 passes.
 - [ ] In Phoenix, one "review my design" request shows as a tree: agent → rounds → LLM calls → tool calls, with a failed tool call visibly marked.
 - [ ] Accepting a proposal shows up as positive feedback on its trace; rejecting as negative.
+
+- [ ] The access-log line for `/api/chat` is written when SSE headers go out (~40 ms, status 200), not when the stream ends: measure chat duration and outcome in the span, not the access log (M1-19 review).
 
 ---
 
