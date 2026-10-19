@@ -40,6 +40,8 @@ export type ChatInput = {
   tools?: ToolDefinition[];
   /** Overrides the provider's default model. */
   model?: string;
+  /** Overrides the model's sampling temperature: 0 for answers that must be repeatable. */
+  temperature?: number;
   /** Aborts the call: the client went away, nobody wants the answer (docs/rules/backend.md). */
   signal?: AbortSignal;
 };

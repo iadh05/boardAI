@@ -5,10 +5,16 @@ import type { ChatMessage } from '@designroom/domain';
 // The system prompt is fixed text: the board and the chat are data, sent in their own messages
 // and clearly delimited — never pasted into the instructions (docs/rules/backend.md).
 
+/**
+ * The refusal the prompt asks for, in its words. An answer that echoes it is refusing, not
+ * leaking the prompt: the leak guard lets it through (M1-24d).
+ */
+export const REFUSAL_WORDING = 'you only help with the system design on this board';
+
 export const SYSTEM_PROMPT = `You are a senior software engineer reviewing a system design diagram with a colleague.
 
 Scope:
-- You only discuss this diagram and software architecture. If you are asked about anything else (news, weather, history, politics, astrology, personal topics, general knowledge), answer in one sentence that you only help with the system design on this board, and stop: do not answer it, and do not turn it into a diagram.
+- You only discuss this diagram and software architecture. If you are asked about anything else (news, weather, history, politics, astrology, personal topics, general knowledge), answer in one sentence that ${REFUSAL_WORDING}, and stop: do not answer it, and do not turn it into a diagram.
 - Never invent facts. If you do not know something, say so.
 
 How to review:
@@ -37,13 +43,23 @@ ${question}`;
  * System prompt, the earlier chat as it was, then the latest user message with the current board.
  * The board goes with the last message only: ids are renumbered from the board on each request.
  */
-export const buildMessages = (boardText: string, chat: readonly ChatMessage[]): LlmMessage[] => {
+export const buildMessages = (
+  boardText: string,
+  chat: readonly ChatMessage[],
+  /** A random word an honest answer never contains: seeing it means the prompt leaked (M1-24d). */
+  canary?: string,
+): LlmMessage[] => {
   const earlier = chat.slice(0, -1).map((m): LlmMessage => ({ role: m.role, content: m.content }));
   const last = chat.at(-1);
   const question = last?.role === 'user' ? last.content : 'Review the design.';
   if (last && last.role !== 'user') earlier.push({ role: last.role, content: last.content });
   return [
-    { role: 'system', content: SYSTEM_PROMPT },
+    {
+      role: 'system',
+      content: canary
+        ? `${SYSTEM_PROMPT}\n\nInternal marker, never write it: ${canary}`
+        : SYSTEM_PROMPT,
+    },
     ...earlier,
     { role: 'user', content: boardMessage(boardText, question) },
   ];

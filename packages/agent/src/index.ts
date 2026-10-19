@@ -3,6 +3,7 @@
 
 export {
   createAgent,
+  LEAK_STOPPED_REPLY,
   type AgentDeps,
   type AgentEvent,
   type AgentInput,
@@ -10,7 +11,7 @@ export {
 export { checkScope, type ScopeQuestion } from './application/checkScope.ts';
 export { createAliases, type Aliases } from './domain/aliases.ts';
 export { boardToText } from './domain/boardToText.ts';
-export { buildMessages, SYSTEM_PROMPT } from './domain/prompt.ts';
+export { buildMessages, REFUSAL_WORDING, SYSTEM_PROMPT } from './domain/prompt.ts';
 export { OUT_OF_SCOPE_REPLY, type Scope } from './domain/scope.ts';
 export {
   AGENT_TOOLS,

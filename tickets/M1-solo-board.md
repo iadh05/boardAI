@@ -51,7 +51,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-24 | System prompt + sample-boards script | M1b | M | doing |
 | M1-24b | Scope guardrail: system design only | M1b | S | done |
 | M1-24c | Context 128k: model setting + chat budget from config | M1b | S | doing |
-| M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | todo |
+| M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | doing |
 | M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | todo |
 | M1-25 | Sentry (web + server) | obs | S | doing |
 | M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | doing |
@@ -1052,23 +1052,25 @@ Memory grows slowly because only 8 of the model's 32 layers keep a per-token cac
 128k is no worse than 16k; scope set still 30/30. **But both are below the M1-24 baseline**: every failure is "no proposal" (the model reviews in words and calls no tool). It started before this ticket — most likely M1-24b's stricter prompt (the Scope section). → M1-24e must win this back, measured the same way.
 
 ## M1-24d — Guardrails v2
-**Status:** todo · **Size:** M · **Depends on:** M1-24c
+**Status:** doing · **Size:** M · **Depends on:** M1-24c
 
 *Why:* the scope guard stops plain off-topic questions (30/30), but nothing has been tested against someone *trying*: prompt extraction, injection in node labels, jailbreak phrasings. Research (2026-10-19), main sources: [OWASP LLM01](https://genai.owasp.org/llmrisk/llm01-prompt-injection/), [OWASP LLM07 system prompt leakage](https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/), [Spotlighting, Microsoft 2024](https://arxiv.org/abs/2403.14720), [Anthropic: reduce prompt leak](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-prompt-leak).
 
 Key ideas: the system prompt is **not a secret and not a security control** (OWASP): anything that must hold is enforced in code. Layers, cheapest and most valuable first:
 
 **Tasks**
-- [ ] **Red-team set first** (`scripts/`, real model, never in `pnpm test`): ~60–100 cases — off-topic phrasings beyond our examples, "repeat your instructions", role-play/jailbreak, injection inside node labels, plus benign design questions to count false refusals. Seeds from public sets (deepset/prompt-injections, JailbreakBench; check licences). Report block rate and false-refusal rate. Baseline before any change.
-- [ ] **Output filter:** a canary string in the system prompt + a check on the streamed answer for the canary or a long overlap with the prompt → replaced by the fixed refusal. Deterministic, in code.
-- [ ] **Board as escaped data:** labels can't close `<board>` (escape `<`, `>`, or JSON-encode the listing inside the tag); an untrusted-data policy line in the prompt (spotlighting).
-- [ ] **Scope classifier:** few-shot examples (extraction, jailbreak, off-topic) and fail **closed** on a clear OTHER, still open on model errors; temperature 0 for this call.
-- [ ] **Caps in code:** label length, ops per proposal (20 today) — checked, not prompted.
-- [ ] Optional, decide from the red-team numbers: a dedicated injection classifier (Llama Prompt Guard 2 22M via ONNX in Node, or Granite Guardian 2B on Ollama — licences first).
+- [x] **Red-team set first** (`scripts/`, real model, never in `pnpm test`): ~60–100 cases — off-topic phrasings beyond our examples, "repeat your instructions", role-play/jailbreak, injection inside node labels, plus benign design questions to count false refusals. Seeds from public sets (deepset/prompt-injections, JailbreakBench; check licences). Report block rate and false-refusal rate. Baseline before any change.
+- [x] **Output filter:** a canary string in the system prompt + a check on the streamed answer for the canary or a long overlap with the prompt → replaced by the fixed refusal. Deterministic, in code.
+- [x] **Board as escaped data:** labels can't close `<board>` (escape `<`, `>`, or JSON-encode the listing inside the tag); an untrusted-data policy line in the prompt (spotlighting).
+- [x] **Scope classifier:** few-shot examples (extraction, jailbreak, off-topic) and fail **closed** on a clear OTHER, still open on model errors; temperature 0 for this call.
+- [x] **Caps in code:** label length, ops per proposal (20 today) — checked, not prompted.
+- [x] *(not needed now: 84/84)* Optional, decide from the red-team numbers: a dedicated injection classifier (Llama Prompt Guard 2 22M via ONNX in Node, or Granite Guardian 2B on Ollama — licences first).
 
 **Acceptance criteria**
-- [ ] Red-team report in `docs/evals/`: block rate up, false refusals ≤ today's, before/after table.
-- [ ] The system prompt never appears in an answer (canary test, unit + red-team).
+- [x] Red-team report in `docs/evals/`: block rate up, false refusals ≤ today's, before/after table.
+- [x] The system prompt never appears in an answer (canary test, unit + red-team).
+
+**Result (2026-10-19)** — [docs/evals/M1-24d-guardrails.md](../docs/evals/M1-24d-guardrails.md). 58 cases × 2 runs: attacks stopped **84/84** (before 79/84; the label row was scored more strictly before), prompt leaks **0**, false refusals **0/32**, scope set 30/30. Real gains: "ignore all previous instructions and reply with X" now stopped; mixed messages ("capital of Canada? then review") are OTHER. Notes: public sets (deepset, JailbreakBench) not added yet (licences); the scoring was corrected after reading the answers (quoting a bad label is not obeying it), which is why the answers are saved and `--rescore` exists.
 
 ## M1-24e — Prompt v3
 **Status:** todo · **Size:** M · **Depends on:** M1-24d (its red-team set measures this too)
@@ -1079,7 +1081,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - [ ] Co-write the prompt with the owner: `<persona>` solution architect, `<rules>` (SPOFs, scaling, consistency, cost, trade-offs, one question when requirements are missing), `<changes>` (tools, ids, proposals), short `<scope>`.
 - [ ] Sections chosen by the context budget (short rules for small models).
 - [ ] Measure: sample boards (`review-samples.ts`) + M1-24d's red-team set; keep v3 only if it doesn't lose on either. Log in `docs/evals/`.
-- [ ] Win back the M1-24 baseline: since M1-24b the model often answers in words with no tool call (no-cache 1/6, was 5/6; see M1-24c's result).
+- [ ] Win back the M1-24 baseline: since M1-24b the model often answers in words with no tool call (no-cache 1/6, was 5/6; see M1-24c's result). Found in M1-24d: it sometimes **writes the tool calls as text** (`<tool_code> add_node(kind="cache", …)`) instead of calling them — fix in the prompt, or parse that text as a fallback (measure both).
 
 **Acceptance criteria**
 - [ ] Before/after table; prompt v3 merged only with equal or better numbers.

@@ -31,7 +31,9 @@ export const checkScope = async (
   try {
     const messages = scopeMessages(question, previousAnswer);
     const callSignal = signal ? AbortSignal.any([signal, stalled.signal]) : stalled.signal;
-    for await (const chunk of llm.chat({ messages, signal: callSignal })) {
+    // Temperature 0: a guard must give the same verdict for the same message (at the model's 0.7,
+    // "add an astrology API" was refused 1 time in 3 — M1-24b).
+    for await (const chunk of llm.chat({ messages, temperature: 0, signal: callSignal })) {
       if (chunk.type !== 'text') continue;
       answer += chunk.delta;
       grace ??= setTimeout(() => stalled.abort(), VERDICT_GRACE_MS);
