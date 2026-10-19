@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { viewportBounds, viewportCenter } from './viewport.ts';
+import { screenRectToDiagram, viewportBounds, viewportCenter } from './viewport.ts';
 
 describe('viewportCenter', () => {
   it('is the middle of the pane when the view is not moved', () => {
@@ -28,6 +28,27 @@ describe('viewportBounds', () => {
       y: -25,
       width: 400,
       height: 300,
+    });
+  });
+});
+
+describe('screenRectToDiagram', () => {
+  it('is the same rectangle when the view is not moved', () => {
+    expect(screenRectToDiagram({ x: 10, y: 20, width: 300, height: 100 }, [0, 0, 1])).toEqual({
+      x: 10,
+      y: 20,
+      width: 300,
+      height: 100,
+    });
+  });
+
+  it('follows panning and zoom: what part of the diagram an overlay hides', () => {
+    // Panned by (100, 50), zoomed ×2: the overlay at pane (10, 20), 300×100 hides less diagram.
+    expect(screenRectToDiagram({ x: 10, y: 20, width: 300, height: 100 }, [100, 50, 2])).toEqual({
+      x: -45,
+      y: -15,
+      width: 150,
+      height: 50,
     });
   });
 });

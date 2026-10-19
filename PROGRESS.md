@@ -36,7 +36,8 @@
 | M1-19b | Fake model with scenario files (stateless, parallel-safe), e2e server on :3100 behind `vite preview`, AI review e2e at API level (UI journeys after M1-23) | #36 |
 | M1-20 | Web `core/api` SSE reader: bytes → JSON events, split chunks reassembled, bad event = error item | #37 |
 | M1-21 | Web chat module: `chatStore`, `sendMessage` (stream → store, proposal → board, every failure explained), `useSendMessage` with cancel | #38 |
-| M1-22 | Chat panel: conversation log, "Thinking…", streaming answer, inline errors, Enter to send, Stop, auto-scroll | this PR |
+| M1-22 | Chat panel: conversation log, "Thinking…", streaming answer, inline errors, Enter to send, Stop, auto-scroll | #39 |
+| M1-UX2 | Nothing hides boxes: no fit on the first box, spawn avoids the toolbar, hints in the toolbar panel | this PR |
 
 ## In progress
 

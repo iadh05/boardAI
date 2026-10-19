@@ -35,6 +35,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-D6a | Zones in the domain (VPC, region…) | diagram | M | done |
 | M1-D6b | Zones on the diagram | diagram | M | done |
 | M1-UX1 | UX polish from the M1a pass | diagram | M | done |
+| M1-UX2 | Nothing hides boxes: toolbar, hints, first-box fit | diagram | S | done |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | done |
 | M1-14b | Nginx edge proxy | M1b | M | done |
 | M1-15 | Spike: Qwen tool call end to end | M1b | S | done |
@@ -45,7 +46,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-19b | Fake-LLM scenarios + chat e2e | M1b | M | done |
 | M1-20 | `core/api` SSE stream reader | M1b | S | done |
 | M1-21 | web `chat` module: `chatStore` + `useSendMessage` | M1b | M | done |
-| M1-22 | conversation pod (chat UI) | M1b | M | doing |
+| M1-22 | conversation pod (chat UI) | M1b | M | done |
 | M1-23 | proposal pod + ghost nodes | M1b | M | todo |
 | M1-24 | System prompt + sample-boards script | M1b | M | todo |
 | M1-25 | Sentry (web + server) | obs | S | todo |
@@ -613,6 +614,29 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 
 ---
 
+## M1-UX2 — Nothing hides boxes
+**Status:** done · **Size:** S · **Found in:** the M1-22 browser check
+
+**Problem:** on a narrow canvas, new boxes ended up under the toolbar, and the "drag from a dot" hint sat on top of boxes.
+
+**Causes (measured in the browser)**
+- On an empty diagram React Flow fits the view when the first box appears: the camera moved so the box sat at the pane's centre — under the toolbar.
+- `spawnPosition` treated the whole view as free; the toolbar covers its top-left.
+- The hint was drawn over the canvas; when it appeared after the first box, it covered it.
+
+**Done**
+- [x] `@designroom/diagram`: fit the view only when the diagram opens with boxes (`fitOnOpen`); `useDiagramViewport().coveredBy(element)` → what an overlay hides, in diagram coordinates (`screenRectToDiagram`, tested).
+- [x] `spawnPosition(…, covered)`: slots under the toolbar don't count as visible; when the uncovered view is full, out of view (pan to it) before under the toolbar.
+- [x] Hints live under the toolbar, in its panel (`canvasHint`: "Add a component…", "Add another…", "Drag from a dot…", gone after the first arrow) with room for two lines from the start, so the panel never grows over a box. The centred empty-board hint moved there too.
+- [x] Checked in the browser on a 402 × 435 px canvas: no box under the panel.
+- [x] Review: new zones open below the toolbar too (`zonePosition`); a diagram that opens with only zones is fitted; the hint is a `role="status"` (announced, and found by role in the test).
+
+**Later**
+- [ ] A box placed out of view gives no feedback (narrow windows): pan to it, or flash a "placed to the right" note.
+- [ ] M2: a board that arrives after mount (rooms over WebSocket) needs its own fit — `fitOnOpen` only sees the first render.
+
+---
+
 ## M1-14 — Server skeleton: composition root, core, health
 **Status:** done · **Size:** M · **Depends on:** M1-02
 
@@ -898,7 +922,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-22 — conversation pod (chat UI)
-**Status:** doing · **Size:** M · **Depends on:** M1-21, M1-04
+**Status:** done · **Size:** M · **Depends on:** M1-21, M1-04
 
 **Tasks**
 - [x] Message list (user / assistant), auto-scroll, input + send on Enter, disabled while streaming (sending is; the input stays editable — see review note).
@@ -930,6 +954,8 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - [ ] Demo steps 7 and 8 pass.
 
 - [ ] Add a `hang` step to the scenario provider (answers nothing until cancelled) and an e2e test that closing the chat/stopping a review stops the model (M1-19b review).
+
+- [ ] Ghost nodes placed for a proposal must not land under the toolbar: use the covered area (`useDiagramViewport().coveredBy`) as the toolbar's spawn does (M1-UX2 review).
 
 ---
 

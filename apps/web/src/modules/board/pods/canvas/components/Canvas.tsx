@@ -83,18 +83,6 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
       >
         <Toolbar store={store} />
       </Diagram>
-      {nodes.length === 0 && (
-        // Over the canvas, ignoring the pointer, so it never blocks panning or the toolbar.
-        <p className="pointer-events-none absolute inset-0 flex items-center justify-center p-8 text-center text-sm text-muted">
-          Add a component from the toolbar to start your design.
-        </p>
-      )}
-      {nodes.length >= 2 && edges.length === 0 && (
-        // The connection dots only show on hover: say how to connect until the first arrow.
-        <p className="pointer-events-none absolute inset-x-0 bottom-6 text-center text-sm text-muted">
-          Drag from a dot on the side of a box to another box to connect them.
-        </p>
-      )}
     </div>
   );
 }

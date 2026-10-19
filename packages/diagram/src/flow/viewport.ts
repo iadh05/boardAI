@@ -25,3 +25,17 @@ export const viewportBounds = (
   width: pane.width / zoom,
   height: pane.height / zoom,
 });
+
+/**
+ * A rectangle on the screen, relative to the pane's top-left corner, in diagram coordinates —
+ * e.g. the part of the diagram that an overlay (the toolbar) hides.
+ */
+export const screenRectToDiagram = (
+  rect: { x: number; y: number; width: number; height: number },
+  [tx, ty, zoom]: Transform,
+): DiagramRect => ({
+  x: (rect.x - tx) / zoom,
+  y: (rect.y - ty) / zoom,
+  width: rect.width / zoom,
+  height: rect.height / zoom,
+});

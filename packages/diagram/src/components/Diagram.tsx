@@ -146,6 +146,8 @@ function DiagramCanvas({
   minimap = true,
   children,
 }: DiagramProps) {
+  // Decided once, at mount: did the diagram open with something to look at?
+  const [fitOnOpen] = useState(() => nodesProp.length > 0 || zonesProp.length > 0);
   // useMemo: keeps the mapped arrays stable while the props are, so the merge below runs only
   // when the app actually changed something.
   const flow = useMemo(
@@ -308,8 +310,10 @@ function DiagramCanvas({
               deleteKeyCode={DELETE_KEYS}
               snapToGrid={snapGrid !== null}
               snapGrid={snapGrid === null ? undefined : [snapGrid, snapGrid]}
-              // On an empty diagram the fit happens when the first node appears; without a cap it zooms to 2×.
-              fitView
+              // Fit only a diagram that opens with content. On an empty one React Flow would fit when
+              // the first box appears, moving the camera under whatever covers the canvas (the
+              // app's toolbar) — the app already placed that box where the user can see it.
+              fitView={fitOnOpen}
               fitViewOptions={FIT_VIEW}
               aria-label={ariaLabel}
             >
