@@ -29,6 +29,16 @@ describe('summarize', () => {
     );
   });
 
+  it('never shows an id, even for a box added and then changed in the same proposal', () => {
+    // Seen with the real model (M1-24): "Change "fc4b06ea-…": rename to …".
+    expect(
+      summaryOf([
+        { op: 'addNode', nodeId: 'q-uuid', kind: 'queue', label: 'Queue' },
+        { op: 'updateNode', nodeId: 'q-uuid', label: 'Jobs' },
+      ]),
+    ).toBe('Add queue "Jobs"; change "Queue": rename to "Jobs"');
+  });
+
   it('describes a change by the name the user knows now', () => {
     expect(
       summaryOf([{ op: 'updateNode', nodeId: 'api', label: 'Orders API', kind: 'service' }]),
