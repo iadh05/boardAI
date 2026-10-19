@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-17 agent tools → M1-18 agent loop next (M1-13 structure verdict pending)
+**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-18 agent loop → M1-19 server chat module (SSE) next (M1-13 structure verdict pending)
 
 ## Done
 
@@ -30,7 +30,8 @@
 | M1-14b | Nginx edge proxy on :8080 (routing, request ids, WebSocket, 1 MB limit, 429 on chat) + `edge` CI smoke test | #30 |
 | M1-15 | Qwen spike: `qwen3.5:9b`, thinking off via `reasoning_effort: "none"`, 64 tok/s, 3/3 tool calls; stream fixtures | #31 |
 | M1-16 | `packages/ai-gateway`: OpenAI-compatible + fake providers, SSE reader, idle timeout, retry before first chunk, cancellation, usage | #32 |
-| M1-17 | `packages/agent`: tools (add/update/connect, no delete) on a draft, short aliases instead of UUIDs, `boardToText` | this PR |
+| M1-17 | `packages/agent`: tools (add/update/connect, no delete) on a draft, short aliases instead of UUIDs, `boardToText` | #33 |
+| M1-18 | Agent loop: rounds of model → tools → results, one proposal, max rounds, per-round metering; board as delimited data in the last message | this PR |
 
 ## In progress
 

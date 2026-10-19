@@ -39,8 +39,8 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-14b | Nginx edge proxy | M1b | M | done |
 | M1-15 | Spike: Qwen tool call end to end | M1b | S | done |
 | M1-16 | `packages/ai-gateway` | M1b | L | done |
-| M1-17 | `packages/agent`: tools + board-to-text | M1b | M | doing |
-| M1-18 | `packages/agent`: the loop | M1b | L | todo |
+| M1-17 | `packages/agent`: tools + board-to-text | M1b | M | done |
+| M1-18 | `packages/agent`: the loop | M1b | L | doing |
 | M1-19 | Server `chat` module (four layers + SSE) | M1b | M | todo |
 | M1-19b | Fake-LLM scenarios + chat e2e | M1b | M | todo |
 | M1-20 | `core/api` SSE stream reader | M1b | S | todo |
@@ -744,7 +744,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-17 — `packages/agent`: tools + board-to-text
-**Status:** doing · **Size:** M · **Depends on:** M1-07, M1-16
+**Status:** done · **Size:** M · **Depends on:** M1-07, M1-16
 
 **Tests first**
 - [x] `add_node` on a draft → new id, `addNode` op recorded. **The agent generates the id (UUID), never the model** — model-chosen ids like "cache" would collide between proposals (found in the M1-08 review).
@@ -767,20 +767,29 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-18 — `packages/agent`: the loop
-**Status:** todo · **Size:** L · **Depends on:** M1-17
+**Status:** doing · **Size:** L · **Depends on:** M1-17
 
 **Learning goal:** the agent loop — model → tool calls → results → model.
 
 **Tests first** (fake provider through the gateway)
-- [ ] No tool calls → text events, `done`, no proposal.
-- [ ] `add_node` then `connect_nodes` over two rounds → one proposal with both ops.
-- [ ] Invalid call → error returned to the model; if fixed, proposal contains only valid ops.
-- [ ] Endless tool calls → stops at max rounds.
-- [ ] Gateway error → `error` event then `done`.
+- [x] No tool calls → text events, `done`, no proposal.
+- [x] `add_node` then `connect_nodes` over two rounds → one proposal with both ops.
+- [x] Invalid call → error returned to the model; if fixed, proposal contains only valid ops.
+- [x] Endless tool calls → stops at max rounds.
+- [x] Gateway error → the valid ops so far as a proposal (the text may already announce them), then `error`, then `done`.
 
 **Tasks**
-- [ ] `application/runAgent.ts`, `createAgent({ llm })` in `index.ts`; `prompt.ts` first version (refined in M1-24).
-- [ ] **Aliases shift between turns** (M1-17 review): `n1, n2…` are renumbered from the board on every request, but the chat history holds the model's earlier replies ("added n5"). After the user edits the board, an old alias can name another node. Handle it here: the prompt says ids are valid for the current board only, and/or past assistant messages are sent without alias-bearing tool details. Test: history mentions n5, board changed → the model is told the current listing wins.
+- [x] `application/runAgent.ts`, `createAgent({ llm })` in `index.ts`; `prompt.ts` first version (refined in M1-24).
+- [x] **Aliases shift between turns** (M1-17 review): `n1, n2…` are renumbered from the board on every request, but the chat history holds the model's earlier replies ("added n5"). After the user edits the board, an old alias can name another node. Handle it here: the prompt says ids are valid for the current board only, and/or past assistant messages are sent without alias-bearing tool details. Test: history mentions n5, board changed → the model is told the current listing wins.
+
+---
+
+**Notes (2026-10-19)**
+- Board goes with the **last user message**, in `<board>` tags, with "its ids replace any used earlier" — fixes the alias drift found in the M1-17 review; the system prompt stays fixed text.
+- Agent tests use a scripted `AiGateway` (the interface), not the gateway package: the lint boundary allows the agent `import type` only, and gateway errors are recognised by shape (`name === 'LlmError'` + `code`).
+- Max rounds (default 5): stops, says "(I stopped here…)", proposes the valid ops so far. Each round emits a `round` event (usage, tool calls, tool errors), failed rounds included.
+- Real model: "Every read hits the database" → `Add cache "Redis cache"; connect "API" → "Redis cache"` in 4 runs of 4 — the M1 demo, without UI. First call after idle ~20 s (model load), then ~1 s per round.
+- Prompt quality left for M1-24: the model still writes ids ("the API (n3)") in its text despite the instruction, and on "review my design" it sometimes adds an unconnected cache or a Kafka queue nobody asked for.
 
 ---
 
@@ -800,6 +809,10 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 
 **Acceptance criteria**
 - [ ] `curl -N` against the running server streams real Qwen output.
+
+**From the M1-18 review**
+- [ ] **Terminal event on bugs:** the agent rethrows non-model errors (bugs). The chat module turns them into `error` + `done` (and Sentry), so the browser's stream never just stops — test it.
+- [ ] **Context budget:** the history (up to 50 × 4,000 chars) + board + tool results can exceed the 16k context, and Ollama then silently drops the start of the prompt (the system prompt!). `chatPolicy` keeps only the most recent messages that fit a token budget (estimate ~4 chars/token), and tests it.
 
 ---
 
