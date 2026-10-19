@@ -1,0 +1,14 @@
+# DesignRoom's model: qwen3.5:9b with our settings baked in (M1-15 spike, docs/spikes/M1-15-qwen.md).
+# The OpenAI-compatible endpoint can't pass Ollama options, and loads models with only 4096 tokens
+# of context: a bigger board + chat history would be cut off silently. Build it once:
+#   ollama create designroom-qwen -f infra/ollama/Modelfile
+FROM qwen3.5:9b
+
+# 16k context: ~680 tokens per request today, room for big boards and long chats; 6.1 GB of VRAM.
+PARAMETER num_ctx 16384
+
+# Non-thinking sampling from the Qwen model card.
+PARAMETER temperature 0.7
+PARAMETER top_p 0.8
+PARAMETER top_k 20
+PARAMETER presence_penalty 1.5

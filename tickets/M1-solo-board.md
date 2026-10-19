@@ -37,7 +37,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-UX1 | UX polish from the M1a pass | diagram | M | done |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | done |
 | M1-14b | Nginx edge proxy | M1b | M | doing |
-| M1-15 | Spike: Qwen tool call end to end | M1b | S | todo |
+| M1-15 | Spike: Qwen tool call end to end | M1b | S | doing |
 | M1-16 | `packages/ai-gateway` | M1b | L | todo |
 | M1-17 | `packages/agent`: tools + board-to-text | M1b | M | todo |
 | M1-18 | `packages/agent`: the loop | M1b | L | todo |
@@ -671,7 +671,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-15 — Spike: Qwen tool call end to end
-**Status:** todo · **Size:** S · **Depends on:** —
+**Status:** doing · **Size:** S · **Depends on:** —
 
 **Why:** Biggest unknown of M1 — check your machine + model before building on it.
 
@@ -692,22 +692,26 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 **Expected speed:** ~20–35 tokens/s at Q4; one measurement reports ~33 tok/s for Qwen3 14B at 16k context on this card. Measure your own.
 
 **Tasks**
-- [ ] Update the NVIDIA driver and Ollama to recent versions (RTX 50-series needs recent CUDA support).
-- [ ] Pull `qwen3:14b` and `qwen3.5:9b`.
-- [ ] **Set the context length explicitly** (Modelfile with `PARAMETER num_ctx 16384` → your own `designroom-qwen` model, or the server-wide context-length setting). Ollama's default context is small, and a too-small context silently cuts off the board, tools or chat history.
-- [ ] `ollama ps`: confirm the model runs **100 % on GPU** (any CPU split makes it several times slower).
-- [ ] `scripts/spike-tool-call.ts`: tiny board as text + one `add_node` tool → print the raw response; send the tool result back → print the follow-up.
-- [ ] Thinking: Qwen3.5 thinks **by default** and ignores the old `/no_think` switch. Find how Ollama turns it off (native API `think` option; check what its OpenAI-compatible endpoint accepts) and compare speed + tool-call quality with thinking on vs off. The ai-gateway must handle it either way (M1-16).
-- [ ] Use the model card's non-thinking sampling as a starting point (temperature 0.7, top_p 0.8, top_k 20, presence_penalty 1.5) and note what Ollama actually lets you set.
-- [ ] Qwen3.5 mixes linear-attention (Gated DeltaNet) layers with full attention every 4th layer, so its context memory grows slower than Qwen3's. Check how much VRAM 16k vs 32k context really costs (`ollama ps`).
-- [ ] Save one raw streaming response as a fixture for M1-16.
-- [ ] Measure both models: time to first token and tokens/sec (`ollama run <model> --verbose` shows the eval rate).
-- [ ] Run the same 3 tool-call prompts on both; count correct calls. This is your first tiny eval.
-- [ ] Optional: try `qwen3.6:35b` with CPU offload and note the speed.
+- [x] Update the NVIDIA driver and Ollama to recent versions (RTX 50-series needs recent CUDA support).
+- [x] Pull `qwen3:14b` and `qwen3.5:9b`.
+- [x] **Set the context length explicitly** (Modelfile with `PARAMETER num_ctx 16384` → your own `designroom-qwen` model, or the server-wide context-length setting). Ollama's default context is small, and a too-small context silently cuts off the board, tools or chat history.
+- [x] `ollama ps`: confirm the model runs **100 % on GPU** (any CPU split makes it several times slower).
+- [x] `scripts/spike-tool-call.ts`: tiny board as text + one `add_node` tool → print the raw response; send the tool result back → print the follow-up.
+- [x] Thinking: Qwen3.5 thinks **by default** and ignores the old `/no_think` switch. Find how Ollama turns it off (native API `think` option; check what its OpenAI-compatible endpoint accepts) and compare speed + tool-call quality with thinking on vs off. The ai-gateway must handle it either way (M1-16).
+- [x] Use the model card's non-thinking sampling as a starting point (temperature 0.7, top_p 0.8, top_k 20, presence_penalty 1.5) and note what Ollama actually lets you set.
+- [x] Qwen3.5 mixes linear-attention (Gated DeltaNet) layers with full attention every 4th layer, so its context memory grows slower than Qwen3's. Check how much VRAM 16k vs 32k context really costs (`ollama ps`).
+- [x] Save one raw streaming response as a fixture for M1-16.
+- [x] Measure both models: time to first token and tokens/sec (`ollama run <model> --verbose` shows the eval rate).
+- [x] Run the same 3 tool-call prompts on both; count correct calls. This is your first tiny eval.
+- [ ] Optional (skipped — 9b already does the job): try `qwen3.6:35b` with CPU offload and note the speed.
 
 **Acceptance criteria**
-- [ ] Learning-log table, one row per model: tag, VRAM used (`ollama ps`), % on GPU, context length, time to first token, tokens/sec, correct tool calls out of 3, thinking on/off.
-- [ ] Winner recorded in architecture §1 and §13 Q4.
+- [x] Results table (in [docs/spikes/M1-15-qwen.md](../docs/spikes/M1-15-qwen.md)) — copy the row you find telling into your learning log with your own takeaway; one row per model: tag, VRAM used (`ollama ps`), % on GPU, context length, time to first token, tokens/sec, correct tool calls out of 3, thinking on/off.
+- [x] Winner recorded in architecture §1 and §13 Q4.
+
+---
+
+**Result (2026-10-19):** `qwen3.5:9b`, thinking off (`reasoning_effort: "none"` — `think: false` is ignored by the OpenAI-compatible endpoint), 16k context. Details: [docs/spikes/M1-15-qwen.md](../docs/spikes/M1-15-qwen.md). Fixtures for M1-16 in `scripts/fixtures/`.
 
 ---
 
