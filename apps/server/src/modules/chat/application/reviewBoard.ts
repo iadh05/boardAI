@@ -14,6 +14,8 @@ export type ReviewAgent = { run(input: AgentInput): AsyncIterable<AgentEvent> };
 
 export type ReviewBoardDeps = {
   agent: ReviewAgent;
+  /** The model's context window: how much board and history fit (chat policy). */
+  contextTokens: number;
   /** Bugs inside the stream happen past Hono's error handler: they are reported from here. */
   reporter?: ErrorReporter;
 };
@@ -41,7 +43,7 @@ const tracer = trace.getTracer('@designroom/server');
 type Outcome = 'done' | 'error' | 'cancelled' | 'stopped';
 
 export const createReviewBoard =
-  ({ agent, reporter = noErrorReporter }: ReviewBoardDeps) =>
+  ({ agent, contextTokens, reporter = noErrorReporter }: ReviewBoardDeps) =>
   (
     request: ChatRequest,
     { logger, signal, requestId }: ReviewOptions,
@@ -49,7 +51,7 @@ export const createReviewBoard =
     // Read now, at the call: the stream below is read later, from outside the request's span.
     const parent = context.active();
     const boardChars = boardToText(request.board, createAliases(request.board)).length;
-    const history = fitHistory(request.messages, { boardChars });
+    const history = fitHistory(request.messages, { boardChars, contextTokens });
     if (!history.ok) return history;
     const kept = history.value;
     if (kept.length < request.messages.length)

@@ -12,11 +12,19 @@ describe('loadConfig', () => {
         baseUrl: 'http://localhost:11434/v1',
         model: 'designroom-qwen',
         timeoutMs: 60_000,
+        contextTokens: 131_072, // designroom-qwen's num_ctx
       },
       logLevel: 'info',
       errorTracking: null, // off unless SENTRY_DSN is set
       tracing: null, // off unless OTEL_EXPORTER_OTLP_ENDPOINT is set
     });
+  });
+
+  it('reads the model’s context window, which sizes the chat budget', () => {
+    expect(loadConfig({ ...valid, LLM_CONTEXT_TOKENS: '65536' }).llm.contextTokens).toBe(65_536);
+    expect(() => loadConfig({ ...valid, LLM_CONTEXT_TOKENS: '1000' })).toThrow(
+      /LLM_CONTEXT_TOKENS/,
+    );
   });
 
   it('turns error tracking on with a Sentry DSN', () => {
@@ -52,6 +60,7 @@ describe('loadConfig', () => {
       provider: 'fake',
       model: 'designroom-qwen',
       timeoutMs: 60_000,
+      contextTokens: 131_072,
     });
   });
 

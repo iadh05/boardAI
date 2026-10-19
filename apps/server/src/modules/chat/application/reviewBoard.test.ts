@@ -41,6 +41,7 @@ const setup = (script: (AgentEvent | Error)[]) => {
   const reported: { error: unknown; context?: Record<string, unknown> }[] = [];
   const review = createReviewBoard({
     agent,
+    contextTokens: 16_384, // small, so the trimming tests stay readable
     reporter: { report: (error, context) => reported.push({ error, context }) },
   });
   return {

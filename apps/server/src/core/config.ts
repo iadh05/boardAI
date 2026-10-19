@@ -12,6 +12,9 @@ const EnvSchema = z
     LLM_MODEL: z.string().min(1).default('designroom-qwen'), // infra/ollama/Modelfile
     // Longest silence from the model; the first call after a pause waits ~20 s for Ollama to load it.
     LLM_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(600_000).default(60_000),
+    // The model's context window (Modelfile num_ctx): the chat history is trimmed to fit it. Too
+    // high and Ollama silently drops the start of the prompt; too low only trims history early.
+    LLM_CONTEXT_TOKENS: z.coerce.number().int().min(8_192).max(1_048_576).default(131_072),
     LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
     // Error tracking (Sentry): off when unset, so tests and offline work need nothing.
     SENTRY_DSN: z.url().optional(),
@@ -33,8 +36,20 @@ const EnvSchema = z
   });
 
 export type LlmConfig =
-  | { provider: 'openai-compatible'; baseUrl: string; model: string; timeoutMs: number }
-  | { provider: 'fake'; model: string; timeoutMs: number; scenarioFile?: string };
+  | {
+      provider: 'openai-compatible';
+      baseUrl: string;
+      model: string;
+      timeoutMs: number;
+      contextTokens: number;
+    }
+  | {
+      provider: 'fake';
+      model: string;
+      timeoutMs: number;
+      contextTokens: number;
+      scenarioFile?: string;
+    };
 
 export type Config = {
   port: number;
@@ -60,6 +75,7 @@ export const loadConfig = (env: Record<string, string | undefined>): Config => {
           provider: 'fake',
           model: e.LLM_MODEL,
           timeoutMs: e.LLM_TIMEOUT_MS,
+          contextTokens: e.LLM_CONTEXT_TOKENS,
           ...(e.LLM_SCENARIO_FILE ? { scenarioFile: e.LLM_SCENARIO_FILE } : {}),
         }
       : {
@@ -67,6 +83,7 @@ export const loadConfig = (env: Record<string, string | undefined>): Config => {
           baseUrl: e.LLM_BASE_URL,
           model: e.LLM_MODEL,
           timeoutMs: e.LLM_TIMEOUT_MS,
+          contextTokens: e.LLM_CONTEXT_TOKENS,
         };
   const errorTracking = e.SENTRY_DSN
     ? { dsn: e.SENTRY_DSN, environment: e.SENTRY_ENVIRONMENT }

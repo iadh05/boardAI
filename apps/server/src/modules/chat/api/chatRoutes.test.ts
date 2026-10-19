@@ -32,7 +32,10 @@ const appWith = (events: AgentEvent[]) => {
       }
     },
   };
-  const app = new Hono().route('/api/chat', createChatModule({ agent, logger }).routes);
+  const app = new Hono().route(
+    '/api/chat',
+    createChatModule({ agent, logger, contextTokens: 16_384 }).routes,
+  );
   app.onError(onError(logger));
   return { app, signals };
 };

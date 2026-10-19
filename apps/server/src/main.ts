@@ -40,7 +40,12 @@ export const createApp = (deps: AppDeps) => {
   app.route('/api/health', createHealthModule().routes);
   app.route(
     '/api/chat',
-    createChatModule({ agent: createReviewAgent(llm), logger: deps.logger, reporter }).routes,
+    createChatModule({
+      agent: createReviewAgent(llm),
+      logger: deps.logger,
+      contextTokens: deps.config.llm.contextTokens,
+      reporter,
+    }).routes,
   );
 
   app.notFound(notFound);
