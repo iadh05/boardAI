@@ -629,6 +629,11 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - [x] `spawnPosition(…, covered)`: slots under the toolbar don't count as visible; when the uncovered view is full, out of view (pan to it) before under the toolbar.
 - [x] Hints live under the toolbar, in its panel (`canvasHint`: "Add a component…", "Add another…", "Drag from a dot…", gone after the first arrow) with room for two lines from the start, so the panel never grows over a box. The centred empty-board hint moved there too.
 - [x] Checked in the browser on a 402 × 435 px canvas: no box under the panel.
+- [x] Review: new zones open below the toolbar too (`zonePosition`); a diagram that opens with only zones is fitted; the hint is a `role="status"` (announced, and found by role in the test).
+
+**Later**
+- [ ] A box placed out of view gives no feedback (narrow windows): pan to it, or flash a "placed to the right" note.
+- [ ] M2: a board that arrives after mount (rooms over WebSocket) needs its own fit — `fitOnOpen` only sees the first render.
 
 ---
 
@@ -949,6 +954,8 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - [ ] Demo steps 7 and 8 pass.
 
 - [ ] Add a `hang` step to the scenario provider (answers nothing until cancelled) and an e2e test that closing the chat/stopping a review stops the model (M1-19b review).
+
+- [ ] Ghost nodes placed for a proposal must not land under the toolbar: use the covered area (`useDiagramViewport().coveredBy`) as the toolbar's spawn does (M1-UX2 review).
 
 ---
 

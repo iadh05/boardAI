@@ -80,20 +80,19 @@ describe('Zones from the toolbar', () => {
     expect(store.getState().board.zones).toMatchObject([{ label: 'VPC' }]);
   });
 
-  it('says how to connect once there are two boxes, in the toolbar panel — never over the boxes', async () => {
+  it('says what to do next, and how to connect once there are two boxes', async () => {
     const store = renderBoard();
     const user = userEvent.setup();
     const hint = /drag from a dot on the side of a box/i;
 
-    expect(screen.queryByText(hint)).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/add a component/i);
     await user.click(screen.getByRole('button', { name: 'Add API' }));
     await user.click(screen.getByRole('button', { name: 'Add Database' }));
 
-    const panel = screen.getByRole('toolbar', { name: 'Add a node' }).parentElement;
-    expect(within(panel ?? document.body).getByText(hint)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(hint);
 
     const [a, b] = store.getState().board.nodes;
     store.getState().connect(a?.id ?? '', b?.id ?? '');
-    await waitFor(() => expect(screen.queryByText(hint)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
   });
 });

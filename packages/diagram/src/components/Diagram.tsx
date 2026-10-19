@@ -147,7 +147,7 @@ function DiagramCanvas({
   children,
 }: DiagramProps) {
   // Decided once, at mount: did the diagram open with something to look at?
-  const [fitOnOpen] = useState(() => nodesProp.length > 0);
+  const [fitOnOpen] = useState(() => nodesProp.length > 0 || zonesProp.length > 0);
   // useMemo: keeps the mapped arrays stable while the props are, so the merge below runs only
   // when the app actually changed something.
   const flow = useMemo(

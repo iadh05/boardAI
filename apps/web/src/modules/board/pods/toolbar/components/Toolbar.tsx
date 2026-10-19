@@ -7,11 +7,10 @@ import { KIND_ICON, TOOLBAR_KINDS } from '../../../lib/kindAppearance.ts';
 import type { useBoardStore } from '../../../store/boardStore.ts';
 import { canvasHint } from '../lib/canvasHint.ts';
 import { spawnPosition } from '../lib/spawnPosition.ts';
+import { zonePosition } from '../lib/zonePosition.ts';
 
 /** A new zone: room for a few boxes; the user resizes it from its corner. */
 const NEW_ZONE_SIZE = { width: 520, height: 300 };
-const GRID = 20;
-const snap = (v: number) => Math.round(v / GRID) * GRID;
 
 export type ToolbarProps = {
   store: typeof useBoardStore;
@@ -33,6 +32,7 @@ export function Toolbar({ store }: ToolbarProps) {
   const viewport = useDiagramViewport();
   // The panel (buttons and hint) hides part of the canvas: new boxes don't go there.
   const panel = useRef<HTMLDivElement>(null);
+  const covered = () => (panel.current ? [viewport.coveredBy(panel.current)] : []);
 
   const add = (kind: NodeKind) => {
     const id = addNode(
@@ -42,7 +42,7 @@ export function Toolbar({ store }: ToolbarProps) {
         viewport.center(),
         NODE_SIZE,
         viewport.bounds(),
-        panel.current ? [viewport.coveredBy(panel.current)] : [],
+        covered(),
       ),
     );
     // A Custom node is only as good as its label: ask for it straight away.
@@ -51,11 +51,7 @@ export function Toolbar({ store }: ToolbarProps) {
 
   /** A zone centred on the view, drawn behind any boxes there; its title opens for naming. */
   const addZoneHere = () => {
-    const center = viewport.center();
-    addZone(
-      { x: snap(center.x - NEW_ZONE_SIZE.width / 2), y: snap(center.y - NEW_ZONE_SIZE.height / 2) },
-      NEW_ZONE_SIZE,
-    );
+    addZone(zonePosition(viewport.center(), NEW_ZONE_SIZE, covered()), NEW_ZONE_SIZE);
   };
 
   return (
@@ -85,7 +81,11 @@ export function Toolbar({ store }: ToolbarProps) {
         {hint && (
           // w-0 + min-w-full: as wide as the toolbar, never wider. min-h-10: room for two lines
           // from the start, so a longer tip later doesn't grow the panel over a box.
-          <p className="min-h-10 w-0 min-w-full rounded-md bg-surface px-2 py-1 text-xs text-muted shadow-sm">
+          // A status: screen readers announce the next step when it changes.
+          <p
+            role="status"
+            className="min-h-10 w-0 min-w-full rounded-md bg-surface px-2 py-1 text-xs text-muted shadow-sm"
+          >
             {hint}
           </p>
         )}
