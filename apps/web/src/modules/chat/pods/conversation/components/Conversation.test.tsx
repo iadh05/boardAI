@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { SendMessageDeps } from '../../../api/sendMessage.ts';
+import { createBoardStore } from '../../../../board/index.ts';
 import { createChatStore } from '../../../store/chatStore.ts';
 import { Conversation } from './Conversation.tsx';
 
@@ -31,20 +32,22 @@ const controlledFetch = () => {
 
 const renderChat = () => {
   const control = controlledFetch();
+  let id = 0;
+  const board = createBoardStore({ newId: () => `b${++id}` });
   const deps: SendMessageDeps = {
     fetch: control.fetchFn,
     chat: createChatStore({ newId: () => crypto.randomUUID() }),
     currentBoard: () => ({ nodes: [], edges: [] }),
-    showProposal: () => {},
+    showProposal: (p) => board.getState().setProposal(p),
   };
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <Conversation deps={deps} />
+      <Conversation deps={deps} board={board} />
     </QueryClientProvider>,
   );
   const input = screen.getByRole('textbox', { name: 'Message the assistant' });
   const log = screen.getByRole('log', { name: 'Conversation' });
-  return { ...control, input, log, user: userEvent.setup() };
+  return { ...control, board, input, log, user: userEvent.setup() };
 };
 
 describe('Conversation', () => {
@@ -140,5 +143,54 @@ describe('Conversation', () => {
     expect(await within(log).findByRole('alert')).toHaveTextContent('The board is too large.');
     expect(input).toHaveValue('Review it');
     expect(within(log).queryByText('Review it')).not.toBeInTheDocument();
+  });
+
+  it('shows the AI’s proposal under its answer; Accept puts it on the board', async () => {
+    const { input, user, answer, board } = renderChat();
+    const api = board.getState().addNode('api', { x: 0, y: 0 }) ?? '';
+
+    await user.type(input, 'Review it{Enter}');
+    answer(
+      sse(
+        { type: 'text', delta: 'Add a cache.' },
+        {
+          type: 'proposal',
+          proposal: {
+            id: 'p1',
+            summary: 'Add cache "Redis"',
+            ops: [{ op: 'addNode', nodeId: 'cache', kind: 'cache', label: 'Redis', near: api }],
+          },
+        },
+        { type: 'done' },
+      ),
+    );
+
+    const card = await screen.findByRole('region', { name: 'Proposed change' });
+    expect(card).toHaveTextContent('Add cache "Redis"');
+    await user.click(within(card).getByRole('button', { name: 'Accept' }));
+
+    expect(board.getState().board.nodes.map((n) => n.label)).toContain('Redis');
+    expect(screen.queryByRole('region', { name: 'Proposed change' })).not.toBeInTheDocument();
+    expect(screen.getByRole('log', { name: 'Conversation' })).toHaveTextContent(
+      'Accepted: Add cache "Redis"',
+    );
+  });
+
+  it('Reject clears the proposal and leaves the board as it was', async () => {
+    const { board, user } = renderChat();
+    act(() =>
+      board.getState().setProposal({
+        id: 'p1',
+        summary: 'Add cache "Redis"',
+        ops: [{ op: 'addNode', nodeId: 'cache', kind: 'cache', label: 'Redis' }],
+      }),
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Reject' }));
+
+    expect(board.getState()).toMatchObject({ proposal: null, board: { nodes: [] } });
+    expect(screen.getByRole('log', { name: 'Conversation' })).toHaveTextContent(
+      'Rejected: Add cache "Redis"',
+    );
   });
 });

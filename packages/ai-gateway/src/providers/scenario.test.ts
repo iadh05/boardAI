@@ -21,6 +21,11 @@ const file: ScenarioFile = ScenarioFileSchema.parse({
       ],
     },
     {
+      name: 'slow-model',
+      when: 'slowly',
+      rounds: [[{ type: 'text', delta: 'Let me think' }, { type: 'hang' }]],
+    },
+    {
       name: 'model-down',
       when: 'fail',
       rounds: [[{ type: 'error', code: 'UNAVAILABLE', message: 'down' }]],
@@ -98,6 +103,24 @@ describe('scenario provider', () => {
   it('answers nothing more once the scenario is over (the model stops)', async () => {
     const rounds = [user('review'), ...toolRound('a'), ...toolRound('b'), ...toolRound('c')];
     expect(await ask(rounds)).toEqual([]);
+  });
+
+  it('can hang until the call is cancelled, like a model that takes forever', async () => {
+    const controller = new AbortController();
+    const chunks: ProviderChunk[] = [];
+    const reading = (async () => {
+      for await (const chunk of provider.stream({
+        messages: [user('answer slowly')],
+        signal: controller.signal,
+      }))
+        chunks.push(chunk);
+    })();
+
+    await expect.poll(() => chunks.length).toBe(1);
+    controller.abort();
+
+    await expect(reading).rejects.toMatchObject({ code: 'ABORTED' });
+    expect(chunks).toEqual([{ type: 'text', delta: 'Let me think' }]);
   });
 
   it('can fail like a real provider', async () => {

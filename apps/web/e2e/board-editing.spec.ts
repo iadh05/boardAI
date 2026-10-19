@@ -30,16 +30,7 @@ test('three clicks on a kind give three nodes', async ({ app }) => {
 });
 
 test('draw Client → Load Balancer → API → Database', { tag: '@smoke' }, async ({ app }) => {
-  const chain = ['Client', 'Load Balancer', 'API', 'Database'];
-  for (const [i, kind] of chain.entries()) {
-    await app.board.addNode(kind);
-    // A diagonal staircase that fits the canvas (clear of the minimap in the corner).
-    await app.board.move(kind, (i - 1.5) * 160, (i - 1.5) * 70);
-  }
-
-  await app.board.connect('Client', 'Load Balancer');
-  await app.board.connect('Load Balancer', 'API');
-  await app.board.connect('API', 'Database');
+  await app.board.drawChain(['Client', 'Load Balancer', 'API', 'Database']);
 
   await expect(app.board.edge('Client', 'Load Balancer')).toBeVisible();
   await expect(app.board.edge('Load Balancer', 'API')).toBeVisible();

@@ -6,8 +6,9 @@ import { ToolButton } from '../../../../../core/ui/index.ts';
 import { KIND_ICON, TOOLBAR_KINDS } from '../../../lib/kindAppearance.ts';
 import type { useBoardStore } from '../../../store/boardStore.ts';
 import { canvasHint } from '../lib/canvasHint.ts';
-import { spawnPosition } from '../lib/spawnPosition.ts';
+import { spawnPosition } from '../../../lib/spawnPosition.ts';
 import { zonePosition } from '../lib/zonePosition.ts';
+import { useProposalPlacement } from '../hooks/useProposalPlacement.ts';
 
 /** A new zone: room for a few boxes; the user resizes it from its corner. */
 const NEW_ZONE_SIZE = { width: 520, height: 300 };
@@ -33,6 +34,7 @@ export function Toolbar({ store }: ToolbarProps) {
   // The panel (buttons and hint) hides part of the canvas: new boxes don't go there.
   const panel = useRef<HTMLDivElement>(null);
   const covered = () => (panel.current ? [viewport.coveredBy(panel.current)] : []);
+  useProposalPlacement(store, viewport, covered);
 
   const add = (kind: NodeKind) => {
     const id = addNode(

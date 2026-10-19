@@ -6,7 +6,13 @@ import { createId } from '../../../core/lib/ids.ts';
 // whether an answer is streaming, and the last error. In M1 it lives only in memory: a refresh
 // starts a new conversation (persistence comes with M2).
 
-export type ChatEntry = { id: string; role: ChatMessage['role']; content: string };
+export type ChatEntry = {
+  id: string;
+  role: ChatMessage['role'];
+  content: string;
+  /** A note from the app on the user's behalf ("Accepted: …"), shown small, sent to the model. */
+  note?: true;
+};
 
 export type ChatState = {
   messages: ChatEntry[];
@@ -29,6 +35,8 @@ export type ChatActions = {
    * request would carry it and be refused too). Returns its text, for the input to show again.
    */
   withdrawQuestion: (message: string) => string;
+  /** Records what the user decided about a proposal, so the model knows on the next turn. */
+  addNote: (content: string) => void;
   /** The conversation to send with the next request (the chat contract's shape and limit). */
   history: () => ChatMessage[];
 };
@@ -56,6 +64,11 @@ export const createChatStore = ({ newId }: ChatStoreDeps) =>
       set((s) => ({
         messages: [...s.messages, { id: newId(), role: 'user', content }],
         error: null,
+      })),
+
+    addNote: (content) =>
+      set((s) => ({
+        messages: [...s.messages, { id: newId(), role: 'user', content, note: true }],
       })),
 
     startAnswer: () =>

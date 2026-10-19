@@ -7,6 +7,7 @@ import {
   type BoardNode,
   type Proposal,
 } from '@designroom/domain';
+import { withPlacements, type Placements } from '../../../lib/placement.ts';
 import { Icon } from '../../../../../core/ui/index.ts';
 import { KIND_COLOR, KIND_ICON, KIND_SHAPE } from '../../../lib/kindAppearance.ts';
 
@@ -36,19 +37,20 @@ const toEdge = (e: BoardEdge, ghost: boolean): DiagramEdge => ({
 
 /**
  * Board (+ pending AI proposal) → what the diagram draws. The proposal is previewed with the same
- * `applyOps` that Accept uses, so ghosts appear exactly where accepting would put them. A
- * proposal that no longer fits shows no ghosts.
+ * `applyOps` and placements that Accept uses, so ghosts appear exactly where accepting would put
+ * them. A proposal that no longer fits shows no ghosts.
  */
 export const toDiagram = (
   board: Board,
   proposal: Proposal | null,
+  placements: Placements | null = null,
 ): { nodes: DiagramNode[]; edges: DiagramEdge[]; zones: DiagramZone[] } => {
   const nodes = board.nodes.map((n) => toNode(n, false));
   // Same shape on both sides (label, position, size): passed through as they are.
   const zones: DiagramZone[] = board.zones ?? [];
   const edges = board.edges.map((e) => toEdge(e, false));
 
-  const preview = proposal ? applyOps(board, proposal.ops) : null;
+  const preview = proposal ? applyOps(board, proposal.ops, withPlacements(placements)) : null;
   if (!preview?.ok) return { nodes, edges, zones };
 
   const existingNodes = new Set(board.nodes.map((n) => n.id));

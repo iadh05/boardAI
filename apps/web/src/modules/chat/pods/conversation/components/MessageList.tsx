@@ -37,14 +37,21 @@ export function MessageList({ messages, streaming, error }: MessageListProps) {
       )}
       {messages
         .filter((m) => m.content !== '')
-        .map((m) => (
-          <p
-            key={m.id}
-            className={`max-w-[85%] rounded-lg px-3 py-2 whitespace-pre-wrap ${BUBBLE[m.role]}`}
-          >
-            {m.content}
-          </p>
-        ))}
+        .map((m) =>
+          m.note ? (
+            // The app speaking for the user ("Accepted: …"): a quiet line, not a bubble.
+            <p key={m.id} className="self-center text-xs text-muted">
+              {m.content}
+            </p>
+          ) : (
+            <p
+              key={m.id}
+              className={`max-w-[85%] rounded-lg px-3 py-2 whitespace-pre-wrap ${BUBBLE[m.role]}`}
+            >
+              {m.content}
+            </p>
+          ),
+        )}
       {waiting && (
         <div className="flex items-center gap-2 self-start text-muted">
           <Spinner label="Thinking…" />

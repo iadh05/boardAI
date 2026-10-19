@@ -47,7 +47,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-20 | `core/api` SSE stream reader | M1b | S | done |
 | M1-21 | web `chat` module: `chatStore` + `useSendMessage` | M1b | M | done |
 | M1-22 | conversation pod (chat UI) | M1b | M | done |
-| M1-23 | proposal pod + ghost nodes | M1b | M | todo |
+| M1-23 | proposal pod + ghost nodes | M1b | M | doing |
 | M1-24 | System prompt + sample-boards script | M1b | M | todo |
 | M1-25 | Sentry (web + server) | obs | S | todo |
 | M1-26 | OpenTelemetry + Grafana | obs | L | todo |
@@ -941,21 +941,28 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-23 — proposal pod + ghost nodes
-**Status:** todo · **Size:** M · **Depends on:** M1-21, M1-11
+**Status:** doing · **Size:** M · **Depends on:** M1-21, M1-11
 
 **Tests first**
-- [ ] `placement`: proposed node with `near` lands right of it; without `near` at the fallback point; two proposed nodes don't overlap.
+- [x] `placement`: proposed node with `near` lands right of it; without `near` at the fallback point; two proposed nodes don't overlap.
 
 **Tasks**
-- [ ] Finish `GhostNode` and dashed proposal edges; `pods/canvas/lib/placement.ts`.
-- [ ] `chat/pods/proposal/ProposalCard` with summary + Accept / Reject → board public API.
+- [x] Finish `GhostNode` and dashed proposal edges; `lib/placement.ts` (board module: second use of the spawn rule, promoted with `spawnPosition`).
+- [x] `chat/pods/proposal/ProposalCard` with summary + Accept / Reject → board public API.
 
 **Acceptance criteria**
-- [ ] Demo steps 7 and 8 pass.
+- [x] Demo steps 7 and 8 pass.
 
-- [ ] Add a `hang` step to the scenario provider (answers nothing until cancelled) and an e2e test that closing the chat/stopping a review stops the model (M1-19b review).
+- [x] Add a `hang` step to the scenario provider (answers nothing until cancelled) and an e2e test that closing the chat/stopping a review stops the model (M1-19b review).
 
-- [ ] Ghost nodes placed for a proposal must not land under the toolbar: use the covered area (`useDiagramViewport().coveredBy`) as the toolbar's spawn does (M1-UX2 review).
+- [x] Ghost nodes placed for a proposal must not land under the toolbar: use the covered area (`useDiagramViewport().coveredBy`) as the toolbar's spawn does (M1-UX2 review).
+
+**Notes (2026-10-19)**
+- Placement happens **once**, when the proposal arrives (toolbar pod's `useProposalPlacement`: it knows the view and what the toolbar covers), stored as `placements`; the ghost preview and Accept both run `applyOps(board, ops, withPlacements(placements))` — a box lands exactly where its ghost was.
+- `ProposalCard` (chat/pods/proposal): summary, Accept / Reject, the "out of date" reason (Accept disabled then). Conversation shows it under the answer; it reads the proposal from the board module's public API (injected, so tests use a fresh board).
+- e2e (fake model): accept → the Cache node and the API → Cache arrow; out of date → API deleted, Accept refused, Reject clears; Stop ends a slow answer (`hang` scenario step).
+- Review: a board change while a proposal waits re-places it (its spot may be taken); Accept / Reject leave a note in the chat ("Accepted: …"), which confirms it and tells the model next turn; the demo-drawing loop moved into `BoardRegion.drawChain`. Kept: placement runs in the toolbar pod because it alone knows what the toolbar covers — revisit if more overlays appear (end-of-M1 review).
+- Real Qwen in the browser: question → card "Add cache "Cache"; connect "API" → "Cache" ("read"); connect "Cache" → "Database" ("refresh")" → Accept → 3 nodes, 2 arrows.
 
 ---
 
