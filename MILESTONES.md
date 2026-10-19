@@ -113,6 +113,13 @@ Each milestone ends with something you can demo. Do not start the next one until
 - [ ] Agent model via Azure OpenAI (or Claude API)
 - [ ] Budget alert set first, everything in one resource group
 - [ ] Application Insights for logs and errors
+- [ ] **Observability system design** (production version of M1-25/M1-26's local god eye):
+  - [ ] An OpenTelemetry Collector in front of the backends: one exporter in the app; sampling, batching and routing in the collector
+  - [ ] Backend choice — Azure Monitor / Application Insights or Grafana Cloud — same OTel code, only the exporter changes
+  - [ ] SLOs and error budgets (e.g. chat answer starts within 2 s for 99 % of requests; 99.5 % of requests without a 5xx)
+  - [ ] Alerts that reach a person: a contact point (email / Teams), and a short runbook per alert
+  - [ ] Production errors in GlitchTip or Sentry, with source maps uploaded (readable browser stack traces)
+  - [ ] ADR: the design, what it costs per month, and what was left out
 - [ ] Fine-tune the model as a solution architect (QLoRA on Qwen 3.5 9B fits the 16 GB GPU): data from M5's evals and the Accept/Reject feedback recorded in Phoenix (M1-26c); keep it only if the evals improve
 
 **Done when:** a recruiter opens the link in two tabs and watches it sync.
