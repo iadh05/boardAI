@@ -1,6 +1,6 @@
 # Local infrastructure. The apps themselves run on the host (`pnpm dev`); these services sit
 # around them. Start with `docker compose up -d`, then open http://localhost:8080.
-# Grafana LGTM and Phoenix join in M1-24/M1-25; Postgres and Redis in M3.
+# Grafana LGTM (M1-26b) and Phoenix (M1-26c) for observability; Postgres and Redis in M3.
 
 services:
   nginx:
@@ -13,3 +13,21 @@ services:
       # Docker Desktop defines host.docker.internal; this also makes it work on Linux.
       - 'host.docker.internal:host-gateway'
     restart: unless-stopped
+
+  # Grafana + its OpenTelemetry collector, Prometheus (metrics), Loki (logs) and Tempo (traces) in
+  # one container (architecture §9). The server sends OTLP to :4318 when
+  # OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 is set in apps/server/.env.
+  lgtm:
+    image: grafana/otel-lgtm:0.34.0
+    ports:
+      - '3001:3000' # Grafana UI (admin / admin). Host 3001: our server already has 3000.
+      - '4318:4318' # OTLP over HTTP: traces, metrics, logs
+    volumes:
+      - lgtm-data:/data # keep dashboards' history across restarts
+      # Our "AI reviewer" dashboard, loaded at startup (edit in Grafana, then export the JSON here).
+      - ./infra/grafana/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/designroom.yaml:ro
+      - ./infra/grafana/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards/designroom:ro
+    restart: unless-stopped
+
+volumes:
+  lgtm-data:
