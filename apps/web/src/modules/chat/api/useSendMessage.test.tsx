@@ -37,15 +37,17 @@ const setup = () => {
     currentBoard: () => board,
     showProposal: () => {},
   };
-  const { result } = renderHook(() => useSendMessage(deps), { wrapper });
-  return { result, chat, fetchFn, release };
+  const { result, unmount } = renderHook(() => useSendMessage(deps), { wrapper });
+  return { result, unmount, chat, fetchFn, release };
 };
 
 describe('useSendMessage', () => {
   it('sends, says it is sending, and ends with the answer in the store', async () => {
     const { result, chat, release } = setup();
 
-    act(() => result.current.send('Review my design'));
+    act(() => {
+      void result.current.send('Review my design');
+    });
     await waitFor(() => expect(result.current.isSending).toBe(true));
     release('data: {"type":"text","delta":"Looks fine."}\n\ndata: {"type":"done"}\n\n');
 
@@ -56,11 +58,25 @@ describe('useSendMessage', () => {
   it('cancels the request in flight', async () => {
     const { result, chat, fetchFn } = setup();
 
-    act(() => result.current.send('Review my design'));
+    act(() => {
+      void result.current.send('Review my design');
+    });
     await waitFor(() => expect(fetchFn).toHaveBeenCalled());
     act(() => result.current.cancel());
 
     await waitFor(() => expect(result.current.isSending).toBe(false));
     expect(chat.getState()).toMatchObject({ streaming: false, error: null });
+  });
+
+  it('cancels the request in flight when the chat goes away', async () => {
+    const { result, unmount, fetchFn } = setup();
+
+    act(() => {
+      void result.current.send('Review my design');
+    });
+    await waitFor(() => expect(fetchFn).toHaveBeenCalled());
+    unmount();
+
+    expect(fetchFn.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
   });
 });

@@ -24,6 +24,11 @@ export type ChatActions = {
   finishAnswer: () => void;
   /** Ends the answer with an error; keeps any text already received. */
   failAnswer: (message: string) => void;
+  /**
+   * The server refused the question before answering: it leaves the conversation (or every later
+   * request would carry it and be refused too). Returns its text, for the input to show again.
+   */
+  withdrawQuestion: (message: string) => string;
   /** The conversation to send with the next request (the chat contract's shape and limit). */
   history: () => ChatMessage[];
 };
@@ -74,6 +79,18 @@ export const createChatStore = ({ newId }: ChatStoreDeps) =>
 
     failAnswer: (message) =>
       set((s) => ({ messages: withoutEmptyAnswer(s.messages), streaming: false, error: message })),
+
+    withdrawQuestion: (message) => {
+      const messages = withoutEmptyAnswer(get().messages);
+      const question = messages.at(-1);
+      const withdrawn = question?.role === 'user' ? question.content : '';
+      set({
+        messages: withdrawn ? messages.slice(0, -1) : messages,
+        streaming: false,
+        error: message,
+      });
+      return withdrawn;
+    },
 
     history: () => {
       const sent = get()

@@ -58,6 +58,19 @@ describe('chatStore', () => {
     expect(state().messages.at(-1)?.content).toBe('Half an');
   });
 
+  it('withdraws a question the server refused, handing its text back for the input', () => {
+    const state = setup();
+    state().addUserMessage('First');
+    state().addUserMessage('Refused question');
+    state().startAnswer();
+
+    const text = state().withdrawQuestion('The board is too large.');
+
+    expect(text).toBe('Refused question');
+    expect(state().messages.map((m) => m.content)).toEqual(['First']);
+    expect(state()).toMatchObject({ streaming: false, error: 'The board is too large.' });
+  });
+
   it('drops an answer that never got any text', () => {
     const state = setup();
     state().addUserMessage('Review it');

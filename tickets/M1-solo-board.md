@@ -893,6 +893,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - Every ending leaves the store not streaming with a message: `done`, an `error` event, an HTTP error (its JSON message; 429 from Nginx explained), unreachable server, lost connection or no `done`, an unreadable event (nothing after it is trusted), cancel (quiet, keeps the text so far).
 - `history()` sends at most the contract's 50 messages, never starting with an answer; the server trims further to fit the model's context.
 - Board's public API gains `currentBoard()`; chat → board only (lint).
+- Review: one answer at a time (a send while streaming is ignored); empty messages ignored, over 4,000 characters refused before sending; a question the server refuses (HTTP error, unreachable) leaves the history and `send` resolves to its text for the input; Nginx's 413 explained; the error body parsed with the new domain `ErrorResponseSchema`; unmounting the chat aborts its request.
 
 ---
 

@@ -85,6 +85,33 @@ describe('sendMessage', () => {
     });
   });
 
+  it('does not send while an answer is still streaming', async () => {
+    const { deps, chat, fetchFn } = setup(sse({ type: 'done' }));
+    chat().startAnswer();
+
+    await sendMessage('Another question', deps);
+
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(chat().messages.filter((m) => m.role === 'user')).toEqual([]);
+  });
+
+  it('ignores an empty message', async () => {
+    const { deps, chat, fetchFn } = setup(sse({ type: 'done' }));
+    await sendMessage('   ', deps);
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(chat().messages).toEqual([]);
+  });
+
+  it('refuses a message over the limit before sending it, saying how long it may be', async () => {
+    const { deps, chat, fetchFn } = setup(sse({ type: 'done' }));
+
+    await sendMessage('x'.repeat(4_001), deps);
+
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(chat().messages).toEqual([]);
+    expect(chat().error).toMatch(/4,000 characters/);
+  });
+
   it('shows the message of an HTTP error', async () => {
     const body = JSON.stringify({
       error: { code: 'BOARD_TOO_LARGE', message: 'The board is too large.' },
@@ -97,6 +124,14 @@ describe('sendMessage', () => {
     await sendMessage('Hi', deps);
 
     expect(chat().error).toBe('The board is too large.');
+    // The question was never answered: it leaves the history, so the next send isn't refused too.
+    expect(chat().history()).toEqual([]);
+  });
+
+  it('explains Nginx’s body limit, whose answer is not JSON', async () => {
+    const { deps, chat } = setup('<html>413 Request Entity Too Large</html>', { status: 413 });
+    await sendMessage('Hi', deps);
+    expect(chat().error).toMatch(/board is too large/i);
   });
 
   it('explains the rate limit, whose answer comes from Nginx and is not JSON', async () => {

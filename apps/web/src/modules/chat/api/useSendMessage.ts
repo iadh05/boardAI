@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { currentBoard, showProposal } from '../../board/index.ts';
 import { useChatStore } from '../store/chatStore.ts';
 import { chatKeys } from './chatKeys.ts';
@@ -18,6 +18,8 @@ const appDeps: SendMessageDeps = {
 export const useSendMessage = (deps: SendMessageDeps = appDeps) => {
   // The request in flight, so "stop" can abort it (and the model with it, server side).
   const inFlight = useRef<AbortController | null>(null);
+  // The chat going away (unmount) stops its request: no stream writing for nobody.
+  useEffect(() => () => inFlight.current?.abort(), []);
   const mutation = useMutation({
     mutationKey: chatKeys.send(),
     mutationFn: (text: string) => {
@@ -26,7 +28,8 @@ export const useSendMessage = (deps: SendMessageDeps = appDeps) => {
     },
   });
   return {
-    send: (text: string) => mutation.mutate(text),
+    /** Resolves to text for the input to show again when the message was refused, else null. */
+    send: (text: string) => mutation.mutateAsync(text),
     cancel: () => inFlight.current?.abort(),
     isSending: mutation.isPending,
   };
