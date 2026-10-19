@@ -8,7 +8,7 @@ const config = {
   llm: { provider: 'fake', model: 'test', timeoutMs: 5_000, contextTokens: 16_384 },
   logLevel: 'info',
   errorTracking: null,
-  tracing: null,
+  telemetry: null,
 } as const;
 const logger = createLogger({ level: 'error', write: () => {} });
 const app = createApp({ config, logger });

@@ -16,7 +16,7 @@ describe('loadConfig', () => {
       },
       logLevel: 'info',
       errorTracking: null, // off unless SENTRY_DSN is set
-      tracing: null, // off unless OTEL_EXPORTER_OTLP_ENDPOINT is set
+      telemetry: null, // off unless OTEL_EXPORTER_OTLP_ENDPOINT is set
     });
   });
 
@@ -36,7 +36,7 @@ describe('loadConfig', () => {
 
   it('exports traces when an OTLP endpoint is set', () => {
     expect(
-      loadConfig({ ...valid, OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318' }).tracing,
+      loadConfig({ ...valid, OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318' }).telemetry,
     ).toEqual({ endpoint: 'http://localhost:4318' });
     expect(() => loadConfig({ ...valid, OTEL_EXPORTER_OTLP_ENDPOINT: 'grafana' })).toThrow(
       /OTEL_EXPORTER_OTLP_ENDPOINT/,
