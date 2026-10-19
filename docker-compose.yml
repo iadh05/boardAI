@@ -29,6 +29,11 @@ services:
       # Our "AI reviewer" dashboard, loaded at startup (edit in Grafana, then export the JSON here).
       - ./infra/grafana/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/designroom.yaml:ro
       - ./infra/grafana/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards/designroom:ro
+      # Alert rules (M1-26e): firing ones show in Alerting and on the overview's Alerts panel.
+      - ./infra/grafana/alerting.yaml:/otel-lgtm/grafana/conf/provisioning/alerting/designroom.yaml:ro
+    environment:
+      # Grafana opens on the "god eye" (M1-26e) instead of its welcome page.
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /otel-lgtm/grafana/conf/provisioning/dashboards/designroom/overview.json
     restart: unless-stopped
 
   # GlitchTip: open-source error tracking that accepts the official Sentry SDKs (M1-25b). Our apps

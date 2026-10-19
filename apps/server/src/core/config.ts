@@ -16,6 +16,9 @@ const EnvSchema = z
     // high and Ollama silently drops the start of the prompt; too low only trims history early.
     LLM_CONTEXT_TOKENS: z.coerce.number().int().min(8_192).max(1_048_576).default(131_072),
     LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
+    // Routes that break things on purpose (/api/debug/*), to check error tracking, the overview
+    // dashboard and its alerts end to end (M1-26e). Off unless exactly "true".
+    ENABLE_DEBUG_ROUTES: z.enum(['true', 'false']).default('false'),
     // Error tracking (Sentry): off when unset, so tests and offline work need nothing.
     SENTRY_DSN: z.url().optional(),
     SENTRY_ENVIRONMENT: z.string().min(1).default('development'),
@@ -59,6 +62,8 @@ export type Config = {
   errorTracking: { dsn: string; environment: string } | null;
   /** Null: traces and metrics are not exported (recording them costs almost nothing then). */
   telemetry: { endpoint: string } | null;
+  /** /api/debug/* mounted: development only. */
+  debugRoutes: boolean;
 };
 
 /** Parses an environment: process.env in production, a plain object in tests. */
@@ -91,7 +96,14 @@ export const loadConfig = (env: Record<string, string | undefined>): Config => {
   const telemetry = e.OTEL_EXPORTER_OTLP_ENDPOINT
     ? { endpoint: e.OTEL_EXPORTER_OTLP_ENDPOINT }
     : null;
-  return { port: e.PORT, llm, logLevel: e.LOG_LEVEL, errorTracking, telemetry };
+  return {
+    port: e.PORT,
+    llm,
+    logLevel: e.LOG_LEVEL,
+    errorTracking,
+    telemetry,
+    debugRoutes: e.ENABLE_DEBUG_ROUTES === 'true',
+  };
 };
 
 /** The server's real configuration. */

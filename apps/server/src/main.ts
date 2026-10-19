@@ -13,6 +13,7 @@ import {
 import { observeRequests } from './core/observability/telemetry.ts';
 import { requestContext } from './core/requestContext.ts';
 import { createChatModule, createReviewAgent } from './modules/chat/index.ts';
+import { createDebugModule } from './modules/debug/index.ts';
 import { createHealthModule } from './modules/health/index.ts';
 
 // The composition root (architecture §6): builds every dependency and hands it to the modules.
@@ -43,6 +44,7 @@ export const createApp = (deps: AppDeps) => {
   app.use(requestContext(deps.logger));
 
   app.route('/api/health', createHealthModule().routes);
+  if (deps.config.debugRoutes) app.route('/api/debug', createDebugModule().routes);
   app.route(
     '/api/chat',
     createChatModule({

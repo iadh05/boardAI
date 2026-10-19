@@ -17,6 +17,7 @@ describe('loadConfig', () => {
       logLevel: 'info',
       errorTracking: null, // off unless SENTRY_DSN is set
       telemetry: null, // off unless OTEL_EXPORTER_OTLP_ENDPOINT is set
+      debugRoutes: false, // ENABLE_DEBUG_ROUTES=true turns /api/debug/* on
     });
   });
 

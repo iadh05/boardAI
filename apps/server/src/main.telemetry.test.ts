@@ -29,6 +29,7 @@ const config = {
   logLevel: 'info',
   errorTracking: null,
   telemetry: null,
+  debugRoutes: false,
 } as const;
 
 const chat = async (script: Parameters<typeof createFakeProvider>[0], lines: string[] = []) => {
