@@ -124,7 +124,10 @@ const createToolCallCollector = () => {
 
 export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions): LlmProvider => {
   const fetchFn = options.fetch ?? fetch;
-  const url = `${options.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+  // A loop, not /\/+$/: that regex is slow on long runs of "/" (CodeQL js/polynomial-redos).
+  let base = options.baseUrl;
+  while (base.endsWith('/')) base = base.slice(0, -1);
+  const url = `${base}/chat/completions`;
 
   return {
     async *stream(input) {
