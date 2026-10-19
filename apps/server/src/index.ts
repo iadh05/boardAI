@@ -12,7 +12,7 @@ const logger = createLogger({ level: config.logLevel });
 // Started once, before anything can fail: Sentry when SENTRY_DSN is set, else nothing.
 const reporter = createErrorReporter(config.errorTracking);
 // Before the app is built: its spans need the SDK in place. Off without an OTLP endpoint.
-const flushTraces = startTracing(config.tracing);
+const flushTraces = startTracing(config.tracing, logger);
 const app = createApp({ config, logger, reporter });
 
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {

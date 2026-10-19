@@ -73,6 +73,18 @@ describe('tracing a chat request', () => {
     expect(byName('review board')?.attributes['designroom.chat.outcome']).toBe('done');
   });
 
+  it('names the request span after the route, not the raw path: span names stay few', async () => {
+    exporter.reset();
+    const app = createApp({ config, logger: createLogger({ level: 'error', write: () => {} }) });
+
+    await app.request('/api/no-such-thing-1234');
+
+    const [span] = exporter.getFinishedSpans();
+    expect(span?.name).not.toContain('1234');
+    expect(span?.attributes['url.path']).toBe('/api/no-such-thing-1234'); // still findable
+    expect(span?.attributes['http.response.status_code']).toBe(404);
+  });
+
   it('marks the review as failed when the model fails', async () => {
     const spans = await chat([[{ type: 'text', delta: 'DESIGN' }]]); // no script for the review
 

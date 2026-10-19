@@ -1082,6 +1082,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 **Tasks**
 - [ ] **Phoenix**: add the container to `docker-compose.yml` (UI on :6006); second trace exporter in the server pointing at Phoenix's OTLP HTTP endpoint (check the Phoenix docs for the exact path).
 - [ ] OpenInference input/output: prompt, board text, tool arguments and results — behind a switch, local only (architecture §9).
+- [ ] Same switch for a refused tool call's span status: today it holds the reply the model got, which can quote a label (M1-26a review).
 - [ ] Add `traceId` to the `proposal` event; on Accept/Reject the web app calls `POST /api/chat/feedback`, and the server records it on the trace as feedback (Phoenix annotations API — check the docs).
 
 **Acceptance criteria**
