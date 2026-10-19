@@ -780,6 +780,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 
 **Tasks**
 - [ ] `application/runAgent.ts`, `createAgent({ llm })` in `index.ts`; `prompt.ts` first version (refined in M1-24).
+- [ ] **Aliases shift between turns** (M1-17 review): `n1, n2…` are renumbered from the board on every request, but the chat history holds the model's earlier replies ("added n5"). After the user edits the board, an old alias can name another node. Handle it here: the prompt says ids are valid for the current board only, and/or past assistant messages are sent without alias-bearing tool details. Test: history mentions n5, board changed → the model is told the current listing wins.
 
 ---
 

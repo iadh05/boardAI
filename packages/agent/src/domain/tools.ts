@@ -88,11 +88,28 @@ const refuse = (reply: string): Plan => ({ ok: false, reply });
 const argsError = (tool: string, error: z.ZodError) =>
   `${tool}: ${error.issues.map((i) => `${i.path.join('.') || 'arguments'}: ${i.message}`).join('; ')}`;
 
-/** Domain messages name real ids; the model only knows aliases. */
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Domain messages name real ids; the model only knows aliases. Whole ids only: an id like "a"
+ * must not be replaced inside "api" or inside a word. */
 const withAliases = (message: string, draft: Draft, aliases: Aliases) =>
-  [...draft.board.nodes.map((n) => n.id)]
-    .sort((a, b) => b.length - a.length)
-    .reduce((text, id) => text.replaceAll(id, aliases.nodeAlias(id) ?? id), message);
+  draft.board.nodes.reduce(
+    (text, { id }) =>
+      text.replace(
+        new RegExp(`(?<![\\w-])${escapeRegExp(id)}(?![\\w-])`, 'g'),
+        aliases.nodeAlias(id) ?? id,
+      ),
+    message,
+  );
+
+/** applyOps prefixes "Operation 1 (connect): " (which op) or "Operation 1 (label): " (which field,
+ * for invalid values). The model knows which call it was; keep only a field name. */
+const reasonOf = (error: { code: string; message: string }) => {
+  const match = /^Operation \d+(?: \(([^)]*)\))?: ([\s\S]*)$/.exec(error.message);
+  if (!match) return error.message;
+  const [, inParens, rest = ''] = match;
+  return error.code === 'INVALID_OP' && inParens ? `${inParens}: ${rest}` : rest;
+};
 
 const nodeLine = (board: Board, id: string, aliases: Aliases) => {
   const node = board.nodes.find((n) => n.id === id);
@@ -104,7 +121,8 @@ const nodeLine = (board: Board, id: string, aliases: Aliases) => {
 const plan = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
   const resolve = (ref: string): string | undefined => draft.aliases.nodeId(ref);
   const unknown = (ref: string) =>
-    refuse(`No node "${ref}". Nodes on the board: ${draft.aliases.nodeAliases().join(', ')}.`);
+    // A range, not the full list: on a big board the list would cost hundreds of tokens per mistake.
+    refuse(`No node "${ref}". Node ids go from n1 to n${draft.aliases.nodeAliases().length}.`);
 
   switch (call.name) {
     case 'add_node': {
@@ -177,9 +195,7 @@ export const runToolCall = (draft: Draft, call: ToolCallInput, deps: ToolDeps): 
   const { op, aliases, describe } = planned.planned;
   const applied = applyOps(draft.board, [op]);
   if (!applied.ok) {
-    // applyOps names the operation ("Operation 1 (connect): …"): the model knows which call it was.
-    const reason = applied.error.message.replace(/^Operation \d+(?: \([^)]*\))?: /, '');
-    return refused(`${call.name} failed: ${withAliases(reason, draft, aliases)}`);
+    return refused(`${call.name} failed: ${withAliases(reasonOf(applied.error), draft, aliases)}`);
   }
   return {
     draft: { board: applied.value, aliases, ops: [...draft.ops, op] },

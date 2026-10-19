@@ -83,6 +83,24 @@ describe('connect_nodes', () => {
   });
 });
 
+describe('error messages', () => {
+  it('translate whole ids only, never parts of other words or ids', () => {
+    const short: Board = {
+      nodes: [
+        { id: 'a', kind: 'api', label: 'API', position: { x: 0, y: 0 } },
+        { id: 'api', kind: 'database', label: 'DB', position: { x: 300, y: 0 } },
+      ],
+      edges: [{ id: 'e', source: 'a', target: 'api' }],
+    };
+    const { reply } = runToolCall(
+      createDraft(short),
+      call('connect_nodes', { source: 'n1', target: 'n2' }),
+      ids(),
+    );
+    expect(reply).toBe('connect_nodes failed: n1 → n2 is already connected');
+  });
+});
+
 describe('update_node', () => {
   it('renames a node and changes its kind', () => {
     const { draft, ok, reply } = runToolCall(
@@ -121,7 +139,7 @@ describe('mistakes the model makes', () => {
       createDraft(board),
       'connect_nodes',
       { source: 'n1', target: 'n9' },
-      /no node "n9".*n1, n2/i,
+      /no node "n9".*n1 to n2/i,
     );
     failsWith(
       createDraft(board),
@@ -151,6 +169,15 @@ describe('mistakes the model makes', () => {
 
   it('arguments that are not a JSON object', () => {
     failsWith(createDraft(board), 'add_node', '{kind: cache', /JSON object/);
+  });
+
+  it('a label the board refuses: says which field', () => {
+    const outcome = runToolCall(
+      createDraft(board),
+      call('add_node', { kind: 'cache', label: 'x'.repeat(150) }),
+      ids(),
+    );
+    expect(outcome.reply).toMatch(/^add_node failed: label: /);
   });
 
   it('a label the board refuses (line break)', () => {
