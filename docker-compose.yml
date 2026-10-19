@@ -31,5 +31,44 @@ services:
       - ./infra/grafana/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards/designroom:ro
     restart: unless-stopped
 
+  # GlitchTip: open-source error tracking that accepts the official Sentry SDKs (M1-25b). Our apps
+  # keep @sentry/react and @sentry/node; only the DSN points here instead of sentry.io, so no
+  # account and nothing leaves the machine. Adapted from glitchtip.com/assets/compose.sample.yml
+  # in its low-RAM form (Postgres also serves as queue and cache, no Valkey; logs and uptime off).
+  # Not started by `docker compose up`: `docker compose --profile errors up -d`, then
+  # http://localhost:8000.
+  glitchtip:
+    image: glitchtip/glitchtip:6.2.6
+    profiles: [errors]
+    depends_on: [glitchtip-db]
+    ports:
+      - '127.0.0.1:8000:8000' # this machine only
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@glitchtip-db:5432/postgres
+      VALKEY_URL: '' # no Valkey: Postgres runs the task queue and cache
+      SERVER_ROLE: all_in_one # web and worker in one container
+      # Signs sessions of this local instance only. Override in the root .env (git-ignored).
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-local-dev-only-not-a-secret}
+      GLITCHTIP_DOMAIN: http://localhost:8000
+      DEFAULT_FROM_EMAIL: glitchtip@localhost
+      EMAIL_URL: consolemail:// # emails go to the container log
+      GLITCHTIP_ENABLE_LOGS: 'False'
+      GLITCHTIP_ENABLE_UPTIME: 'False'
+    volumes:
+      - glitchtip-uploads:/code/uploads
+    restart: unless-stopped
+
+  glitchtip-db:
+    image: postgres:18.6-alpine
+    profiles: [errors]
+    environment:
+      # No password: the database is on Docker's internal network only, never published.
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - glitchtip-db:/var/lib/postgresql
+    restart: unless-stopped
+
 volumes:
   lgtm-data:
+  glitchtip-db:
+  glitchtip-uploads:

@@ -19,6 +19,17 @@ This is a **learning project**. Every milestone is meant to teach one big idea (
 | [docs/decisions.md](docs/decisions.md) | Architecture Decision Records (ADRs). Every milestone adds at least one. |
 | [docs/learning-log.md](docs/learning-log.md) | Your own notes: what you learned, what surprised you, what you'd do differently. |
 
+## Running it locally
+
+| What | Start | Open |
+|---|---|---|
+| Web + API (dev) | `pnpm dev`, plus `docker compose up -d` for Nginx | http://localhost:8080 |
+| Production preview, real model | `pnpm --filter @designroom/web build && pnpm --filter @designroom/web exec vite preview --port 4180` with `API_URL=http://localhost:3000` | http://localhost:4180 |
+| Grafana: traces, metrics, the "AI reviewer" dashboard | `docker compose up -d`; set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` in `apps/server/.env` | http://localhost:3001 (admin / admin) |
+| GlitchTip: error tracking (Sentry SDKs, nothing leaves the PC) | `docker compose --profile errors up -d`, then once `node scripts/glitchtip-setup.ts` | http://localhost:8000 (login in the root `.env`) |
+
+The model runs in Ollama (start the Ollama app, not `ollama serve`); its settings are in [infra/ollama/Modelfile](infra/ollama/Modelfile). Docker on Windows needs the "Virtual Machine Platform" Windows feature.
+
 ## The loop for each milestone
 
 1. **Read the spec** in `docs/specs/`. Answer its "Before you start" questions in your learning log.
