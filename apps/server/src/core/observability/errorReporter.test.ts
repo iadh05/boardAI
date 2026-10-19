@@ -1,5 +1,42 @@
+import { metrics } from '@opentelemetry/api';
+import { MeterProvider, MetricReader, type DataPoint } from '@opentelemetry/sdk-metrics';
 import { describe, expect, it, vi } from 'vitest';
-import { createErrorReporter, noErrorReporter } from './errorReporter.ts';
+import { countErrors, createErrorReporter, noErrorReporter } from './errorReporter.ts';
+
+/** Reads metrics on demand: what the exporter would send, without sending it. */
+class TestReader extends MetricReader {
+  protected onForceFlush = () => Promise.resolve();
+  protected onShutdown = () => Promise.resolve();
+}
+
+describe('countErrors', () => {
+  it('counts every reported bug by where it happened, and still reports it', async () => {
+    metrics.disable();
+    const reader = new TestReader();
+    metrics.setGlobalMeterProvider(new MeterProvider({ readers: [reader] }));
+    const reported: unknown[] = [];
+
+    const reporter = countErrors({ report: (e) => reported.push(e) });
+    reporter.report(new Error('a'), { where: 'chat stream', requestId: 'r1' });
+    reporter.report(new Error('b'), { path: '/api/chat' }); // from the HTTP error handler
+    reporter.report(new Error('c'));
+
+    const { resourceMetrics } = await reader.collect();
+    const metric = resourceMetrics.scopeMetrics
+      .flatMap((s) => s.metrics)
+      .find((m) => m.descriptor.name === 'server_errors_reported_total');
+    const points = (metric?.dataPoints ?? []).map((p: DataPoint<unknown>) => [
+      p.attributes,
+      p.value,
+    ]);
+    // Counted even without a DSN: the overview shows bugs whether or not GlitchTip is running.
+    expect(points).toEqual([
+      [{ where: 'chat_stream' }, 1],
+      [{ where: 'http' }, 2],
+    ]);
+    expect(reported).toHaveLength(3);
+  });
+});
 
 const fakeSentry = () => ({ init: vi.fn(), captureException: vi.fn() });
 

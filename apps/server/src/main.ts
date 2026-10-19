@@ -5,7 +5,11 @@ import type { Config } from './core/config.ts';
 import { notFound, onError } from './core/errors.ts';
 import { createLlmProvider } from './core/llm.ts';
 import type { Logger } from './core/logger.ts';
-import { noErrorReporter, type ErrorReporter } from './core/observability/errorReporter.ts';
+import {
+  countErrors,
+  noErrorReporter,
+  type ErrorReporter,
+} from './core/observability/errorReporter.ts';
 import { observeRequests } from './core/observability/telemetry.ts';
 import { requestContext } from './core/requestContext.ts';
 import { createChatModule, createReviewAgent } from './modules/chat/index.ts';
@@ -24,7 +28,8 @@ export type AppDeps = {
 };
 
 export const createApp = (deps: AppDeps) => {
-  const reporter = deps.reporter ?? noErrorReporter;
+  // Every bug is counted (overview dashboard, alert), then reported (GlitchTip, when a DSN is set).
+  const reporter = countErrors(deps.reporter ?? noErrorReporter);
   const llm = createGateway({
     provider:
       deps.llmProvider ?? createLlmProvider(deps.config.llm, (path) => readFileSync(path, 'utf8')),

@@ -3,6 +3,7 @@ import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import { startRuntimeMetrics } from './runtimeMetrics.ts';
 import { BatchSpanProcessor, NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import type { MiddlewareHandler } from 'hono';
@@ -62,8 +63,11 @@ export const startTelemetry = (
     ],
   });
   metrics.setGlobalMeterProvider(meterProvider);
+  // The process's own health: event loop, heap, CPU, memory (M1-26e).
+  const stopRuntimeMetrics = startRuntimeMetrics(meterProvider);
 
   return async () => {
+    stopRuntimeMetrics();
     await Promise.all([tracerProvider.shutdown(), meterProvider.shutdown()]);
   };
 };
