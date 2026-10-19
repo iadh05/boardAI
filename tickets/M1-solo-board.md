@@ -50,7 +50,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-23 | proposal pod + ghost nodes | M1b | M | done |
 | M1-24 | System prompt + sample-boards script | M1b | M | doing |
 | M1-24b | Scope guardrail: system design only | M1b | S | done |
-| M1-24c | Context 128k: model setting + chat budget from config | M1b | S | todo |
+| M1-24c | Context 128k: model setting + chat budget from config | M1b | S | doing |
 | M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | todo |
 | M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | todo |
 | M1-25 | Sentry (web + server) | obs | S | doing |
@@ -1015,7 +1015,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-24c — Context 128k
-**Status:** todo · **Size:** S · **Depends on:** M1-24b
+**Status:** doing · **Size:** S · **Depends on:** M1-24b
 
 *Owner's choice: 128k (2026-10-19).* The window is a reservation, not a cost per request: VRAM is reserved once at load; time depends on the tokens actually sent, and the agent's later rounds reuse Ollama's cache of the shared start (system prompt + board). No risk to the card: the driver caps power (180 W) and temperature; if VRAM ever ran out, Ollama would move layers to the CPU (slow, not harmful) — `ollama ps` shows it.
 
@@ -1031,15 +1031,25 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 Memory grows slowly because only 8 of the model's 32 layers keep a per-token cache (Gated DeltaNet hybrid; ~32 KiB/token at f16). Quality on huge input is shaky (asked to count 1,799 services: "2,453", then "1,800"), so the history is still trimmed, just with more room.
 
 **Tasks**
-- [ ] `infra/ollama/Modelfile`: `num_ctx 131072`; rebuild `designroom-qwen`; update the Modelfile comment and docs/spikes note.
-- [ ] Try KV cache q8_0 (`OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0`: Ollama-wide settings, set by the owner): the cache halves (~4 → ~2 GB at 128k). Keep only if the sample boards don't get worse.
-- [ ] Config: `LLM_CONTEXT_TOKENS` (default 131072) → the chat policy's budget, instead of the hard-coded 16,384 (each model gets its own budget, M6 too).
+- [x] `infra/ollama/Modelfile`: `num_ctx 131072`; rebuild `designroom-qwen`; update the Modelfile comment and docs/spikes note.
+- [ ] *(deferred: Ollama-wide setting, the owner's call)* Try KV cache q8_0 (`OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0`: Ollama-wide settings, set by the owner): the cache halves (~4 → ~2 GB at 128k). Keep only if the sample boards don't get worse.
+- [x] Config: `LLM_CONTEXT_TOKENS` (default 131072) → the chat policy's budget, instead of the hard-coded 16,384 (each model gets its own budget, M6 too).
 
 **Tests first**
-- [ ] chatPolicy keeps more history with a bigger budget, and still refuses a board that cannot fit.
+- [x] chatPolicy keeps more history with a bigger budget, and still refuses a board that cannot fit.
 
 **Acceptance criteria**
-- [ ] `ollama ps`: 128k, 100% GPU. Sample boards still pass.
+- [x] `ollama ps`: 128k, 100% GPU. Sample boards still pass.
+
+**Result (2026-10-19)** — same code, sample boards at 16k and 128k, 6 runs per board:
+
+| | no-cache | single-db | no-lb | injection |
+|---|---|---|---|---|
+| M1-24 baseline (prompt v2) | 5/6 | 0/6 | 3/6 | 6/6 |
+| today, 16k | 1/6 | 1/6 | 1/6 | 6/6 |
+| today, 128k | 1/6 | 1/6 | 3/6 | 6/6 |
+
+128k is no worse than 16k; scope set still 30/30. **But both are below the M1-24 baseline**: every failure is "no proposal" (the model reviews in words and calls no tool). It started before this ticket — most likely M1-24b's stricter prompt (the Scope section). → M1-24e must win this back, measured the same way.
 
 ## M1-24d — Guardrails v2
 **Status:** todo · **Size:** M · **Depends on:** M1-24c
@@ -1069,6 +1079,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - [ ] Co-write the prompt with the owner: `<persona>` solution architect, `<rules>` (SPOFs, scaling, consistency, cost, trade-offs, one question when requirements are missing), `<changes>` (tools, ids, proposals), short `<scope>`.
 - [ ] Sections chosen by the context budget (short rules for small models).
 - [ ] Measure: sample boards (`review-samples.ts`) + M1-24d's red-team set; keep v3 only if it doesn't lose on either. Log in `docs/evals/`.
+- [ ] Win back the M1-24 baseline: since M1-24b the model often answers in words with no tool call (no-cache 1/6, was 5/6; see M1-24c's result).
 
 **Acceptance criteria**
 - [ ] Before/after table; prompt v3 merged only with equal or better numbers.
