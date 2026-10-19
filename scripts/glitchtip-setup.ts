@@ -10,7 +10,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -18,19 +18,42 @@ const GLITCHTIP = 'http://localhost:8000';
 const ORG = 'designroom';
 const out = (line: string) => process.stdout.write(`${line}\n`);
 
+/**
+ * The file's text, or '' when it doesn't exist yet. One read, no "does it exist?" check first:
+ * the file could change between the two (CodeQL js/file-system-race).
+ */
+const readOrEmpty = (file: string): string => {
+  try {
+    return readFileSync(file, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return '';
+    throw error;
+  }
+};
+
 const readEnv = (file: string): Record<string, string> =>
-  existsSync(file)
-    ? Object.fromEntries(
-        readFileSync(file, 'utf8')
-          .split('\n')
-          .filter((l) => /^[A-Z_]+=/.test(l))
-          .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()]),
-      )
-    : {};
+  Object.fromEntries(
+    readOrEmpty(file)
+      .split('\n')
+      .filter((l) => /^[A-Z_]+=/.test(l))
+      .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()]),
+  );
+
+/**
+ * A DSN as GlitchTip returns it, checked and rebuilt from its parts before it goes into a .env
+ * file: data from an HTTP answer must not be able to add lines or settings to it (CodeQL
+ * js/http-to-file-access). Shape: http(s)://<32 hex key>@<host[:port]>/<project number>.
+ */
+const safeDsn = (dsn: string): string => {
+  const match = /^(https?):\/\/([0-9a-f]{32})@([a-z0-9.-]+(?::\d{1,5})?)\/(\d{1,9})$/.exec(dsn);
+  if (!match) throw new Error('GlitchTip returned a DSN that does not look like one: not written.');
+  const [, scheme, key, host, project] = match;
+  return `${scheme}://${key}@${host}/${project}`;
+};
 
 /** Sets `key` in a .env file, replacing an older value, keeping every other line. */
 const setEnv = (file: string, key: string, value: string) => {
-  const lines = existsSync(file) ? readFileSync(file, 'utf8').split('\n') : [];
+  const lines = readOrEmpty(file).split('\n');
   const kept = lines.filter((l) => !l.startsWith(`${key}=`));
   while (kept.length && kept.at(-1) === '') kept.pop();
   kept.push(`${key}=${value}`, '');
@@ -141,7 +164,7 @@ for (const p of PROJECTS) {
   }[];
   const dsn = keys[0]?.dsn?.public;
   if (!dsn) throw new Error(`No DSN for ${p.name}`);
-  setEnv(join(ROOT, p.env), p.key, dsn);
+  setEnv(join(ROOT, p.env), p.key, safeDsn(dsn));
   out(`${p.name}: DSN written to ${p.env} (${p.key})`);
 }
 out(`\nDone. Restart the server and rebuild/restart the web app, then open ${GLITCHTIP}`);

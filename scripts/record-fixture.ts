@@ -66,6 +66,17 @@ for (const [file, extra] of Object.entries(recordings)) {
     }),
   });
   const raw = await res.text();
+  // Recording the answer is the point, but only a successful event stream goes into the repo:
+  // anything else from the network (an error page, something huge) stops here (CodeQL
+  // js/http-to-file-access).
+  const isStream =
+    res.ok &&
+    raw.length < 1_000_000 &&
+    raw.split('\n').every((line) => line === '' || line.startsWith('data: '));
+  if (!isStream)
+    throw new Error(
+      `${file}: not a server-sent event stream (HTTP ${res.status}); nothing written.`,
+    );
   writeFileSync(new URL(file, dir), raw);
   process.stdout.write(`${file}: ${res.status}, ${raw.length} bytes\n`);
 }
