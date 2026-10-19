@@ -153,9 +153,11 @@ describe('runAgent', () => {
     expect(fake.calls).toHaveLength(3);
     expect(of(events, 'proposal')[0]?.proposal.ops).toHaveLength(3);
     expect(events.at(-1)).toEqual({ type: 'done' });
+    // The user is told the review was cut short, not left with a sentence that goes nowhere.
+    expect(textOf(events)).toMatch(/stopped here/i);
   });
 
-  it('a gateway error → an error event, then done, and no proposal', async () => {
+  it('a gateway error → the valid changes so far, an error event, then done', async () => {
     const { agent } = setup([
       [tool('c1', 'add_node', { kind: 'cache', label: 'Redis' })],
       [{ type: 'fail', code: 'UNAVAILABLE', message: 'down' }],
@@ -163,11 +165,12 @@ describe('runAgent', () => {
 
     const events = await run(agent);
 
-    expect(events.slice(-2)).toEqual([
-      { type: 'error', code: 'UNAVAILABLE', message: 'down' },
-      { type: 'done' },
-    ]);
-    expect(of(events, 'proposal')).toEqual([]);
+    // The text may already say "I've added a cache": the proposal keeps the board in step with it.
+    expect(events.slice(-3).map((e) => e.type)).toEqual(['proposal', 'error', 'done']);
+    expect(events.at(-2)).toEqual({ type: 'error', code: 'UNAVAILABLE', message: 'down' });
+    expect(of(events, 'proposal')[0]?.proposal.ops.map((o) => o.op)).toEqual(['addNode']);
+    // The failed round is reported too: failures are what metering most needs to see.
+    expect(of(events, 'round').map((r) => r.round)).toEqual([1, 2]);
   });
 
   it('reports how each round went (for metering)', async () => {
@@ -216,8 +219,8 @@ describe('runAgent', () => {
       if (event.type === 'text') controller.abort();
     }
 
-    expect(events.map((e) => e.type)).toEqual(['text', 'error', 'done']);
-    expect(events[1]).toMatchObject({ code: 'ABORTED' });
+    expect(events.map((e) => e.type)).toEqual(['text', 'round', 'error', 'done']);
+    expect(events[2]).toMatchObject({ code: 'ABORTED' });
   });
 });
 

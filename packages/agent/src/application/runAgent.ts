@@ -53,9 +53,26 @@ export const createAgent = (deps: AgentDeps) => ({
     const maxRounds = deps.maxRounds ?? DEFAULT_MAX_ROUNDS;
     let draft = createDraft(board);
     const conversation: LlmMessage[] = buildMessages(boardToText(board, draft.aliases), messages);
-    let spoke = false;
+    let spoke = false; // an earlier round wrote something
+    let finished = false; // the model stopped calling tools by itself
 
-    for (let round = 1; round <= maxRounds; round++) {
+    // Valid ops so far, as one proposal: also sent when a later round fails, because the text the
+    // user already read may say "I've added a cache".
+    const proposal = (): AgentEvent[] =>
+      draft.ops.length === 0
+        ? []
+        : [
+            {
+              type: 'proposal',
+              proposal: {
+                id: deps.newId(),
+                summary: summarize(draft.ops, board, draft.board),
+                ops: draft.ops,
+              },
+            },
+          ];
+
+    for (let round = 1; round <= maxRounds && !finished; round++) {
       const calls: LlmToolCall[] = [];
       let said = '';
       let usage: Usage | null = null;
@@ -65,19 +82,21 @@ export const createAgent = (deps: AgentDeps) => ({
         for await (const chunk of deps.llm.chat(request)) {
           if (chunk.type === 'text') {
             // A new round's text starts a new paragraph, not glued to the last sentence.
-            if (!said && spoke && chunk.delta.trim()) yield { type: 'text', delta: '\n\n' };
+            if (said === '' && spoke) yield { type: 'text', delta: '\n\n' };
             said += chunk.delta;
-            spoke ||= chunk.delta.trim() !== '';
             yield { type: 'text', delta: chunk.delta };
           } else if (chunk.type === 'toolCall') calls.push(chunk.call);
           else usage = chunk.usage;
         }
       } catch (error) {
         if (!isGatewayError(error)) throw error; // a bug, not a model failure
+        yield { type: 'round', round, usage: null, toolCalls: 0, toolErrors: 0 };
+        yield* proposal();
         yield { type: 'error', code: error.code, message: error.message };
         yield { type: 'done' };
         return;
       }
+      spoke ||= said.trim() !== '';
 
       let toolErrors = 0;
       if (calls.length > 0) {
@@ -90,18 +109,16 @@ export const createAgent = (deps: AgentDeps) => ({
         }
       }
       yield { type: 'round', round, usage, toolCalls: calls.length, toolErrors };
-      if (calls.length === 0) break;
+      finished = calls.length === 0;
     }
 
-    if (draft.ops.length > 0)
+    // Cut off mid-work: say so, rather than end on "Now let me connect…".
+    if (!finished)
       yield {
-        type: 'proposal',
-        proposal: {
-          id: deps.newId(),
-          summary: summarize(draft.ops, board, draft.board),
-          ops: draft.ops,
-        },
+        type: 'text',
+        delta: `${spoke ? '\n\n' : ''}(I stopped here: that was the most steps I take in one answer. Ask me to continue.)`,
       };
+    yield* proposal();
     yield { type: 'done' };
   },
 });
