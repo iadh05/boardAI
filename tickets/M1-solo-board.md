@@ -1005,6 +1005,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - The design samples still pass as before (they now run through the guard).
 - In the app: the three questions get the fixed reply; "Review my design" gets a review.
 - Fails open (unclear answer or model error → the review runs, with the stricter prompt as the second guard): blocking real design questions would be worse than missing an odd one.
+- Review: the verdict is read anywhere in the answer ("Classification: OTHER"); a classifier that stalls after its first words gets 2 s, then fails open (the e2e Stop journey caught it hanging the review); an e2e journey checks the fixed reply. Mixed messages pass the guard and the review prompt refuses the off-topic part (3/3). After the fixes: 29/30 — one false refusal of "add an astrology API" (temperature 0.7). Deferred: temperature 0 for classifier calls (with M5's eval temperature), metering the guard call (M1-26), a French refusal.
 
 ---
 
@@ -1049,6 +1050,8 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - [ ] Accepting a proposal shows up as positive feedback on its trace; rejecting as negative.
 
 - [ ] The access-log line for `/api/chat` is written when SSE headers go out (~40 ms, status 200), not when the stream ends: measure chat duration and outcome in the span, not the access log (M1-19 review).
+
+- [ ] Meter the scope guard's model call too (a `round`-like event or its own span): today it is invisible in logs and metrics (M1-24b review).
 
 ---
 

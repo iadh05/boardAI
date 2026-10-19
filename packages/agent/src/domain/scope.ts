@@ -30,5 +30,9 @@ export const scopeMessages = (question: string, previousAnswer?: string): LlmMes
   ];
 };
 
-/** Out only on a clear OTHER; anything unclear goes through (the review prompt is the next guard). */
-export const readScope = (answer: string): Scope => (/^\W*other\b/i.test(answer) ? 'out' : 'in');
+/**
+ * The first verdict word in the answer, even wrapped ("Classification: OTHER"). Out only on a
+ * clear OTHER; anything unclear goes through (the review prompt is the next guard).
+ */
+export const readScope = (answer: string): Scope =>
+  /\b(design|other)\b/i.exec(answer)?.[1]?.toLowerCase() === 'other' ? 'out' : 'in';

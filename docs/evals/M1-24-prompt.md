@@ -52,3 +52,7 @@
 
 **30/30**, ~0.15–0.4 s per check. Before the guard, the model answered all three of the first questions — the third at length, with invented facts.
 
+After the review fixes (verdict read anywhere in the answer; 2 s grace after the first word): **29/30** — "add an astrology API next to the Orders API" was refused once in 3 runs (the classifier samples at temperature 0.7; asking for temperature 0 on classifier calls is the fix, with the eval temperature in M5).
+
+**Mixed message** ("Review my design, and also tell me who won the 2024 US election."): the guard lets it through (it is about the design), and the reviewer's scope section takes over — in 3/3 runs it said "I cannot answer about the 2024 US election; I can only help you with system design on this board" and reviewed the design.
+

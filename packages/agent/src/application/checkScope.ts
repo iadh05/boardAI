@@ -8,29 +8,40 @@ export type ScopeQuestion = {
   signal?: AbortSignal;
 };
 
-/** Longest answer we read: one word is enough, the rest is never streamed. */
-const MAX_ANSWER_CHARS = 20;
+/** Longest answer we read: the verdict word, maybe wrapped ("Classification: OTHER"). */
+const MAX_ANSWER_CHARS = 40;
+/**
+ * Once the model has started answering, how long it may take to say the verdict. Counted from
+ * the first word, not the request: a cold model takes ~16 s to load, and that is not a stall.
+ */
+const VERDICT_GRACE_MS = 2_000;
 
 /**
- * Asks the model whether the message is about the design. Fails open: if the model errs or
- * answers something unclear, the message goes through and the review prompt is the next guard —
- * a guard that blocks real design questions would be worse than one that misses an odd one.
+ * Asks the model whether the message is about the design. Fails open: if the model errs, stalls
+ * or answers something unclear, the message goes through and the review prompt is the next guard
+ * — a guard that blocks real design questions would be worse than one that misses an odd one.
  */
 export const checkScope = async (
   llm: AiGateway,
   { question, previousAnswer, signal }: ScopeQuestion,
 ): Promise<Scope> => {
+  const stalled = new AbortController();
+  let grace: ReturnType<typeof setTimeout> | undefined;
   let answer = '';
   try {
-    for await (const chunk of llm.chat({
-      messages: scopeMessages(question, previousAnswer),
-      signal,
-    })) {
-      if (chunk.type === 'text') answer += chunk.delta;
-      if (answer.length >= MAX_ANSWER_CHARS) break; // stops the call: no tokens for nothing
+    const messages = scopeMessages(question, previousAnswer);
+    const callSignal = signal ? AbortSignal.any([signal, stalled.signal]) : stalled.signal;
+    for await (const chunk of llm.chat({ messages, signal: callSignal })) {
+      if (chunk.type !== 'text') continue;
+      answer += chunk.delta;
+      grace ??= setTimeout(() => stalled.abort(), VERDICT_GRACE_MS);
+      // Stop as soon as the verdict is readable (or enough was said): no tokens for nothing.
+      if (/\b(design|other)\b/i.test(answer) || answer.length >= MAX_ANSWER_CHARS) break;
     }
   } catch {
-    return 'in';
+    return readScope(answer); // stalled or failed: whatever was said, else fail open
+  } finally {
+    clearTimeout(grace);
   }
   return readScope(answer);
 };

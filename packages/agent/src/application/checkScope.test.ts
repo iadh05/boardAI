@@ -1,5 +1,5 @@
 import type { AiGateway, ChatInput, LlmChunk } from '@designroom/ai-gateway';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OUT_OF_SCOPE_REPLY } from '../domain/scope.ts';
 import { checkScope } from './checkScope.ts';
 
@@ -20,6 +20,10 @@ const classifier = (answer: string | Error) => {
 
 const ask = (llm: AiGateway, question: string, previous?: string) =>
   checkScope(llm, { question, previousAnswer: previous });
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('checkScope', () => {
   it('lets a question about the design through', async () => {
@@ -44,6 +48,29 @@ describe('checkScope', () => {
     expect(user?.content).toContain('<message>\nyes, do it\n</message>');
     expect(user?.content).toContain('Shall I add a cache in front of Postgres?');
     expect(calls[0]?.tools).toBeUndefined(); // a classifier, not a reviewer
+  });
+
+  it('reads the verdict even when the model wraps it in words', async () => {
+    expect(await ask(classifier('Classification: OTHER').llm, 'weather?')).toBe('out');
+    expect(await ask(classifier('The answer is DESIGN.').llm, 'review it')).toBe('in');
+  });
+
+  it('gives up 2 s after the first word when no verdict comes, so a stalled model never blocks the review', async () => {
+    vi.useFakeTimers();
+    const llm: AiGateway = {
+      async *chat(input) {
+        yield { type: 'text', delta: 'Let me think' } satisfies LlmChunk;
+        // …then nothing, until cancelled.
+        await new Promise((_, reject) =>
+          input.signal?.addEventListener('abort', () => reject(new Error('aborted'))),
+        );
+      },
+    };
+
+    const verdict = ask(llm, 'hmm');
+    await vi.advanceTimersByTimeAsync(2_000);
+
+    expect(await verdict).toBe('in');
   });
 
   it('fails open when the answer is unclear or the model fails: the prompt is the next guard', async () => {

@@ -85,3 +85,13 @@ test('Stop ends an answer that is taking too long, without an error', async ({ a
   await expect(app.chat.sendButton).toBeVisible(); // ready for the next question
   await expect(app.chat.conversation.getByRole('alert')).toHaveCount(0);
 });
+
+test('a question about something else gets the fixed reply, not an answer', async ({ app }) => {
+  await app.open();
+
+  await app.chat.sendMessage('tell me a joke');
+
+  // The scope guard's fixed text — written by no model — and nothing proposed.
+  await expect(app.chat.conversation).toContainText('I can only help with the system design');
+  await expect(app.chat.proposal).toHaveCount(0);
+});
