@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-15 Qwen spike done → M1-16 ai-gateway next (M1-13 structure verdict pending)
+**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-16 ai-gateway → M1-17 agent tools next (M1-13 structure verdict pending)
 
 ## Done
 
@@ -28,7 +28,8 @@
 | M1-12 | Connect by dragging (domain `canConnect` for live feedback), Delete/Backspace through the store; demo chain e2e | #18 |
 | M1-14 | Server skeleton: composition root, zod config, JSON logger, error mapping, request ids, health | #29 |
 | M1-14b | Nginx edge proxy on :8080 (routing, request ids, WebSocket, 1 MB limit, 429 on chat) + `edge` CI smoke test | #30 |
-| M1-15 | Qwen spike: `qwen3.5:9b`, thinking off via `reasoning_effort: "none"`, 64 tok/s, 3/3 tool calls; stream fixtures | this PR |
+| M1-15 | Qwen spike: `qwen3.5:9b`, thinking off via `reasoning_effort: "none"`, 64 tok/s, 3/3 tool calls; stream fixtures | #31 |
+| M1-16 | `packages/ai-gateway`: OpenAI-compatible + fake providers, SSE reader, idle timeout, retry before first chunk, cancellation, usage | this PR |
 
 ## In progress
 
