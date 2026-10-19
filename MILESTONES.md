@@ -113,6 +113,7 @@ Each milestone ends with something you can demo. Do not start the next one until
 - [ ] Agent model via Azure OpenAI (or Claude API)
 - [ ] Budget alert set first, everything in one resource group
 - [ ] Application Insights for logs and errors
+- [ ] Fine-tune the model as a solution architect (QLoRA on Qwen 3.5 9B fits the 16 GB GPU): data from M5's evals and the Accept/Reject feedback recorded in Phoenix (M1-26c); keep it only if the evals improve
 
 **Done when:** a recruiter opens the link in two tabs and watches it sync.
 
