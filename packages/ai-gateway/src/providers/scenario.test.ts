@@ -66,6 +66,12 @@ describe('scenario provider', () => {
     ]);
   });
 
+  it('matches the user’s question, not the board listing that comes with it', async () => {
+    // The agent sends the board in the same message; a label must not pick the scenario.
+    const chunks = ask([user('<board>\nn1 [custom] "Review queue"\n</board>\n\nPlease fail')]);
+    await expect(chunks).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+  });
+
   it('knows the round from the conversation itself: no state, so parallel tests cannot interfere', async () => {
     const second = await ask([user('review'), ...toolRound('call_1_1')]);
     const third = await ask([user('review'), ...toolRound('call_1_1'), ...toolRound('call_2_1')]);
@@ -110,6 +116,26 @@ describe('scenario provider', () => {
 });
 
 describe('ScenarioFileSchema', () => {
+  it('allows a catch-all (empty trigger) only as the last scenario: it would hide the others', () => {
+    const rounds = [[{ type: 'text', delta: 'x' }]];
+    expect(
+      ScenarioFileSchema.safeParse({
+        scenarios: [
+          { name: 'any', when: '', rounds },
+          { name: 'review', when: 'review', rounds },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      ScenarioFileSchema.safeParse({
+        scenarios: [
+          { name: 'review', when: 'review', rounds },
+          { name: 'any', when: '', rounds },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
   it('rejects a file with a mistake, so the server refuses to start with it', () => {
     const bad = ScenarioFileSchema.safeParse({
       scenarios: [{ name: 'x', when: 'y', rounds: [[{ type: 'toolCall', name: 'add_node' }]] }],

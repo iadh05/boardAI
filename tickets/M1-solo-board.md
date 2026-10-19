@@ -847,6 +847,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - Scenarios live in `apps/web/e2e/fixtures/llm/scenarios.json` (`LLM_SCENARIO_FILE`): picked by text in the latest user message ("review" → missing-cache, "outage" → model down). The provider is **stateless** — the round is counted from the conversation — so parallel e2e workers can't disturb each other. A broken file stops the server at startup, naming the file.
 - Playwright starts its own fake-model server on **:3100** (never reuses the dev server on :3000, which talks to the real Qwen); `vite preview` forwards `/api` to it (`API_URL`).
 - `ai-review.spec.ts` checks the whole server path through the app's origin now; the two UI journeys (Accept → real node + edge; "out of date") are `test.fixme` until M1-23 — left unticked above.
+- Review: scenario matched on the question, not board labels; a catch-all scenario must be last; `ChatApi` fails with the HTTP error; `vite preview` defaults to the fake server (:3100) so a reused preview can't reach the real model. Deferred: a `hang` step for the cancel e2e (M1-23).
 - Not done here: the run through Nginx and the `proxy_buffering` check need Docker, which can't start on this laptop yet (Virtual Machine Platform).
 - Local flakiness seen with 4 workers was memory (2 GB free of 16 with other apps open), not the tests: `main` failed the same way; `--workers 2` gave 33/33 three times.
 
@@ -905,6 +906,8 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 
 **Acceptance criteria**
 - [ ] Demo steps 7 and 8 pass.
+
+- [ ] Add a `hang` step to the scenario provider (answers nothing until cancelled) and an e2e test that closing the chat/stopping a review stops the model (M1-19b review).
 
 ---
 

@@ -32,8 +32,19 @@ const ScenarioSchema = z.object({
   rounds: z.array(z.array(ScenarioStepSchema)),
 });
 
-export const ScenarioFileSchema = z.object({ scenarios: z.array(ScenarioSchema).min(1) });
+export const ScenarioFileSchema = z.object({
+  scenarios: z
+    .array(ScenarioSchema)
+    .min(1)
+    // The first match wins, and an empty trigger matches everything: only last makes sense.
+    .refine((list) => list.every((s, i) => s.when !== '' || i === list.length - 1), {
+      message: 'A catch-all scenario (empty "when") must be the last one, or it hides the others',
+    }),
+});
 export type ScenarioFile = z.infer<typeof ScenarioFileSchema>;
+
+/** How the agent closes the board listing (packages/agent prompt.ts). */
+const BOARD_END = '</board>';
 
 /** Rounds already played since the latest user message = assistant turns after it. */
 const roundIndex = (messages: readonly LlmMessage[]) => {
@@ -44,7 +55,13 @@ const roundIndex = (messages: readonly LlmMessage[]) => {
 export const createScenarioProvider = (file: ScenarioFile): LlmProvider => ({
   async *stream({ messages }) {
     await Promise.resolve(); // a provider answers asynchronously
-    const question = messages.findLast((m) => m.role === 'user')?.content.toLowerCase() ?? '';
+    const latest = messages.findLast((m) => m.role === 'user')?.content ?? '';
+    // The agent sends the board listing in the same message: match only what follows it, so a
+    // box labelled "Outage alerts" can't pick the outage scenario.
+    const boardEnd = latest.lastIndexOf(BOARD_END);
+    const question = (
+      boardEnd < 0 ? latest : latest.slice(boardEnd + BOARD_END.length)
+    ).toLowerCase();
     const scenario = file.scenarios.find((s) => question.includes(s.when.toLowerCase()));
     if (!scenario) {
       const triggers = file.scenarios.map((s) => `"${s.when}"`).join(', ');

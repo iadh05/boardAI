@@ -70,8 +70,9 @@ e2e/
 pnpm test:e2e                                       # builds, serves the production build, runs Chromium
 pnpm --filter @designroom/web exec playwright test --ui   # interactive mode while writing tests
 
-# Faster loop while writing tests: build + serve once, Playwright reuses the running server
-pnpm --filter @designroom/web build && pnpm --filter @designroom/web preview --port 4173
+# Faster loop while writing tests: start both servers once, Playwright reuses them
+PORT=3100 LLM_PROVIDER=fake LLM_SCENARIO_FILE=apps/web/e2e/fixtures/llm/scenarios.json pnpm --filter @designroom/server start
+pnpm --filter @designroom/web build && pnpm --filter @designroom/web preview --port 4173   # forwards /api to :3100
 pnpm --filter @designroom/web exec playwright test        # in a second terminal
 BASE_URL=http://localhost:8080 pnpm test:e2e        # same tests through Nginx (M1-14b)
 ```

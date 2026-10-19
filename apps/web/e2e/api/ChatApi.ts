@@ -14,6 +14,8 @@ export class ChatApi {
       data: { board, messages: [{ role: 'user', content: message }] },
     });
     const body = await res.text();
+    // Fail with what the server said, not later with "no text in an empty stream".
+    if (!res.ok()) throw new Error(`POST /api/chat answered ${res.status()}: ${body}`);
     return body
       .split('\n\n')
       .filter((block) => block.startsWith('data: '))
