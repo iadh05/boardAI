@@ -1,5 +1,5 @@
 import { KIND_DEFAULT_LABEL, NODE_KINDS } from '@designroom/domain';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { createBoardStore } from '../../../store/boardStore.ts';
@@ -78,5 +78,22 @@ describe('Zones from the toolbar', () => {
     await userEvent.keyboard('VPC{Enter}');
 
     expect(store.getState().board.zones).toMatchObject([{ label: 'VPC' }]);
+  });
+
+  it('says how to connect once there are two boxes, in the toolbar panel — never over the boxes', async () => {
+    const store = renderBoard();
+    const user = userEvent.setup();
+    const hint = /drag from a dot on the side of a box/i;
+
+    expect(screen.queryByText(hint)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add API' }));
+    await user.click(screen.getByRole('button', { name: 'Add Database' }));
+
+    const panel = screen.getByRole('toolbar', { name: 'Add a node' }).parentElement;
+    expect(within(panel ?? document.body).getByText(hint)).toBeInTheDocument();
+
+    const [a, b] = store.getState().board.nodes;
+    store.getState().connect(a?.id ?? '', b?.id ?? '');
+    await waitFor(() => expect(screen.queryByText(hint)).not.toBeInTheDocument());
   });
 });

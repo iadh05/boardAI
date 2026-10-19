@@ -330,6 +330,38 @@ describe('Diagram — panels', () => {
     await userEvent.click(screen.getByRole('button', { name: 'What do I see' }));
     expect(onBounds.mock.calls[0]?.[0].width).toBeGreaterThan(0);
   });
+
+  it('and what part of the diagram an overlay hides', async () => {
+    const onCovered = vi.fn<(r: { width: number; height: number }) => void>();
+    function CoveredButton() {
+      const viewport = useDiagramViewport();
+      return (
+        <button
+          type="button"
+          // jsdom has no layout: the overlay says where it is on screen, as a browser would.
+          ref={(el) => {
+            if (el) el.getBoundingClientRect = () => new DOMRect(10, 20, 100, 40);
+          }}
+          onClick={(e) => onCovered(viewport.coveredBy(e.currentTarget))}
+        >
+          What do I hide
+        </button>
+      );
+    }
+    render(
+      <Harness>
+        <DiagramPanel position="top-left">
+          <CoveredButton />
+        </DiagramPanel>
+      </Harness>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'What do I hide' }));
+
+    const covered = onCovered.mock.calls[0]?.[0];
+    // Same shape as on screen, scaled by the zoom.
+    expect((covered?.width ?? 0) / (covered?.height ?? 1)).toBeCloseTo(100 / 40);
+  });
 });
 
 it('has zoom controls', () => {

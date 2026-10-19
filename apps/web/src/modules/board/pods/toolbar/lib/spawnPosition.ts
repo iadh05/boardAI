@@ -24,16 +24,21 @@ const SLOTS: readonly [number, number][] = (() => {
 
 type Rect = { x: number; y: number; width: number; height: number };
 
+const intersects = (a: Rect, b: Rect) =>
+  a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+
 /**
  * Where a new box goes: centred on the view, on the grid, in the nearest slot where it overlaps
  * no other box. Slots are one box (plus a gap) apart, so new boxes form a tidy grid. With `view`
- * (what the user sees), slots outside it are skipped while there is room inside.
+ * (what the user sees), slots outside it are skipped while there is room inside — and so are
+ * slots under `covered` areas: what is drawn over the canvas (the toolbar) hides them.
  */
 export const spawnPosition = (
   board: Board,
   center: Position,
   size: { width: number; height: number },
   view?: Rect,
+  covered: readonly Rect[] = [],
 ): Position => {
   const origin = { x: snap(center.x - size.width / 2), y: snap(center.y - size.height / 2) };
   const step = { x: snap(size.width + GAP), y: snap(size.height + GAP) };
@@ -44,16 +49,21 @@ export const spawnPosition = (
         Math.abs(n.position.y - at.y) >= size.height + GAP / 2,
     );
 
-  const isVisible = (at: Position) =>
+  const inView = (at: Position) =>
     !view ||
     (at.x >= view.x &&
       at.y >= view.y &&
       at.x + size.width <= view.x + view.width &&
       at.y + size.height <= view.y + view.height);
+  const uncovered = (at: Position) => !covered.some((area) => intersects({ ...at, ...size }, area));
 
   const slots = SLOTS.map(([dx, dy]) => ({ x: origin.x + dx * step.x, y: origin.y + dy * step.y }));
-  // Visible and free first; if the view is full, any free slot (the user can pan to it).
-  const found = slots.find((at) => isVisible(at) && isFree(at)) ?? slots.find(isFree);
+  // In view and not hidden by the toolbar first. If that part of the view is full: out of view
+  // (the user can pan to it) rather than under the toolbar. Only then any free slot.
+  const found =
+    slots.find((at) => inView(at) && uncovered(at) && isFree(at)) ??
+    slots.find((at) => uncovered(at) && isFree(at)) ??
+    slots.find(isFree);
   if (found) return found;
   // A very crowded view: fall back to the centre; the user will move it.
   return origin;

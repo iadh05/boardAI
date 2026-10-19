@@ -73,4 +73,42 @@ describe('spawnPosition', () => {
       expect(at.y + SIZE.height).toBeLessThanOrEqual(view.y + view.height);
     }
   });
+
+  it('never puts a box under the toolbar (or anything else drawn over the canvas)', () => {
+    // A narrow view whose centre is under the toolbar: the centre slot is hidden.
+    const view = { x: 0, y: 0, width: 800, height: 600 };
+    const toolbar = { x: 0, y: 0, width: 800, height: 340 };
+
+    const at = spawnPosition(empty, center, SIZE, view, [toolbar]);
+
+    const hidden =
+      at.x < toolbar.x + toolbar.width &&
+      at.x + SIZE.width > toolbar.x &&
+      at.y < toolbar.y + toolbar.height &&
+      at.y + SIZE.height > toolbar.y;
+    expect(hidden).toBe(false);
+    expect(at.y + SIZE.height).toBeLessThanOrEqual(view.y + view.height); // still in view
+  });
+
+  it('when the uncovered part of the view is full, goes out of view rather than under the toolbar', () => {
+    // Room in view for one box below the toolbar; the second must not hide under it.
+    const view = { x: 0, y: 0, width: 400, height: 440 };
+    const toolbar = { x: 0, y: 0, width: 380, height: 240 };
+    let board = empty;
+    const spots: Position[] = [];
+    for (let i = 0; i < 3; i++) {
+      const at = spawnPosition(board, { x: 200, y: 220 }, SIZE, view, [toolbar]);
+      spots.push(at);
+      board = { ...board, nodes: [...board.nodes, createNode(`n${i}`, 'api', at)] };
+    }
+
+    for (const at of spots) {
+      const underToolbar =
+        at.x < toolbar.x + toolbar.width &&
+        at.x + SIZE.width > toolbar.x &&
+        at.y < toolbar.y + toolbar.height &&
+        at.y + SIZE.height > toolbar.y;
+      expect(underToolbar).toBe(false);
+    }
+  });
 });
