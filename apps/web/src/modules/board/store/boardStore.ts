@@ -106,7 +106,8 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
     /** Commits a domain result: new board on success, unchanged board + error on failure. */
     const commit = (result: BoardResult): boolean => {
       if (result.ok) {
-        set({ board: result.value, lastError: null });
+        // A waiting proposal is placed again: the board change may have taken one of its spots.
+        set({ board: result.value, lastError: null, placements: null });
         return true;
       }
       set({ lastError: result.error });

@@ -53,6 +53,18 @@ export class BoardRegion {
       .dragTo(this.node(to).getByTestId('connect-left'));
   }
 
+  /**
+   * Adds these kinds in order and connects each to the next — e.g. the M1 demo chain. A diagonal
+   * staircase, so the arrows are not straight lines (a 0 px tall line never counts as visible).
+   */
+  async drawChain(kinds: readonly string[]): Promise<void> {
+    for (const [i, kind] of kinds.entries()) {
+      await this.addNode(kind);
+      await this.move(kind, (i - (kinds.length - 1) / 2) * 160, (i - (kinds.length - 1) / 2) * 70);
+    }
+    for (const [i, kind] of kinds.slice(1).entries()) await this.connect(kinds[i] ?? '', kind);
+  }
+
   edge(from: string, to: string): Locator {
     return this.diagram.getByRole('group', { name: `From ${from} to ${to}`, exact: true });
   }

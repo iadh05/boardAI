@@ -961,6 +961,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - Placement happens **once**, when the proposal arrives (toolbar pod's `useProposalPlacement`: it knows the view and what the toolbar covers), stored as `placements`; the ghost preview and Accept both run `applyOps(board, ops, withPlacements(placements))` — a box lands exactly where its ghost was.
 - `ProposalCard` (chat/pods/proposal): summary, Accept / Reject, the "out of date" reason (Accept disabled then). Conversation shows it under the answer; it reads the proposal from the board module's public API (injected, so tests use a fresh board).
 - e2e (fake model): accept → the Cache node and the API → Cache arrow; out of date → API deleted, Accept refused, Reject clears; Stop ends a slow answer (`hang` scenario step).
+- Review: a board change while a proposal waits re-places it (its spot may be taken); Accept / Reject leave a note in the chat ("Accepted: …"), which confirms it and tells the model next turn; the demo-drawing loop moved into `BoardRegion.drawChain`. Kept: placement runs in the toolbar pod because it alone knows what the toolbar covers — revisit if more overlays appear (end-of-M1 review).
 - Real Qwen in the browser: question → card "Add cache "Cache"; connect "API" → "Cache" ("read"); connect "Cache" → "Database" ("refresh")" → Accept → 3 nodes, 2 arrows.
 
 ---

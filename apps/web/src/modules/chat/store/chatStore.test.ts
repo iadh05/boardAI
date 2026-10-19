@@ -99,4 +99,24 @@ describe('chatStore', () => {
     expect(history.at(-1)).toEqual({ role: 'user', content: 'latest' });
     expect(history[0]?.role).toBe('user'); // never start with an answer to an unseen question
   });
+
+  it('records a decision as a note: shown in the chat, and sent so the model knows', () => {
+    const state = setup();
+    state().addUserMessage('Review it');
+    state().startAnswer();
+    state().appendToAnswer('Add a cache.');
+    state().finishAnswer();
+
+    state().addNote('Accepted: Add cache "Redis"');
+
+    expect(state().messages.at(-1)).toMatchObject({
+      role: 'user',
+      note: true,
+      content: 'Accepted: Add cache "Redis"',
+    });
+    expect(state().history().at(-1)).toEqual({
+      role: 'user',
+      content: 'Accepted: Add cache "Redis"',
+    });
+  });
 });

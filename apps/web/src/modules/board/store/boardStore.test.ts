@@ -126,6 +126,16 @@ describe('boardStore — proposals', () => {
     expect(state().board.nodes.find((n) => n.id === 'cache')?.position).toEqual({ x: 640, y: 320 });
   });
 
+  it('a board change while a proposal waits asks for it to be placed again (its spot may be taken)', () => {
+    const { api } = seedApiAndDb();
+    state().setProposal(proposalFor(api));
+    state().placeProposal({ cache: { x: 640, y: 320 } });
+
+    state().addNode('queue', { x: 640, y: 320 }); // right where the cache would go
+
+    expect(state().placements).toBeNull();
+  });
+
   it('a new proposal starts unplaced; placing without a proposal does nothing', () => {
     const { api } = seedApiAndDb();
     state().placeProposal({ cache: { x: 1, y: 1 } });

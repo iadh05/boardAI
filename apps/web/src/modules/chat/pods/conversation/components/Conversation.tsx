@@ -43,8 +43,16 @@ export function Conversation({ deps = chatAppDeps, board = useBoardStore }: Conv
           <ProposalCard
             summary={proposal.summary}
             error={proposalError}
-            onAccept={() => board.getState().acceptProposal()}
-            onReject={() => board.getState().rejectProposal()}
+            onAccept={() => {
+              board.getState().acceptProposal();
+              // Applied (else it stays, with its error): say so, for the user and the model.
+              if (board.getState().proposal === null)
+                deps.chat.getState().addNote(`Accepted: ${proposal.summary}`);
+            }}
+            onReject={() => {
+              board.getState().rejectProposal();
+              deps.chat.getState().addNote(`Rejected: ${proposal.summary}`);
+            }}
           />
         )}
       </div>

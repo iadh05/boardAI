@@ -171,6 +171,9 @@ describe('Conversation', () => {
 
     expect(board.getState().board.nodes.map((n) => n.label)).toContain('Redis');
     expect(screen.queryByRole('region', { name: 'Proposed change' })).not.toBeInTheDocument();
+    expect(screen.getByRole('log', { name: 'Conversation' })).toHaveTextContent(
+      'Accepted: Add cache "Redis"',
+    );
   });
 
   it('Reject clears the proposal and leaves the board as it was', async () => {
@@ -186,5 +189,8 @@ describe('Conversation', () => {
     await user.click(await screen.findByRole('button', { name: 'Reject' }));
 
     expect(board.getState()).toMatchObject({ proposal: null, board: { nodes: [] } });
+    expect(screen.getByRole('log', { name: 'Conversation' })).toHaveTextContent(
+      'Rejected: Add cache "Redis"',
+    );
   });
 });

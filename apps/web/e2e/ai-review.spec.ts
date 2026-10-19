@@ -1,6 +1,5 @@
 import { demoBoard } from './data/boards.ts';
 import { expect, test } from './fixtures.ts';
-import type { AppPage } from './pages/AppPage.ts';
 
 // The AI reviewer, end to end, on the fake model (e2e/fixtures/llm/scenarios.json): the app's
 // origin → server → agent → gateway → scripted model, deterministic and without a GPU.
@@ -30,24 +29,15 @@ test('a model outage reaches the user as a message they can act on', async ({ ch
   ]);
 });
 
-/** The M1 demo, drawn by hand: the model sees Client, Load Balancer, API, Database as n1…n4. */
-const drawDemo = async (app: AppPage) => {
-  const chain = ['Client', 'Load Balancer', 'API', 'Database'];
-  for (const [i, kind] of chain.entries()) {
-    await app.board.addNode(kind);
-    await app.board.move(kind, (i - 1.5) * 160, (i - 1.5) * 70);
-  }
-  await app.board.connect('Client', 'Load Balancer');
-  await app.board.connect('Load Balancer', 'API');
-  await app.board.connect('API', 'Database');
-};
+/** The M1 demo: the model sees Client, Load Balancer, API, Database as n1…n4. */
+const DEMO = ['Client', 'Load Balancer', 'API', 'Database'];
 
 test(
   'accepting the proposal adds the cache node and its arrow',
   { tag: '@smoke' },
   async ({ app }) => {
     await app.open();
-    await drawDemo(app);
+    await app.board.drawChain(DEMO);
 
     await app.chat.sendMessage('Please review my design');
 
@@ -70,7 +60,7 @@ test('a proposal the board has moved past says "out of date" and changes nothing
   app,
 }) => {
   await app.open();
-  await drawDemo(app);
+  await app.board.drawChain(DEMO);
   await app.chat.sendMessage('Please review my design');
   await expect(app.board.node('Proposed: Cache')).toBeVisible();
 
