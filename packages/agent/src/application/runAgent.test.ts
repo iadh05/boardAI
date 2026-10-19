@@ -1,6 +1,14 @@
 import type { AiGateway, ChatInput, LlmChunk, LlmErrorCode } from '@designroom/ai-gateway';
 import { applyOps, type Board } from '@designroom/domain';
-import { describe, expect, it } from 'vitest';
+import { context, SpanStatusCode, trace, type Span } from '@opentelemetry/api';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
+import {
+  BasicTracerProvider,
+  InMemorySpanExporter,
+  SimpleSpanProcessor,
+  type ReadableSpan,
+} from '@opentelemetry/sdk-trace-base';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { OUT_OF_SCOPE_REPLY } from '../domain/scope.ts';
 import { createAgent, type AgentEvent } from './runAgent.ts';
 
@@ -285,5 +293,114 @@ describe('what the model is sent', () => {
     expect(last).toContain('<board>\nn1 [api] "API" -> n2\nn2 [database] "Postgres"\n</board>');
     expect(last).toMatch(/ids .*replace any/i); // aliases may have changed since earlier messages
     expect(last.endsWith('Done, what next?')).toBe(true);
+  });
+});
+
+describe('tracing', () => {
+  // The SDK the server registers, here with an in-memory exporter: spans are read, not sent.
+  const exporter = new InMemorySpanExporter();
+  beforeAll(() => {
+    context.setGlobalContextManager(new AsyncLocalStorageContextManager().enable());
+    trace.setGlobalTracerProvider(
+      new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] }),
+    );
+  });
+  afterEach(() => {
+    exporter.reset();
+  });
+
+  /** The agent on a scripted model, recording which span was active when each call was made. */
+  const traced = (answers: Step[][], scope: 'in' | 'out' = 'in') => {
+    const { llm } = scriptedLlm(answers);
+    const activeAt = { llm: [] as (Span | undefined)[], scope: undefined as Span | undefined };
+    let n = 0;
+    const agent = createAgent({
+      llm: { chat: (input) => (activeAt.llm.push(trace.getActiveSpan()), llm.chat(input)) },
+      newId: () => `id-${++n}`,
+      checkScope: () => {
+        activeAt.scope = trace.getActiveSpan();
+        return Promise.resolve(scope);
+      },
+    });
+    return { agent, activeAt };
+  };
+
+  const spans = () => exporter.getFinishedSpans();
+  const named = (name: string) => spans().filter((s) => s.name === name);
+  const idOf = (span: Span | ReadableSpan | undefined) => span?.spanContext().spanId;
+
+  it('one review = an agent span over the scope check and each round; tools inside their round', async () => {
+    const { agent, activeAt } = traced([
+      [tool('c1', 'add_node', { kind: 'cache', label: 'Redis', near: 'n1' })],
+      [tool('c2', 'connect_nodes', { source: 'n1', target: 'n9' })], // n9 doesn't exist
+      [text('Done.')],
+    ]);
+
+    await run(agent);
+
+    const [root] = named('agent');
+    const rounds = named('agent round');
+    expect(root?.attributes).toMatchObject({
+      'openinference.span.kind': 'AGENT',
+      'designroom.agent.rounds': 3,
+      'designroom.agent.ops': 1,
+    });
+    expect(named('scope check')[0]?.parentSpanContext?.spanId).toBe(idOf(root));
+    expect(rounds.map((r) => r.parentSpanContext?.spanId)).toEqual([
+      idOf(root),
+      idOf(root),
+      idOf(root),
+    ]);
+
+    // The model and the scope guard are called inside their spans: the gateway's LLM spans nest there.
+    expect(idOf(activeAt.scope)).toBe(idOf(named('scope check')[0]));
+    expect(activeAt.llm.map(idOf)).toEqual(rounds.map(idOf));
+
+    const [added, failed] = [named('tool add_node')[0], named('tool connect_nodes')[0]];
+    expect(added?.parentSpanContext?.spanId).toBe(idOf(rounds[0]));
+    expect(added?.attributes).toMatchObject({
+      'openinference.span.kind': 'TOOL',
+      'tool.name': 'add_node',
+    });
+    expect(added?.status.code).toBe(SpanStatusCode.UNSET);
+    // A refused tool call is visibly marked, with the reply the model got.
+    expect(failed?.status.code).toBe(SpanStatusCode.ERROR);
+    expect(failed?.status.message).toMatch(/n9/);
+    expect(rounds[1]?.attributes).toMatchObject({
+      'designroom.agent.round': 2,
+      'designroom.agent.tool_calls': 1,
+      'designroom.agent.tool_errors': 1,
+    });
+  });
+
+  it('records the scope verdict; an off-topic question has no rounds', async () => {
+    const { agent } = traced([], 'out');
+
+    await run(agent);
+
+    expect(named('scope check')[0]?.attributes['designroom.agent.scope']).toBe('out');
+    expect(named('agent round')).toEqual([]);
+    expect(named('agent')).toHaveLength(1);
+  });
+
+  it('marks the round and the agent as failed when the model fails', async () => {
+    const { agent } = traced([[{ type: 'fail', code: 'UNAVAILABLE', message: 'down' }]]);
+
+    await run(agent);
+
+    expect(named('agent round')[0]?.status.code).toBe(SpanStatusCode.ERROR);
+    expect(named('agent')[0]?.status).toEqual({ code: SpanStatusCode.ERROR, message: 'down' });
+  });
+
+  it('ends every span when the reader stops early', async () => {
+    const { agent } = traced([[text('Hello')]]);
+
+    for await (const event of agent.run({ board, messages: [{ role: 'user', content: 'Hi' }] })) {
+      expect(event.type).toBe('text');
+      break;
+    }
+
+    expect(named('agent')).toHaveLength(1);
+    expect(named('agent round')).toHaveLength(1);
   });
 });

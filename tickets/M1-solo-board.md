@@ -51,7 +51,9 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-24 | System prompt + sample-boards script | M1b | M | doing |
 | M1-24b | Scope guardrail: system design only | M1b | S | doing |
 | M1-25 | Sentry (web + server) | obs | S | doing |
-| M1-26 | OpenTelemetry + Grafana | obs | L | todo |
+| M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | doing |
+| M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | todo |
+| M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | todo |
 | M1-27 | ADR-004…007, demo, retro | close | S | todo |
 
 *(The table is a summary — the **Status** line inside each ticket is the source of truth.)*
@@ -1033,33 +1035,60 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 
 ---
 
-## M1-26 — OpenTelemetry + Grafana
-**Status:** todo · **Size:** L · **Depends on:** M1-19
+## M1-26 — OpenTelemetry + Grafana (split into 26a, 26b, 26c)
+*Split 2026-10-19: one L ticket would be one PR far past ~400 lines (general.md), and 26b/26c need Docker, which is not available on this machine yet (the Windows "Virtual Machine Platform" feature). 26a needs no Docker.*
 
 **Learning goal:** traces vs metrics vs logs; vendor-neutral instrumentation.
 
+### M1-26a — Traces
+**Status:** doing · **Size:** M · **Depends on:** M1-19
+
 **Tasks**
-- [ ] `docker-compose.yml` with `grafana/otel-lgtm`.
-- [ ] Server: OTel Node SDK in `core/observability`; HTTP spans; manual spans for `reviewBoard` and each agent round.
-- [ ] ai-gateway: span per LLM call with model, tokens, latency attributes; metrics `llm_request_duration`, `llm_time_to_first_token`, `llm_tokens_total`, `tool_call_errors_total`.
-- [ ] Logs carry the trace id.
-- [ ] Sentry (M1-25) already registers its own global OpenTelemetry setup, even with tracing off. Start the OTel SDK so the two don't clash: Sentry's `skipOpenTelemetrySetup: true`, or Sentry's span processor in our provider (check the Sentry docs).
-- [ ] Grafana dashboard "AI reviewer" (export the JSON into the repo).
-- [ ] **Phoenix**: add the container to `docker-compose.yml` (UI on :6006); second trace exporter in the server pointing at Phoenix's OTLP HTTP endpoint (check the Phoenix docs for the exact path).
-- [ ] Name agent/LLM span attributes with **OpenInference** conventions (span kind LLM / TOOL / AGENT, model name, token counts, input/output, tool name + arguments) so Phoenix shows them as an agent trace.
-- [ ] Add `traceId` to the `proposal` event; on Accept/Reject the web app calls `POST /api/chat/feedback`, and the server records it on the trace as feedback (Phoenix annotations API — check the docs).
+- [x] Server: OTel Node SDK in `core/observability/tracing.ts`, OTLP/HTTP export when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (off otherwise); HTTP span per request; span for `reviewBoard`.
+- [x] agent: spans for the review, the scope check, each round and each tool call (a refused call marked as an error).
+- [x] ai-gateway: span per LLM call with model, tokens, time to first token, attempts.
+- [x] Logs carry the trace id.
+- [x] Sentry (M1-25) kept out of OpenTelemetry: `enableOpenTelemetrySetup: false` (v11's default, made explicit).
+- [x] Meter the scope guard's model call (its own span, with the LLM span inside) (M1-24b review).
+- [x] Chat duration and outcome on the review span, which lasts the whole stream, not on the access log (M1-19 review).
 
 **Tests first**
-- [ ] With an in-memory span exporter: one chat request produces the expected span tree (HTTP → reviewBoard → agent round → LLM call).
+- [x] With an in-memory span exporter: one chat request produces the expected span tree (HTTP → review board → agent → scope check / rounds → LLM calls), one trace id.
 
 **Acceptance criteria**
-- [ ] Demo step 10 passes.
+- [x] `pnpm test` needs no collector; with the endpoint set, the server sends spans (checked with a local OTLP sink: `POST /v1/traces`).
+- [ ] The trace shows in Grafana Tempo: in 26b, with the container.
+
+**Notes**
+- Packages use only `@opentelemetry/api` (a no-op until the server registers the SDK) — the standard way libraries are instrumented. The server is the one place that picks the SDK and the exporter.
+- Async generators run on their first *read*, in the reader's context. `gateway.chat`, `agent.run` and `reviewBoard` read the active context when *called*, so spans nest correctly however the stream is consumed.
+- Attributes: OTel GenAI (`gen_ai.*`) and OpenInference (`openinference.span.kind`, `llm.*`, `tool.name`). Prompt, board and tool arguments are **not** recorded yet: 26c, behind a switch (architecture §9).
+
+### M1-26b — Metrics + Grafana
+**Status:** todo · **Size:** M · **Depends on:** M1-26a, Docker
+
+**Tasks**
+- [ ] `docker-compose.yml` with `grafana/otel-lgtm`.
+- [ ] Metrics `llm_request_duration_seconds`, `llm_time_to_first_token_seconds`, `llm_tokens_total`, `agent_rounds`, `tool_call_errors_total` (OTel metrics SDK, OTLP export).
+- [ ] Grafana dashboard "AI reviewer" (export the JSON into the repo).
+- [ ] Logs to Loki (trace id already in each line) so Grafana jumps from a log line to its trace.
+
+**Acceptance criteria**
+- [ ] The trace and the dashboard of demo step 10 (Grafana half).
+
+### M1-26c — Phoenix + feedback
+**Status:** todo · **Size:** M · **Depends on:** M1-26a, Docker
+
+**Tasks**
+- [ ] **Phoenix**: add the container to `docker-compose.yml` (UI on :6006); second trace exporter in the server pointing at Phoenix's OTLP HTTP endpoint (check the Phoenix docs for the exact path).
+- [ ] OpenInference input/output: prompt, board text, tool arguments and results — behind a switch, local only (architecture §9).
+- [ ] Same switch for a refused tool call's span status: today it holds the reply the model got, which can quote a label (M1-26a review).
+- [ ] Add `traceId` to the `proposal` event; on Accept/Reject the web app calls `POST /api/chat/feedback`, and the server records it on the trace as feedback (Phoenix annotations API — check the docs).
+
+**Acceptance criteria**
+- [ ] Demo step 10 passes (Phoenix half).
 - [ ] In Phoenix, one "review my design" request shows as a tree: agent → rounds → LLM calls → tool calls, with a failed tool call visibly marked.
 - [ ] Accepting a proposal shows up as positive feedback on its trace; rejecting as negative.
-
-- [ ] The access-log line for `/api/chat` is written when SSE headers go out (~40 ms, status 200), not when the stream ends: measure chat duration and outcome in the span, not the access log (M1-19 review).
-
-- [ ] Meter the scope guard's model call too (a `round`-like event or its own span): today it is invisible in logs and metrics (M1-24b review).
 
 ---
 

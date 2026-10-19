@@ -16,6 +16,9 @@ const EnvSchema = z
     // Error tracking (Sentry): off when unset, so tests and offline work need nothing.
     SENTRY_DSN: z.url().optional(),
     SENTRY_ENVIRONMENT: z.string().min(1).default('development'),
+    // Traces (OpenTelemetry): where to send them, e.g. the Grafana LGTM container's OTLP/HTTP port
+    // (http://localhost:4318). Off when unset. The standard OTel variable name, so tools know it.
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
     // The fake model's scripted conversations (JSON): e2e runs and offline work (M1-19b).
     LLM_SCENARIO_FILE: z.string().min(1).optional(),
   })
@@ -39,6 +42,8 @@ export type Config = {
   logLevel: LogLevel;
   /** Null: error tracking is off. */
   errorTracking: { dsn: string; environment: string } | null;
+  /** Null: traces are not exported (spans cost almost nothing then). */
+  tracing: { endpoint: string } | null;
 };
 
 /** Parses an environment: process.env in production, a plain object in tests. */
@@ -66,7 +71,10 @@ export const loadConfig = (env: Record<string, string | undefined>): Config => {
   const errorTracking = e.SENTRY_DSN
     ? { dsn: e.SENTRY_DSN, environment: e.SENTRY_ENVIRONMENT }
     : null;
-  return { port: e.PORT, llm, logLevel: e.LOG_LEVEL, errorTracking };
+  const tracing = e.OTEL_EXPORTER_OTLP_ENDPOINT
+    ? { endpoint: e.OTEL_EXPORTER_OTLP_ENDPOINT }
+    : null;
+  return { port: e.PORT, llm, logLevel: e.LOG_LEVEL, errorTracking, tracing };
 };
 
 /** The server's real configuration. */

@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-25 Sentry → M1-26 OpenTelemetry + Grafana next (M1-13 structure verdict pending)
+**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-26a traces → M1-26b metrics + Grafana and M1-26c Phoenix next (both need Docker) (M1-13 structure verdict pending)
 
 ## Done
 
@@ -42,6 +42,7 @@
 | M1-24 | Prompt v2 from sample boards (1/4 → 3/4, injection never obeyed), `scripts/review-samples.ts`, summary never shows an id | #42 |
 | M1-24b | Scope guard: system design only — a classifier call before the review, fixed reply when off topic (30/30), stricter prompt | #43 |
 | M1-25 | Sentry web + server, off without a DSN; page and chat error boundaries; no board/chat/prompt data sent | #44 |
+| M1-26a | Traces: one chat request = one trace (HTTP → review → agent → scope check / rounds → LLM calls, tools), trace id in logs; M1-26 split into a/b/c | #45 |
 
 ## In progress
 

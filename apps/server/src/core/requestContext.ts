@@ -1,3 +1,4 @@
+import { isSpanContextValid, trace } from '@opentelemetry/api';
 import type { MiddlewareHandler } from 'hono';
 import type { Logger } from './logger.ts';
 
@@ -9,7 +10,8 @@ export type RequestVariables = { logger?: Logger };
 
 /**
  * Gives each request an id (Nginx's X-Request-Id, or a new one), returns it in the response,
- * hands routes a logger that adds it to every line, and writes one access-log line with it,
+ * hands routes a logger that adds it (and the trace id) to every line, and writes one access-log
+ * line with them,
  * so the logs and traces of a request can be joined.
  */
 export const requestContext =
@@ -19,11 +21,17 @@ export const requestContext =
     const requestId = incoming && VALID_ID.test(incoming) ? incoming : crypto.randomUUID();
     const started = performance.now();
     c.header('X-Request-Id', requestId);
-    c.set('logger', logger.child({ requestId }));
+    // The request's trace (traceRequests runs first): in every log line, so Grafana can jump from a
+    // log line to its trace. No trace id when tracing is off.
+    const span = trace.getActiveSpan();
+    span?.setAttribute('designroom.request_id', requestId);
+    const traced = span && isSpanContextValid(span.spanContext());
+    const ids = traced ? { requestId, traceId: span.spanContext().traceId } : { requestId };
+    c.set('logger', logger.child(ids));
     await next();
     // For a stream (the chat), this is when the headers went out, not when the stream ended.
     logger.info('request', {
-      requestId,
+      ...ids,
       method: c.req.method,
       path: c.req.path,
       status: c.res.status,

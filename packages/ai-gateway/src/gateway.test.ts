@@ -1,4 +1,11 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { context, SpanStatusCode, trace } from '@opentelemetry/api';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
+import {
+  BasicTracerProvider,
+  InMemorySpanExporter,
+  SimpleSpanProcessor,
+} from '@opentelemetry/sdk-trace-base';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { LlmError } from './errors.ts';
 import { createGateway, type GatewayOptions } from './gateway.ts';
 import { createFakeProvider, type FakeStep } from './providers/fake.ts';
@@ -293,5 +300,109 @@ describe('gateway — defaults', () => {
 
     const usage = usageOf(await result);
     expect(usage).toMatchObject({ attempts: 2, latencyMs: 500 });
+  });
+});
+
+describe('gateway — tracing', () => {
+  // The SDK the server registers, here with an in-memory exporter: spans are read, not sent.
+  const exporter = new InMemorySpanExporter();
+  beforeAll(() => {
+    context.setGlobalContextManager(new AsyncLocalStorageContextManager().enable());
+    trace.setGlobalTracerProvider(
+      new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] }),
+    );
+  });
+  afterEach(() => {
+    exporter.reset();
+  });
+
+  it('records one LLM span per call, with the model, tokens and timings', async () => {
+    const { gateway, clock } = setup(
+      providerOf(function* () {
+        clock.t += 200;
+        yield text('Add a cache.');
+        clock.t += 800;
+        yield { type: 'tokens', inputTokens: 300, outputTokens: 40 };
+      }),
+      { model: 'qwen' },
+    );
+
+    await drain(gateway.chat(input));
+
+    const [span] = exporter.getFinishedSpans();
+    expect(exporter.getFinishedSpans()).toHaveLength(1);
+    expect(span?.name).toBe('chat qwen');
+    expect(span?.attributes).toMatchObject({
+      'openinference.span.kind': 'LLM',
+      'gen_ai.operation.name': 'chat',
+      'gen_ai.request.model': 'qwen',
+      'gen_ai.usage.input_tokens': 300,
+      'gen_ai.usage.output_tokens': 40,
+      'llm.token_count.prompt': 300,
+      'llm.token_count.completion': 40,
+      'llm.token_count.total': 340,
+      'designroom.llm.time_to_first_token_ms': 200,
+      'designroom.llm.attempts': 1,
+    });
+    expect(span?.status.code).toBe(SpanStatusCode.UNSET);
+  });
+
+  it('names the span after the model the call asked for', async () => {
+    const { gateway } = setup(createFakeProvider([[text('ok')]]), { model: 'qwen' });
+
+    await drain(gateway.chat({ ...input, model: 'other' }));
+
+    expect(exporter.getFinishedSpans()[0]?.name).toBe('chat other');
+  });
+
+  it('marks a failed call as an error, with its code', async () => {
+    const { gateway } = setup(
+      providerOf(() => {
+        throw new LlmError('BAD_REQUEST', 'no such model');
+      }),
+    );
+
+    await expect(drain(gateway.chat(input))).rejects.toThrow('no such model');
+
+    const [span] = exporter.getFinishedSpans();
+    expect(span?.status).toEqual({ code: SpanStatusCode.ERROR, message: 'no such model' });
+    expect(span?.attributes['error.type']).toBe('BAD_REQUEST');
+  });
+
+  it('does not mark a cancelled call as an error: closing the tab is normal use', async () => {
+    const { gateway } = setup(createFakeProvider([[text('ok')]]));
+    const cancel = new AbortController();
+    cancel.abort();
+
+    await expect(drain(gateway.chat({ ...input, signal: cancel.signal }))).rejects.toThrow();
+
+    const [span] = exporter.getFinishedSpans();
+    expect(span?.status.code).toBe(SpanStatusCode.UNSET);
+    expect(span?.attributes['error.type']).toBe('ABORTED');
+  });
+
+  it('ends the span when the consumer stops reading early', async () => {
+    const { gateway } = setup(createFakeProvider([[text('a'), text('b')]]));
+
+    for await (const chunk of gateway.chat(input)) {
+      expect(chunk).toEqual({ type: 'text', delta: 'a' });
+      break;
+    }
+
+    expect(exporter.getFinishedSpans()).toHaveLength(1);
+  });
+
+  it('is a child of the span active when chat() is called, not when the stream is first read', async () => {
+    const { gateway } = setup(createFakeProvider([[text('ok')]]));
+    const tracer = trace.getTracer('test');
+    const round = tracer.startSpan('agent round');
+
+    // Async generators run on first read, in the reader's context: here, outside the round.
+    const stream = context.with(trace.setSpan(context.active(), round), () => gateway.chat(input));
+    await drain(stream);
+    round.end();
+
+    const [llm] = exporter.getFinishedSpans();
+    expect(llm?.parentSpanContext?.spanId).toBe(round.spanContext().spanId);
   });
 });
