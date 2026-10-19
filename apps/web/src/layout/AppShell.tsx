@@ -10,7 +10,8 @@ export type AppShellProps = {
 
 /**
  * Page template: header on top, canvas, assistant panel. Wide screens: panel on the right.
- * Narrow screens (phones): stacked, canvas first, a short panel below.
+ * Narrow screens (phones): stacked, canvas first, the chat below with 2/5 of the height —
+ * enough for a few lines of conversation and the input.
  */
 export function AppShell({ canvas, sidePanel }: AppShellProps) {
   return (
@@ -22,7 +23,7 @@ export function AppShell({ canvas, sidePanel }: AppShellProps) {
         <main className="min-h-0 min-w-0 flex-1">{canvas}</main>
         <aside
           aria-label="Assistant"
-          className="flex h-40 shrink-0 flex-col border-t border-line bg-surface md:h-auto md:w-96 md:border-t-0 md:border-l"
+          className="flex h-2/5 shrink-0 flex-col border-t border-line bg-surface md:h-auto md:w-96 md:border-t-0 md:border-l"
         >
           {sidePanel}
         </aside>

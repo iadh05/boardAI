@@ -44,8 +44,8 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-19 | Server `chat` module (four layers + SSE) | M1b | M | done |
 | M1-19b | Fake-LLM scenarios + chat e2e | M1b | M | done |
 | M1-20 | `core/api` SSE stream reader | M1b | S | done |
-| M1-21 | web `chat` module: `chatStore` + `useSendMessage` | M1b | M | doing |
-| M1-22 | conversation pod (chat UI) | M1b | M | todo |
+| M1-21 | web `chat` module: `chatStore` + `useSendMessage` | M1b | M | done |
+| M1-22 | conversation pod (chat UI) | M1b | M | doing |
 | M1-23 | proposal pod + ghost nodes | M1b | M | todo |
 | M1-24 | System prompt + sample-boards script | M1b | M | todo |
 | M1-25 | Sentry (web + server) | obs | S | todo |
@@ -874,7 +874,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-21 — web `chat` module: `chatStore` + `useSendMessage`
-**Status:** doing · **Size:** M · **Depends on:** M1-08, M1-20
+**Status:** done · **Size:** M · **Depends on:** M1-08, M1-20
 
 **Tests first**
 - [x] `chatStore`: add user message, append text deltas to the current assistant message, set/clear streaming flag, record error.
@@ -898,14 +898,21 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-22 — conversation pod (chat UI)
-**Status:** todo · **Size:** M · **Depends on:** M1-21, M1-04
+**Status:** doing · **Size:** M · **Depends on:** M1-21, M1-04
 
 **Tasks**
-- [ ] Message list (user / assistant), auto-scroll, input + send on Enter, disabled while streaming.
-- [ ] Streaming text renders as it arrives; inline errors ("Can't reach the model — is Ollama running?").
+- [x] Message list (user / assistant), auto-scroll, input + send on Enter, disabled while streaming (sending is; the input stays editable — see review note).
+- [x] Streaming text renders as it arrives; inline errors ("Can't reach the model — is Ollama running?").
 
 **Acceptance criteria**
-- [ ] Ollama stopped → clear error; the app keeps working.
+- [x] Ollama stopped → clear error; the app keeps working.
+
+**Notes (2026-10-19)**
+- `pods/conversation`: `Conversation` (Panel organism) = `MessageList` (`role="log"`, bubbles, "Thinking…" before the first word, inline `role="alert"` errors) + `MessageInput` (Enter sends, disabled while streaming, Stop instead of Send, a refused message comes back into the input) + `useAutoScroll` (follows the answer unless the reader scrolled up). `Panel` gained a `bodyRef`.
+- Checked in the browser with the real Qwen (production build + server on :3100): question → "Thinking…" → streamed answer → ghost Cache node with dashed arrows on the canvas. With the model unreachable: inline "Can't reach the model — is Ollama running?", the input and the board keep working.
+- Review: the input is no longer disabled while answering (that dropped keyboard focus): the next question can be typed, only sending waits; the log is `aria-busy` while streaming (one announcement, not one per token); auto-scroll follows errors too; a send that throws gives the text back; one bubble element; on phones the chat gets 2/5 of the height.
+- Seen on the way, not this ticket: the toolbar covers a new box at the top-left of the view, and the canvas hint overlaps boxes; the model still writes ids ("n4") in its text (M1-24); answers are plain text (markdown rendering could come later).
+- Dev without Docker: the Vite dev server no longer forwards `/api` (Nginx does), so the chat can't be tried on :5173 until Docker runs; the production build (`vite preview`, forwards to :3100) works.
 
 ---
 
