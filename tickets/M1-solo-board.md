@@ -38,8 +38,8 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | done |
 | M1-14b | Nginx edge proxy | M1b | M | done |
 | M1-15 | Spike: Qwen tool call end to end | M1b | S | done |
-| M1-16 | `packages/ai-gateway` | M1b | L | doing |
-| M1-17 | `packages/agent`: tools + board-to-text | M1b | M | todo |
+| M1-16 | `packages/ai-gateway` | M1b | L | done |
+| M1-17 | `packages/agent`: tools + board-to-text | M1b | M | doing |
 | M1-18 | `packages/agent`: the loop | M1b | L | todo |
 | M1-19 | Server `chat` module (four layers + SSE) | M1b | M | todo |
 | M1-19b | Fake-LLM scenarios + chat e2e | M1b | M | todo |
@@ -716,7 +716,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-16 — `packages/ai-gateway`
-**Status:** doing · **Size:** L · **Depends on:** M1-15
+**Status:** done · **Size:** L · **Depends on:** M1-15
 
 **Learning goal:** the gateway pattern; normalising streams; resilience (timeout, retry).
 
@@ -744,17 +744,25 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-17 — `packages/agent`: tools + board-to-text
-**Status:** todo · **Size:** M · **Depends on:** M1-07, M1-16
+**Status:** doing · **Size:** M · **Depends on:** M1-07, M1-16
 
 **Tests first**
-- [ ] `add_node` on a draft → new id, `addNode` op recorded. **The agent generates the id (UUID), never the model** — model-chosen ids like "cache" would collide between proposals (found in the M1-08 review).
-- [ ] `connect_nodes` to that new id succeeds.
-- [ ] Bad args / unknown id → error tool result, no op.
-- [ ] Tool list contains no delete tool.
-- [ ] `boardToText` produces the compact listing (snapshot test).
+- [x] `add_node` on a draft → new id, `addNode` op recorded. **The agent generates the id (UUID), never the model** — model-chosen ids like "cache" would collide between proposals (found in the M1-08 review).
+- [x] `connect_nodes` to that new id succeeds.
+- [x] Bad args / unknown id → error tool result, no op.
+- [x] Tool list contains no delete tool.
+- [x] `boardToText` produces the compact listing (snapshot test).
 
 **Tasks**
-- [ ] `domain/tools.ts` (zod → JSON schema definitions + handlers), `domain/boardToText.ts`.
+- [x] `domain/tools.ts` (zod → JSON schema definitions + handlers), `domain/boardToText.ts`.
+
+---
+
+**Notes (2026-10-19)**
+- **Aliases:** the model never sees UUIDs. `boardToText` shows `n1, n2…` (nodes) and `z1…` (zones) in board order; the agent maps them back, and a new node gets the next alias. Domain error messages are translated to aliases too.
+- Format: `n3 [api] "Orders API" -> n4, n5 (async, "order events")` and `zone z1 "VPC": n2, n3, n4`. Labels are JSON-quoted, so a label can't pose as board lines.
+- Every call is checked twice: zod on the arguments, then `applyOps` on the draft (the browser's own Accept code). Failures go back to the model as text; ids the model invents are ignored.
+- Real model (qwen3.5:9b): `add_node(cache)` + 2× `connect_nodes`, all valid. It guessed the next alias `n5` correctly in the same round, since aliases are predictable. It wired LB → cache instead of API → cache: prompt quality, M1-18/M1-24.
 
 ---
 
@@ -772,6 +780,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 
 **Tasks**
 - [ ] `application/runAgent.ts`, `createAgent({ llm })` in `index.ts`; `prompt.ts` first version (refined in M1-24).
+- [ ] **Aliases shift between turns** (M1-17 review): `n1, n2…` are renumbered from the board on every request, but the chat history holds the model's earlier replies ("added n5"). After the user edits the board, an old alias can name another node. Handle it here: the prompt says ids are valid for the current board only, and/or past assistant messages are sent without alias-bearing tool details. Test: history mentions n5, board changed → the model is told the current listing wins.
 
 ---
 
