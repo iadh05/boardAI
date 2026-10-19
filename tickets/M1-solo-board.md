@@ -36,7 +36,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-D6b | Zones on the diagram | diagram | M | done |
 | M1-UX1 | UX polish from the M1a pass | diagram | M | done |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | done |
-| M1-14b | Nginx edge proxy | M1b | M | todo |
+| M1-14b | Nginx edge proxy | M1b | M | doing |
 | M1-15 | Spike: Qwen tool call end to end | M1b | S | todo |
 | M1-16 | `packages/ai-gateway` | M1b | L | todo |
 | M1-17 | `packages/agent`: tools + board-to-text | M1b | M | todo |
@@ -640,26 +640,33 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-14b — Nginx edge proxy
-**Status:** todo · **Size:** M · **Depends on:** M1-14
+**Status:** doing · **Size:** M · **Depends on:** M1-14
 
 **Why:** One entry point like production; becomes the load balancer in M3. See [architecture.md §14](../docs/architecture.md#14-edge-proxy--nginx).
 
 **Learning goal:** what a reverse proxy does; proxying WebSocket upgrades and streaming responses; rate limiting at the edge.
 
 **Tasks**
-- [ ] `infra/nginx/nginx.conf` + `nginx` service in `docker-compose.yml` on port 8080.
-- [ ] `/` → Vite dev server on the host (with WebSocket upgrade headers so hot reload still works).
-- [ ] `/api/` → Hono server on the host; pass `X-Forwarded-For` and `X-Request-Id`.
-- [ ] `/api/chat`: `proxy_buffering off`, long read timeout (prepares SSE for M1-19).
-- [ ] `limit_req` on `/api/chat` (e.g. 10/min, burst 3) → 429; `client_max_body_size 1m`.
-- [ ] JSON access log format.
-- [ ] Remove the Vite dev proxy; document `http://localhost:8080` as the dev URL.
+- [x] `infra/nginx/nginx.conf` + `nginx` service in `docker-compose.yml` on port 8080.
+- [x] `/` → Vite dev server on the host (with WebSocket upgrade headers so hot reload still works).
+- [x] `/api/` → Hono server on the host; pass `X-Forwarded-For` and `X-Request-Id`.
+- [x] `/api/chat`: `proxy_buffering off`, long read timeout (prepares SSE for M1-19).
+- [x] `limit_req` on `/api/chat` (e.g. 10/min, burst 3) → 429; `client_max_body_size 1m`.
+- [x] JSON access log format.
+- [x] Remove the Vite dev proxy; document `http://localhost:8080` as the dev URL.
 
 **Acceptance criteria**
 - [ ] App works through `http://localhost:8080`, including hot reload.
-- [ ] `curl` to `/api/health` through Nginx → 200; the server log shows the same request id as the Nginx log.
-- [ ] Rapid-fire 15 POSTs to `/api/chat` → some get 429 from Nginx.
-- [ ] Learning log: explain `proxy_buffering` in your own words (you'll see why in M1-19).
+- [x] `curl` to `/api/health` through Nginx → 200; the server log shows the same request id as the Nginx log.
+- [x] Rapid-fire 15 POSTs to `/api/chat` → some get 429 from Nginx.
+- [ ] Learning log (yours): explain `proxy_buffering` in your own words (you'll see why in M1-19).
+
+---
+
+**Notes (2026-10-19)**
+- Checked in CI, not yet on the laptop: Docker can't start here until Windows' *Virtual Machine Platform* feature is enabled (needs a restart). The new `edge` CI job runs Nginx in Docker in front of the real server and Vite and runs [infra/nginx/smoke.sh](../infra/nginx/smoke.sh): `/api/health` 200 with the same request id in both logs, `/` 200, WebSocket upgrade 101, 1.1 MB body → 413, 15 rapid chat POSTs → ≥ 10 × 429.
+- Still to check by hand once Docker runs: hot reload in a real browser through `:8080`, and the e2e suite with `BASE_URL=http://localhost:8080`. Also whether Docker Desktop reaches Vite on `localhost` only; if not, start it with `pnpm --filter @designroom/web dev --host` (as CI does).
+- No Vite proxy any more: dev is opened through Nginx. When the chat arrives (M1-19+), the CI e2e job (production preview, no Nginx) needs its own route to `/api` — `preview.proxy` or Nginx in that job.
 
 ---
 

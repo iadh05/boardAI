@@ -17,7 +17,7 @@ Real-time system-design whiteboard with an AI reviewer. **Learning project**: th
 ## Commands
 
 ```bash
-pnpm dev            # web + server
+pnpm dev            # web + server; open the app through Nginx: http://localhost:8080
 pnpm test           # unit tests (no network, no Ollama)
 pnpm test:e2e       # Playwright, fake LLM
 pnpm lint           # includes boundary rules

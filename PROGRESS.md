@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-18 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-14b Nginx edge proxy (M1a + diagram package complete; M1-13 structure verdict pending)
+**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-14b Nginx edge proxy, checked in CI; local check waits on Docker (M1-13 structure verdict pending)
 
 ## Done
 
@@ -26,6 +26,7 @@
 | M1-10 | Toolbar: one button per kind, adds mid-view and nudges repeats; fit-view zoom capped at 1× | #16 |
 | M1-11 | Node icon + colour per kind, rename in place (double-click / Enter), Custom opens in edit mode; first board e2e journey | #17 |
 | M1-12 | Connect by dragging (domain `canConnect` for live feedback), Delete/Backspace through the store; demo chain e2e | #18 |
+| M1-14 | Server skeleton: composition root, zod config, JSON logger, error mapping, request ids, health | #29 |
 
 ## In progress
 
@@ -41,6 +42,9 @@ M1-13 closes M1a → M1-14… AI reviewer (M1b).
 - **End of M1:** UI kit → design-system package (`packages/ui`)? Some modules → packages? (in M1-27)
 
 ## Waiting on you
+
+- **Docker:** enable Windows' *Virtual Machine Platform* (`dism /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart` as admin, then restart). Until then Nginx is only checked in CI (`edge` job).
+- **Branch protection:** add the new `edge` check to the required checks (GitHub setting — your call).
 
 - **M1-01c:** direct pushes to `main` are still allowed for admins. Turn on `enforce_admins` so every change goes through a PR? (GitHub setting — your call.)
 - **Optional:** Dependabot security updates (Settings → Code security).

@@ -1,0 +1,15 @@
+# Local infrastructure. The apps themselves run on the host (`pnpm dev`); these services sit
+# around them. Start with `docker compose up -d`, then open http://localhost:8080.
+# Grafana LGTM and Phoenix join in M1-24/M1-25; Postgres and Redis in M3.
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - '8080:80'
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    extra_hosts:
+      # Docker Desktop defines host.docker.internal; this also makes it work on Linux.
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
