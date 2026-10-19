@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-20 SSE reader → M1-21 web chat module next (M1-13 structure verdict pending)
+**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-21 web chat module → M1-22 conversation pod (chat UI) next (M1-13 structure verdict pending)
 
 ## Done
 
@@ -34,7 +34,8 @@
 | M1-18 | Agent loop: rounds of model → tools → results, one proposal, max rounds, per-round metering; board as delimited data in the last message | #34 |
 | M1-19 | Server chat module: `POST /api/chat` streams the review (SSE); chat policy (context budget), user-facing model errors, per-request logger, 1 MB limit | #35 |
 | M1-19b | Fake model with scenario files (stateless, parallel-safe), e2e server on :3100 behind `vite preview`, AI review e2e at API level (UI journeys after M1-23) | #36 |
-| M1-20 | Web `core/api` SSE reader: bytes → JSON events, split chunks reassembled, bad event = error item | this PR |
+| M1-20 | Web `core/api` SSE reader: bytes → JSON events, split chunks reassembled, bad event = error item | #37 |
+| M1-21 | Web chat module: `chatStore`, `sendMessage` (stream → store, proposal → board, every failure explained), `useSendMessage` with cancel | this PR |
 
 ## In progress
 
