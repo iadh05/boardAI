@@ -31,7 +31,12 @@ export const createLeakWatch = ({ prompt, canary, allowed = '' }: LeakWatchOptio
   return {
     feed(delta: string): boolean {
       text += delta;
-      return (!!canary && text.includes(canary)) || grams(text).some((g) => secret.has(g));
+      // Only the end can hold something new: the delta and what came just before it (8 words
+      // stay well under 400 characters). Checking the whole answer on every delta would cost the
+      // square of its length. The tail's first word may be cut: it is dropped.
+      const tail = text.slice(-(delta.length + 400));
+      const whole = tail.length === text.length ? tail : tail.replace(/^\S*\s*/, '');
+      return (!!canary && tail.includes(canary)) || grams(whole).some((g) => secret.has(g));
     },
   };
 };

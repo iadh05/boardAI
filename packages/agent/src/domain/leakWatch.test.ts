@@ -42,6 +42,12 @@ describe('createLeakWatch', () => {
     expect(w.feed('nary')).toBe(true);
   });
 
+  it('still catches a recital that starts after a long, honest answer', () => {
+    const w = watch();
+    expect(stream(w, 'Your design looks fine overall. '.repeat(200))).toBe(false);
+    expect(stream(w, 'You are a senior software engineer reviewing a system design')).toBe(true);
+  });
+
   it('does not count the fixed refusal, which repeats the prompt’s wording on purpose', () => {
     expect(stream(watch(), 'I only help with the system design on this board.')).toBe(false);
   });
