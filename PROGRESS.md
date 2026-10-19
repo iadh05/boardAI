@@ -45,7 +45,7 @@
 | M1-26a | Traces: one chat request = one trace (HTTP → review → agent → scope check / rounds → LLM calls, tools), trace id in logs; M1-26 split into a/b/c | #45 |
 | M1-24c | Context 128k (9.9 GB, 100% GPU), chat budget from `LLM_CONTEXT_TOKENS`; found a review regression since M1-24b ("no proposal") → M1-24e | #49 |
 | M1-24d | Guardrails v2: red-team set (58 cases, `scripts/red-team.ts`), classifier at temperature 0 with examples, escaped tags, leak watch with a canary — 84/84 attacks stopped, 0 leaks, 0 false refusals | #50 |
-| M1-26b | Metrics (LLM latency, time to first token, tokens, tool calls, rounds, scope verdicts, HTTP) + Grafana LGTM in docker-compose + "AI reviewer" dashboard | this PR |
+| M1-26b | Metrics (LLM latency, time to first token, tokens, tool calls, rounds, scope verdicts, HTTP) + Grafana LGTM in docker-compose + "AI reviewer" dashboard | #46 |
 
 ## In progress
 
