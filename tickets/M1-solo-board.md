@@ -50,7 +50,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-23 | proposal pod + ghost nodes | M1b | M | done |
 | M1-24 | System prompt + sample-boards script | M1b | M | doing |
 | M1-24b | Scope guardrail: system design only | M1b | S | done |
-| M1-24c | Context 64k: model setting + chat budget from config | M1b | S | todo |
+| M1-24c | Context 128k: model setting + chat budget from config | M1b | S | todo |
 | M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | todo |
 | M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | todo |
 | M1-25 | Sentry (web + server) | obs | S | doing |
@@ -1014,29 +1014,32 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 
 ---
 
-## M1-24c — Context 64k
+## M1-24c — Context 128k
 **Status:** todo · **Size:** S · **Depends on:** M1-24b
 
-*Why (2026-10-19):* 16k was our choice to save VRAM; the model supports 262k. Measured on the RTX 5060 Ti, all 100% GPU:
+*Owner's choice: 128k (2026-10-19).* The window is a reservation, not a cost per request: VRAM is reserved once at load; time depends on the tokens actually sent, and the agent's later rounds reuse Ollama's cache of the shared start (system prompt + board). No risk to the card: the driver caps power (180 W) and temperature; if VRAM ever ran out, Ollama would move layers to the CPU (slow, not harmful) — `ollama ps` shows it.
+
+*Why:* 16k was our choice to save VRAM; the model supports 262k. Measured on the RTX 5060 Ti, all 100% GPU:
 
 | `num_ctx` | VRAM | Notes |
 |---|---|---|
 | 16k (today) | 6.1 GB | M1-15 spike |
 | 32k | 6.7 GB | |
-| **64k** | **7.7 GB** | 38k-token prompt: ~13 s to read cold, then ~51 tok/s; same prompt again 0.7 s (cache) |
-| 128k | 9.9 GB | |
+| 64k | 7.7 GB | 38k-token prompt: ~13 s to read cold, then ~51 tok/s; same prompt again 0.7 s (cache) |
+| **128k (chosen)** | **9.9 GB** | 98k-token prompt: read in 42 s, then 40 tok/s, correct answer. Under load: 67 °C max, power capped at the card's 180 W limit, 11.9 of 16.3 GB VRAM used in total |
 
 Memory grows slowly because only 8 of the model's 32 layers keep a per-token cache (Gated DeltaNet hybrid; ~32 KiB/token at f16). Quality on huge input is shaky (asked to count 1,799 services: "2,453", then "1,800"), so the history is still trimmed, just with more room.
 
 **Tasks**
-- [ ] `infra/ollama/Modelfile`: `num_ctx 65536`; rebuild `designroom-qwen`; update the Modelfile comment and docs/spikes note.
-- [ ] Config: `LLM_CONTEXT_TOKENS` (default 65536) → the chat policy's budget, instead of the hard-coded 16,384 (each model gets its own budget, M6 too).
+- [ ] `infra/ollama/Modelfile`: `num_ctx 131072`; rebuild `designroom-qwen`; update the Modelfile comment and docs/spikes note.
+- [ ] Try KV cache q8_0 (`OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0`: Ollama-wide settings, set by the owner): the cache halves (~4 → ~2 GB at 128k). Keep only if the sample boards don't get worse.
+- [ ] Config: `LLM_CONTEXT_TOKENS` (default 131072) → the chat policy's budget, instead of the hard-coded 16,384 (each model gets its own budget, M6 too).
 
 **Tests first**
 - [ ] chatPolicy keeps more history with a bigger budget, and still refuses a board that cannot fit.
 
 **Acceptance criteria**
-- [ ] `ollama ps`: 64k, 100% GPU. Sample boards still pass.
+- [ ] `ollama ps`: 128k, 100% GPU. Sample boards still pass.
 
 ## M1-24d — Guardrails v2
 **Status:** todo · **Size:** M · **Depends on:** M1-24c
