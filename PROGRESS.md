@@ -48,7 +48,7 @@
 | M1-26b | Metrics (LLM latency, time to first token, tokens, tool calls, rounds, scope verdicts, HTTP) + Grafana LGTM in docker-compose + "AI reviewer" dashboard | #46 |
 | M1-25b | GlitchTip (Sentry-compatible) in docker-compose, ~235 MB, `scripts/glitchtip-setup.ts`; test errors from web and server arrive — M1-25 closed locally | #52 |
 | — | CodeQL alerts in the GlitchTip and fixture scripts fixed (they slipped through #52: the red `CodeQL` result check is not required) | #53 |
-| M1-26e | God eye: "DesignRoom overview" as Grafana's home (RED per route, USE for the process, AI summary, firing alerts), 4 alert rules, runtime metrics, bug counter, `/api/debug/boom` | this PR |
+| M1-26e | God eye: "DesignRoom overview" as Grafana's home (RED per route, USE for the process, AI summary, firing alerts), 4 alert rules, runtime metrics, bug counter, `/api/debug/boom` | #54 |
 
 ## In progress
 
