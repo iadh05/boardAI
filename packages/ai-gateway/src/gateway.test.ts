@@ -1,11 +1,12 @@
-import { context, SpanStatusCode, trace } from '@opentelemetry/api';
+import { context, metrics, SpanStatusCode, trace } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import {
   BasicTracerProvider,
   InMemorySpanExporter,
   SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { MeterProvider, MetricReader, type DataPoint } from '@opentelemetry/sdk-metrics';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LlmError } from './errors.ts';
 import { createGateway, type GatewayOptions } from './gateway.ts';
 import { createFakeProvider, type FakeStep } from './providers/fake.ts';
@@ -404,5 +405,102 @@ describe('gateway — tracing', () => {
 
     const [llm] = exporter.getFinishedSpans();
     expect(llm?.parentSpanContext?.spanId).toBe(round.spanContext().spanId);
+  });
+});
+
+/** Reads metrics on demand: what the server's exporter would send, without sending it. */
+class TestReader extends MetricReader {
+  protected onForceFlush = () => Promise.resolve();
+  protected onShutdown = () => Promise.resolve();
+}
+
+describe('gateway — metrics', () => {
+  let reader: TestReader;
+  beforeEach(() => {
+    // A fresh SDK per test, registered before the gateway is built: instruments are created then.
+    metrics.disable();
+    reader = new TestReader();
+    metrics.setGlobalMeterProvider(new MeterProvider({ readers: [reader] }));
+  });
+
+  /** Each data point of `name`: its labels and its value (a number, or a histogram's sum/count). */
+  const points = async (name: string) => {
+    const { resourceMetrics } = await reader.collect();
+    const metric = resourceMetrics.scopeMetrics
+      .flatMap((s) => s.metrics)
+      .find((m) => m.descriptor.name === name);
+    return (metric?.dataPoints ?? []).map((p: DataPoint<unknown>) => ({
+      attributes: p.attributes,
+      value: p.value,
+    }));
+  };
+
+  it('measures each call: duration, time to first token, tokens in and out', async () => {
+    const { gateway, clock } = setup(
+      providerOf(function* () {
+        clock.t += 250;
+        yield text('Add a cache.');
+        clock.t += 750;
+        yield { type: 'tokens', inputTokens: 300, outputTokens: 40 };
+      }),
+      { model: 'qwen' },
+    );
+
+    await drain(gateway.chat(input));
+
+    const ok = { model: 'qwen', outcome: 'ok' };
+    expect(await points('llm_request_duration_seconds')).toEqual([
+      { attributes: ok, value: expect.objectContaining({ count: 1, sum: 1 }) as unknown },
+    ]);
+    expect(await points('llm_time_to_first_token_seconds')).toEqual([
+      { attributes: ok, value: expect.objectContaining({ count: 1, sum: 0.25 }) as unknown },
+    ]);
+    expect(await points('llm_tokens_total')).toEqual([
+      { attributes: { model: 'qwen', direction: 'input' }, value: 300 },
+      { attributes: { model: 'qwen', direction: 'output' }, value: 40 },
+    ]);
+  });
+
+  it('counts a call the reader stopped early (the scope guard reads one word) as stopped', async () => {
+    const { gateway, clock } = setup(
+      providerOf(function* () {
+        clock.t += 300;
+        yield text('DESIGN');
+        yield text(' because…');
+      }),
+      { model: 'qwen' },
+    );
+
+    for await (const chunk of gateway.chat(input)) {
+      expect(chunk).toEqual({ type: 'text', delta: 'DESIGN' });
+      break;
+    }
+
+    expect(await points('llm_request_duration_seconds')).toEqual([
+      {
+        attributes: { model: 'qwen', outcome: 'stopped' },
+        value: expect.objectContaining({ count: 1, sum: 0.3 }) as unknown,
+      },
+    ]);
+  });
+
+  it('counts a failed call by its error code, and how long it took to fail', async () => {
+    const { gateway, clock } = setup(
+      providerOf(() => {
+        clock.t += 2000;
+        throw new LlmError('BAD_REQUEST', 'no such model');
+      }),
+      { model: 'qwen' },
+    );
+
+    await expect(drain(gateway.chat(input))).rejects.toThrow();
+
+    expect(await points('llm_request_duration_seconds')).toEqual([
+      {
+        attributes: { model: 'qwen', outcome: 'BAD_REQUEST' },
+        value: expect.objectContaining({ count: 1, sum: 2 }) as unknown,
+      },
+    ]);
+    expect(await points('llm_time_to_first_token_seconds')).toEqual([]);
   });
 });

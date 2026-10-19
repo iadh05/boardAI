@@ -1,6 +1,6 @@
 import type { AiGateway, ChatInput, LlmChunk, LlmErrorCode } from '@designroom/ai-gateway';
 import { applyOps, type Board } from '@designroom/domain';
-import { context, SpanStatusCode, trace, type Span } from '@opentelemetry/api';
+import { context, metrics, SpanStatusCode, trace, type Span } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import {
   BasicTracerProvider,
@@ -8,7 +8,8 @@ import {
   SimpleSpanProcessor,
   type ReadableSpan,
 } from '@opentelemetry/sdk-trace-base';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { MeterProvider, MetricReader, type DataPoint } from '@opentelemetry/sdk-metrics';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { SYSTEM_PROMPT } from '../domain/prompt.ts';
 import { OUT_OF_SCOPE_REPLY } from '../domain/scope.ts';
 import { createAgent, type AgentEvent } from './runAgent.ts';
@@ -456,5 +457,70 @@ describe('tracing', () => {
 
     expect(named('agent')).toHaveLength(1);
     expect(named('agent round')).toHaveLength(1);
+  });
+});
+
+/** Reads metrics on demand: what the server's exporter would send, without sending it. */
+class TestReader extends MetricReader {
+  protected onForceFlush = () => Promise.resolve();
+  protected onShutdown = () => Promise.resolve();
+}
+
+describe('metrics', () => {
+  let reader: TestReader;
+  beforeEach(() => {
+    // A fresh SDK per test, registered before the agent is built: instruments are created then.
+    metrics.disable();
+    reader = new TestReader();
+    metrics.setGlobalMeterProvider(new MeterProvider({ readers: [reader] }));
+  });
+
+  const points = async (name: string) => {
+    const { resourceMetrics } = await reader.collect();
+    const metric = resourceMetrics.scopeMetrics
+      .flatMap((s) => s.metrics)
+      .find((m) => m.descriptor.name === name);
+    return (metric?.dataPoints ?? []).map((p: DataPoint<unknown>) => ({
+      attributes: p.attributes,
+      value: p.value,
+    }));
+  };
+
+  it('counts tool calls by tool and outcome, and rounds per review', async () => {
+    const { agent } = setup([
+      [tool('c1', 'add_node', { kind: 'cache', label: 'Redis', near: 'n1' })],
+      [tool('c2', 'connect_nodes', { source: 'n1', target: 'n9' })], // n9 doesn't exist
+      [text('Done.')],
+    ]);
+
+    await run(agent);
+
+    expect(await points('agent_tool_calls_total')).toEqual([
+      { attributes: { tool: 'add_node', outcome: 'ok' }, value: 1 },
+      { attributes: { tool: 'connect_nodes', outcome: 'error' }, value: 1 },
+    ]);
+    expect(await points('agent_rounds')).toEqual([
+      { attributes: {}, value: expect.objectContaining({ count: 1, sum: 3 }) as unknown },
+    ]);
+  });
+
+  it('labels a tool the model made up as "unknown": labels must stay a short, fixed list', async () => {
+    const { agent } = setup([[tool('c1', 'delete_everything_9f3a', {})], [text('Sorry.')]]);
+
+    await run(agent);
+
+    expect(await points('agent_tool_calls_total')).toEqual([
+      { attributes: { tool: 'unknown', outcome: 'error' }, value: 1 },
+    ]);
+  });
+
+  it('counts scope verdicts: how often the guard turns a question away', async () => {
+    await run(setup([[text('ok')]]).agent);
+    await run(setup([], 5, 'out').agent);
+
+    expect(await points('agent_scope_checks_total')).toEqual([
+      { attributes: { verdict: 'in' }, value: 1 },
+      { attributes: { verdict: 'out' }, value: 1 },
+    ]);
   });
 });

@@ -21,8 +21,8 @@ export const requestContext =
     const requestId = incoming && VALID_ID.test(incoming) ? incoming : crypto.randomUUID();
     const started = performance.now();
     c.header('X-Request-Id', requestId);
-    // The request's trace (traceRequests runs first): in every log line, so Grafana can jump from a
-    // log line to its trace. No trace id when tracing is off.
+    // The request's trace (observeRequests runs first): in every log line, so Grafana can jump from a
+    // log line to its trace. No trace id when telemetry is off.
     const span = trace.getActiveSpan();
     span?.setAttribute('designroom.request_id', requestId);
     const traced = span && isSpanContextValid(span.spanContext());

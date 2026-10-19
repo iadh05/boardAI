@@ -1,0 +1,9 @@
+# Tells Grafana (in the lgtm container) to load the dashboards in infra/grafana/dashboards/.
+apiVersion: 1
+providers:
+  - name: designroom
+    folder: DesignRoom
+    type: file
+    disableDeletion: true
+    options:
+      path: /otel-lgtm/grafana/conf/provisioning/dashboards/designroom

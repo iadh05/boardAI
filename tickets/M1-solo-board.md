@@ -55,8 +55,9 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | todo |
 | M1-25 | Sentry (web + server) | obs | S | doing |
 | M1-25b | Local error tracking with GlitchTip (Sentry-compatible) | obs | S | todo |
-| M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | doing |
-| M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | todo |
+| M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | done |
+| M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | doing |
+| M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | todo |
 | M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | todo |
 | M1-27 | ADR-004…007, demo, retro | close | S | todo |
 
@@ -1141,7 +1142,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 **Learning goal:** traces vs metrics vs logs; vendor-neutral instrumentation.
 
 ### M1-26a — Traces
-**Status:** doing · **Size:** M · **Depends on:** M1-19
+**Status:** done (#45) · **Size:** M · **Depends on:** M1-19
 
 **Tasks**
 - [x] Server: OTel Node SDK in `core/observability/tracing.ts`, OTLP/HTTP export when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (off otherwise); HTTP span per request; span for `reviewBoard`.
@@ -1165,16 +1166,31 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - Attributes: OTel GenAI (`gen_ai.*`) and OpenInference (`openinference.span.kind`, `llm.*`, `tool.name`). Prompt, board and tool arguments are **not** recorded yet: 26c, behind a switch (architecture §9).
 
 ### M1-26b — Metrics + Grafana
-**Status:** todo · **Size:** M · **Depends on:** M1-26a, Docker
+**Status:** doing · **Size:** M · **Depends on:** M1-26a, Docker
 
 **Tasks**
-- [ ] `docker-compose.yml` with `grafana/otel-lgtm`.
-- [ ] Metrics `llm_request_duration_seconds`, `llm_time_to_first_token_seconds`, `llm_tokens_total`, `agent_rounds`, `tool_call_errors_total` (OTel metrics SDK, OTLP export).
-- [ ] Grafana dashboard "AI reviewer" (export the JSON into the repo).
-- [ ] Logs to Loki (trace id already in each line) so Grafana jumps from a log line to its trace.
+- [x] `docker-compose.yml` with `grafana/otel-lgtm` (pinned 0.34.0; Grafana on host **:3001**, our server has :3000; OTLP/HTTP on :4318; data volume).
+- [x] Metrics through the OTel API, SDK in the server (`core/observability/telemetry.ts`, OTLP every 15 s):
+  - ai-gateway: `llm_request_duration_seconds`, `llm_time_to_first_token_seconds` (by model, outcome), `llm_tokens_total` (by direction).
+  - agent: `agent_rounds`, `agent_tool_calls_total` (by tool, outcome — replaces `tool_call_errors_total`: one counter gives both the rate and the errors), `agent_scope_checks_total` (by verdict).
+  - server: `http_server_request_duration_seconds` (by method, route, status).
+- [x] Grafana dashboard "AI reviewer", provisioned from `infra/grafana/dashboards/`.
+- [x] Check it in Grafana with real data (2026-10-19, Docker working): every metric arrived under the expected Prometheus name; 7/8 panels showed data at once. Fixed: "Failed model calls" shows 0 instead of "No data"; scope verdicts use the plain count — `increase()` missed each counter's first value (Prometheus never sees it at 0), showing out = 0 after a refused question.
 
 **Acceptance criteria**
-- [ ] The trace and the dashboard of demo step 10 (Grafana half).
+- [x] The trace and the dashboard of demo step 10 (Grafana half). Real run, 4 questions on the real model: model call p50 1.6 s / p95 4.1 s, first token 0.19 s, ~3.9 model calls per review, scope verdicts 3 in / 1 out.
+
+**Notes**
+- The metrics API has no proxy (traces do): a meter taken before the SDK is registered stays a no-op. So instruments are created by `createGateway`, `createAgent` and `observeRequests`, after `startTelemetry` — never at import.
+- Labels stay a short, fixed list: route not raw path, a tool name the model made up becomes `unknown` (span names too).
+
+### M1-26d — Logs to Loki
+**Status:** todo · **Size:** S · **Depends on:** M1-26b
+
+**Tasks**
+- [ ] Send log lines to Loki over OTLP (logs SDK), as well as stdout; each line already carries `traceId`.
+- [ ] Grafana: from a log line, jump to its trace in Tempo.
+- [ ] Careful: the SDK reports its own export failures through `diag` → our logger → the log exporter: don't loop (log those to stdout only).
 
 ### M1-26c — Phoenix + feedback
 **Status:** todo · **Size:** M · **Depends on:** M1-26a, Docker

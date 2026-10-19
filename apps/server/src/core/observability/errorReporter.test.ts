@@ -29,7 +29,7 @@ describe('createErrorReporter', () => {
         dsn: 'https://key@o1.ingest.sentry.io/1',
         environment: 'development',
         tracesSampleRate: 0,
-        enableOpenTelemetrySetup: false, // tracing.ts registers the one OpenTelemetry provider
+        enableOpenTelemetrySetup: false, // telemetry.ts registers the one OpenTelemetry provider
         dataCollection: expect.objectContaining({
           httpBodies: [], // the chat request carries the whole board and conversation
           genAI: { inputs: false, outputs: false },

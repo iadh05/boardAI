@@ -6,7 +6,7 @@ import { notFound, onError } from './core/errors.ts';
 import { createLlmProvider } from './core/llm.ts';
 import type { Logger } from './core/logger.ts';
 import { noErrorReporter, type ErrorReporter } from './core/observability/errorReporter.ts';
-import { traceRequests } from './core/observability/tracing.ts';
+import { observeRequests } from './core/observability/telemetry.ts';
 import { requestContext } from './core/requestContext.ts';
 import { createChatModule, createReviewAgent } from './modules/chat/index.ts';
 import { createHealthModule } from './modules/health/index.ts';
@@ -34,7 +34,7 @@ export const createApp = (deps: AppDeps) => {
   });
 
   const app = new Hono();
-  app.use(traceRequests()); // first: the request's span is the parent of everything after
+  app.use(observeRequests()); // first: the request's span is the parent of everything after
   app.use(requestContext(deps.logger));
 
   app.route('/api/health', createHealthModule().routes);
