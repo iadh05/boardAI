@@ -43,8 +43,8 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-18 | `packages/agent`: the loop | M1b | L | done |
 | M1-19 | Server `chat` module (four layers + SSE) | M1b | M | done |
 | M1-19b | Fake-LLM scenarios + chat e2e | M1b | M | done |
-| M1-20 | `core/api` SSE stream reader | M1b | S | doing |
-| M1-21 | web `chat` module: `chatStore` + `useSendMessage` | M1b | M | todo |
+| M1-20 | `core/api` SSE stream reader | M1b | S | done |
+| M1-21 | web `chat` module: `chatStore` + `useSendMessage` | M1b | M | doing |
 | M1-22 | conversation pod (chat UI) | M1b | M | todo |
 | M1-23 | proposal pod + ghost nodes | M1b | M | todo |
 | M1-24 | System prompt + sample-boards script | M1b | M | todo |
@@ -854,7 +854,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-20 — `core/api` SSE stream reader
-**Status:** doing · **Size:** S · **Depends on:** M1-07
+**Status:** done · **Size:** S · **Depends on:** M1-07
 
 **Learning goal:** reading `fetch` bodies as streams; why `EventSource` doesn't fit (no POST).
 
@@ -874,19 +874,26 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-21 — web `chat` module: `chatStore` + `useSendMessage`
-**Status:** todo · **Size:** M · **Depends on:** M1-08, M1-20
+**Status:** doing · **Size:** M · **Depends on:** M1-08, M1-20
 
 **Tests first**
-- [ ] `chatStore`: add user message, append text deltas to the current assistant message, set/clear streaming flag, record error.
-- [ ] `useSendMessage` with a mocked fetch stream: text → store; proposal → `board.setProposal` (via `board/index.ts`); error → store.
+- [x] `chatStore`: add user message, append text deltas to the current assistant message, set/clear streaming flag, record error.
+- [x] `useSendMessage` with a mocked fetch stream: text → store; proposal → `board.setProposal` (via `board/index.ts`); error → store.
 
 **Tasks**
-- [ ] `modules/chat/store/chatStore.ts`, `modules/chat/api/useSendMessage.ts` (React Query `useMutation`).
+- [x] `modules/chat/store/chatStore.ts`, `modules/chat/api/useSendMessage.ts` (React Query `useMutation`).
 
 **Acceptance criteria**
-- [ ] `modules/board` contains no import from `modules/chat` (lint).
+- [x] `modules/board` contains no import from `modules/chat` (lint).
 
-- [ ] A stream that ends without `done` (connection lost, or cut mid-event → a final INVALID_JSON item) is shown as an error, not left spinning; a read that throws (network) too (M1-20 review).
+- [x] A stream that ends without `done` (connection lost, or cut mid-event → a final INVALID_JSON item) is shown as an error, not left spinning; a read that throws (network) too (M1-20 review).
+
+**Notes (2026-10-19)**
+- `sendMessage` (plain function, tested without React) does the turn; `useSendMessage` wraps it in a mutation and adds `cancel` (aborts the request → the server stops the model).
+- Every ending leaves the store not streaming with a message: `done`, an `error` event, an HTTP error (its JSON message; 429 from Nginx explained), unreachable server, lost connection or no `done`, an unreadable event (nothing after it is trusted), cancel (quiet, keeps the text so far).
+- `history()` sends at most the contract's 50 messages, never starting with an answer; the server trims further to fit the model's context.
+- Board's public API gains `currentBoard()`; chat → board only (lint).
+- Review: one answer at a time (a send while streaming is ignored); empty messages ignored, over 4,000 characters refused before sending; a question the server refuses (HTTP error, unreachable) leaves the history and `send` resolves to its text for the input; Nginx's 413 explained; the error body parsed with the new domain `ErrorResponseSchema`; unmounting the chat aborts its request.
 
 ---
 
