@@ -10,7 +10,7 @@ describe('loadConfig', () => {
       llm: {
         provider: 'openai-compatible',
         baseUrl: 'http://localhost:11434/v1',
-        model: 'qwen3.5:9b',
+        model: 'designroom-qwen',
       },
       logLevel: 'info',
     });
@@ -31,7 +31,7 @@ describe('loadConfig', () => {
   it('the fake LLM (tests, CI) needs no URL', () => {
     expect(loadConfig({ LLM_PROVIDER: 'fake' }).llm).toEqual({
       provider: 'fake',
-      model: 'qwen3.5:9b',
+      model: 'designroom-qwen',
     });
   });
 });

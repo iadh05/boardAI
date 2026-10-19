@@ -9,7 +9,7 @@ const EnvSchema = z
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
     LLM_PROVIDER: z.enum(['openai-compatible', 'fake']).default('openai-compatible'),
     LLM_BASE_URL: z.url().optional(),
-    LLM_MODEL: z.string().min(1).default('qwen3.5:9b'),
+    LLM_MODEL: z.string().min(1).default('designroom-qwen'), // infra/ollama/Modelfile
     LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
   })
   .superRefine((env, ctx) => {

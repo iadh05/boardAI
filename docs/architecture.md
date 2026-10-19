@@ -18,7 +18,7 @@
 | Diagram | React Flow (`@xyflow/react`) | Understands nodes + edges as a graph |
 | Back end | **Hono** on Node, **modular monolith** | One deployable now, modules extractable to services later |
 | BE module structure | **Four layers** (`api / application / domain / infra`) for modules with logic | Rules isolated from HTTP and I/O |
-| AI model | **Qwen, local** via Ollama on an RTX 5060 Ti 16 GB — default `qwen3.5:9b` (stronger published agent/tool-calling scores, smaller, more context headroom, vision for A3), fallback `qwen3:14b` (Q4_K_M, 9.3 GB); confirmed in the M1-15 spike. OpenAI-compatible API | Free, private; fits fully in VRAM with room for context; same code can point at a hosted model later |
+| AI model | **Qwen, local** via Ollama on an RTX 5060 Ti 16 GB — default `qwen3.5:9b` (stronger published agent/tool-calling scores, smaller, more context headroom, vision for A3), fallback `qwen3:14b` (Q4_K_M, 9.3 GB). **Confirmed by the M1-15 spike** ([results](spikes/M1-15-qwen.md)): 3/3 tool calls, ≈ 64 tok/s, answer in < 1 s, 6.1 GB at 16k context, thinking off. OpenAI-compatible API with `reasoning_effort: "none"` | Free, private; fits fully in VRAM with room for context; same code can point at a hosted model later |
 | Validation | zod, schemas in `packages/domain` | One schema = TS type + runtime check, used by FE and BE |
 | Boundaries | Enforced by lint (`eslint-plugin-boundaries` or `dependency-cruiser`) | Rules nobody enforces get broken |
 | Edge | **Nginx** reverse proxy in Docker, from M1 — single entry point, routing, SSE passthrough, rate limit on `/api/chat` (§14) | The most widely used proxy; becomes the load balancer in M3 |
@@ -407,7 +407,7 @@ sequenceDiagram
 1. **Known kinds** — is the list in §4.1 right?
 2. **AI delete** — may the AI *propose* deleting in M1, or never?
 3. **One pending proposal** at a time — OK?
-4. **Which Qwen model** → default `qwen3.5:9b`, fallback `qwen3:14b` (both fit fully in 16 GB; `qwen3.6` / `qwen3.8` start at 27B and don't). Qwen's model card reports BFCL-V4 66.1 and TAU2-Bench 79.1 for Qwen3.5-9B — ahead of Qwen3-30B-A3B-Thinking-2507 (42.4 / 41.9), which is itself at least as strong as Qwen3-14B. Vendor numbers; the M1-15 spike confirms on our own tool calls. Thinking is **on by default** in Qwen3.5 and the `/no_think` switch no longer works — the ai-gateway must turn it off through the API.
+4. **Which Qwen model** → default `qwen3.5:9b`, fallback `qwen3:14b` (both fit fully in 16 GB; `qwen3.6` / `qwen3.8` start at 27B and don't). Qwen's model card reports BFCL-V4 66.1 and TAU2-Bench 79.1 for Qwen3.5-9B — ahead of Qwen3-30B-A3B-Thinking-2507 (42.4 / 41.9), which is itself at least as strong as Qwen3-14B. Vendor numbers; the M1-15 spike confirms on our own tool calls. Thinking is **on by default** in Qwen3.5 and the `/no_think` switch no longer works — the ai-gateway must turn it off through the API. **Answered by M1-15** ([spike](spikes/M1-15-qwen.md)): `qwen3.5:9b` (64 tok/s vs 41, same 3/3, 6.1 vs 11.7 GB); thinking off with `reasoning_effort: "none"` on the OpenAI-compatible endpoint (`think: false` is ignored there) — thinking added 4–12 s per answer for no better calls.
 5. **Chat lost on refresh** in M1 — acceptable?
 6. **Observability timing** — Sentry + OTel/Grafana in M1 (planned as the last tickets) or move OTel/Grafana to M3?
 7. **Sentry** — SaaS free tier (simplest) or self-hosted?
