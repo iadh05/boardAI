@@ -42,7 +42,7 @@
 | M1-24 | Prompt v2 from sample boards (1/4 → 3/4, injection never obeyed), `scripts/review-samples.ts`, summary never shows an id | #42 |
 | M1-24b | Scope guard: system design only — a classifier call before the review, fixed reply when off topic (30/30), stricter prompt | #43 |
 | M1-25 | Sentry web + server, off without a DSN; page and chat error boundaries; no board/chat/prompt data sent | #44 |
-| M1-26a | Traces: one chat request = one trace (HTTP → review → agent → scope check / rounds → LLM calls, tools), trace id in logs; M1-26 split into a/b/c | this PR |
+| M1-26a | Traces: one chat request = one trace (HTTP → review → agent → scope check / rounds → LLM calls, tools), trace id in logs; M1-26 split into a/b/c | #45 |
 
 ## In progress
 
