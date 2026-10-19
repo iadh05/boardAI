@@ -324,8 +324,10 @@ interface AiGateway {
 ```
 
 **Responsibilities:**
-- Normalise providers' streaming formats (e.g. assemble tool-call arguments that arrive in pieces).
-- Timeouts and retry with backoff on transient errors.
+- Normalise providers' streaming formats (e.g. assemble tool-call arguments that arrive in pieces). Thinking (`delta.reasoning`) is never passed on as the answer; `reasoning_effort: "none"` turns it off (M1-15).
+- **Idle** timeout (longest silence between two chunks, like Nginx's `proxy_read_timeout`) and retry with backoff on transient errors (`UNAVAILABLE`, `TIMEOUT`) — **only before the first chunk**: once text reached the user, a retry would show it twice.
+- Cancellation: the caller's `AbortSignal`, the timeout, or a consumer that stops reading all abort the HTTP call, so the GPU stops working for nobody.
+- Typed failures: `LlmError` with a `code` (`UNAVAILABLE`, `TIMEOUT`, `BAD_REQUEST`, `BAD_RESPONSE`, `ABORTED`) the server maps to a user message.
 - **Metering:** latency, time to first token, tokens in/out, per call — emitted as OTel metrics + span attributes.
 - Later: model routing, fallback provider, cost guard per room (M4), response caching.
 

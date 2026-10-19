@@ -36,9 +36,9 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-D6b | Zones on the diagram | diagram | M | done |
 | M1-UX1 | UX polish from the M1a pass | diagram | M | done |
 | M1-14 | Server skeleton: composition root, core, health | M1b | M | done |
-| M1-14b | Nginx edge proxy | M1b | M | doing |
-| M1-15 | Spike: Qwen tool call end to end | M1b | S | doing |
-| M1-16 | `packages/ai-gateway` | M1b | L | todo |
+| M1-14b | Nginx edge proxy | M1b | M | done |
+| M1-15 | Spike: Qwen tool call end to end | M1b | S | done |
+| M1-16 | `packages/ai-gateway` | M1b | L | doing |
 | M1-17 | `packages/agent`: tools + board-to-text | M1b | M | todo |
 | M1-18 | `packages/agent`: the loop | M1b | L | todo |
 | M1-19 | Server `chat` module (four layers + SSE) | M1b | M | todo |
@@ -640,7 +640,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-14b — Nginx edge proxy
-**Status:** doing · **Size:** M · **Depends on:** M1-14
+**Status:** done · **Size:** M · **Depends on:** M1-14
 
 **Why:** One entry point like production; becomes the load balancer in M3. See [architecture.md §14](../docs/architecture.md#14-edge-proxy--nginx).
 
@@ -671,7 +671,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-15 — Spike: Qwen tool call end to end
-**Status:** doing · **Size:** S · **Depends on:** —
+**Status:** done · **Size:** S · **Depends on:** —
 
 **Why:** Biggest unknown of M1 — check your machine + model before building on it.
 
@@ -711,26 +711,35 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 
 ---
 
-**Result (2026-10-19):** `qwen3.5:9b`, thinking off (`reasoning_effort: "none"` — `think: false` is ignored by the OpenAI-compatible endpoint), 16k context. Details: [docs/spikes/M1-15-qwen.md](../docs/spikes/M1-15-qwen.md). Fixtures for M1-16 in `scripts/fixtures/`.
+**Result (2026-10-19):** `qwen3.5:9b`, thinking off (`reasoning_effort: "none"` — `think: false` is ignored by the OpenAI-compatible endpoint), 16k context. Details: [docs/spikes/M1-15-qwen.md](../docs/spikes/M1-15-qwen.md). Fixtures for M1-16 (now in `packages/ai-gateway/src/providers/fixtures/`).
 
 ---
 
 ## M1-16 — `packages/ai-gateway`
-**Status:** todo · **Size:** L · **Depends on:** M1-15
+**Status:** doing · **Size:** L · **Depends on:** M1-15
 
 **Learning goal:** the gateway pattern; normalising streams; resilience (timeout, retry).
 
 **Tests first**
-- [ ] Fake provider replays a script: text, tool call, text, usage.
-- [ ] OpenAI-compatible provider turns the recorded fixture into `LlmChunk`s, assembling tool-call arguments that arrive in pieces.
-- [ ] Gateway: timeout → typed error; transient error → retried with backoff; non-transient → not retried.
-- [ ] Usage (latency, time to first token, tokens) reported once per call.
+- [x] Fake provider replays a script: text, tool call, text, usage.
+- [x] OpenAI-compatible provider turns the recorded fixture into `LlmChunk`s, assembling tool-call arguments that arrive in pieces.
+- [x] Gateway: timeout → typed error; transient error → retried with backoff; non-transient → not retried.
+- [x] Usage (latency, time to first token, tokens) reported once per call.
 
 **Tasks**
-- [ ] `types.ts`, `gateway.ts`, `providers/openAiCompatible.ts`, `providers/fake.ts`, `index.ts` (architecture §8).
+- [x] `types.ts`, `gateway.ts`, `providers/openAiCompatible.ts`, `providers/fake.ts`, `index.ts` (architecture §8).
 
 **Acceptance criteria**
-- [ ] No test uses the network. `ai-gateway` imports nothing from other internal packages.
+- [x] No test uses the network. `ai-gateway` imports nothing from other internal packages.
+
+---
+
+**Notes (2026-10-19)**
+- Retries happen only **before the first chunk**: after that the user has seen text, and a retry would repeat it — the error goes to the caller instead.
+- The timeout is an **idle** timeout (silence between chunks), not a total: a long but steady answer is fine. 30 s also covers Ollama loading the model from disk on the first call after a pause (~14 s measured).
+- The fake provider can script failures and a `hang` step (waits until cancelled) for the agent and server tests.
+- Fixtures moved to `packages/ai-gateway/src/providers/fixtures/`; `openai-tool-call-split.sse` is hand-written in OpenAI's "arguments in pieces" format, since Ollama sends calls whole.
+- Checked against the real model: tool call, wrong model name (404 → `BAD_REQUEST`), Ollama stopped (`UNAVAILABLE`, retried once), cancel (`ABORTED`).
 
 ---
 

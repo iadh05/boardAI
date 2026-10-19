@@ -80,7 +80,7 @@ show it as the answer.
 
 ## The stream, as the gateway will see it
 
-Recorded in [scripts/fixtures/](../../scripts/fixtures/) (move into `packages/ai-gateway` tests in M1-16):
+Recorded in [packages/ai-gateway/src/providers/fixtures/](../../packages/ai-gateway/src/providers/fixtures/) (moved there in M1-16):
 
 - `openai-tool-call.sse` — text deltas, then **one chunk with the whole tool call**
   (`arguments` is a complete JSON string), `finish_reason: "tool_calls"`, a usage chunk, `[DONE]`.
