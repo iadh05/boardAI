@@ -8,7 +8,11 @@ import { fail, ok, type Result } from '@designroom/domain';
 // The bytes arrive in arbitrary pieces — an event, a line, even a character can be cut in two —
 // so text is buffered until an event is complete (a blank line ends it).
 
-/** One event: its parsed JSON, or why it couldn't be read. A bad event never ends the stream. */
+/**
+ * One event: its parsed JSON, or why it couldn't be read — a bad event never ends the stream.
+ * A lost connection does: reading then throws. And a stream cut mid-event ends with its partial
+ * JSON as INVALID_JSON, so callers must treat "no final event" (the chat's `done`) as an error.
+ */
 export type SseItem = Result<unknown, 'INVALID_JSON'>;
 
 const parse = (data: string): SseItem => {
@@ -39,13 +43,12 @@ export async function* readSseJson(
 
   // TextDecoderStream keeps a multi-byte character cut between two chunks until it's complete.
   for await (const text of body.pipeThrough(new TextDecoderStream())) {
-    buffer += text;
-    let newline = buffer.indexOf('\n');
-    while (newline >= 0) {
-      const item = readLine(buffer.slice(0, newline));
-      buffer = buffer.slice(newline + 1);
+    // Split once per chunk; the last piece is an unfinished line, kept for the next chunk.
+    const lines = (buffer + text).split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      const item = readLine(line);
       if (item) yield item;
-      newline = buffer.indexOf('\n');
     }
   }
   // The stream may end without a final blank line.

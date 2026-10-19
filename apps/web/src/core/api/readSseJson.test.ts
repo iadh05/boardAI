@@ -52,6 +52,10 @@ describe('readSseJson', () => {
     expect(items[1]).toEqual({ ok: true, value: { n: 2 } });
   });
 
+  it('reads data with or without a space after the colon (both are valid SSE)', async () => {
+    expect(await collect(bodyOf('data:{"n":1}\n\n'))).toEqual([{ ok: true, value: { n: 1 } }]);
+  });
+
   it('accepts CRLF, skips comments, and reads a last event with no blank line after it', async () => {
     expect(await collect(bodyOf(': ping\r\n\r\ndata: {"n":1}\r\n\r\ndata: {"n":2}'))).toEqual([
       { ok: true, value: { n: 1 } },

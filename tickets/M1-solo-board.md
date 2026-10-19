@@ -868,6 +868,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 **Notes (2026-10-19)**
 - `core/api/readSseJson.ts`: yields a `Result` per event (`ok` + parsed JSON, or `INVALID_JSON`), so one bad event never ends the chat; the chat module (M1-21) checks values with `ChatEventSchema`.
 - Why not `EventSource`: it can only GET, and the chat POSTs the board.
+- Review: linear line splitting, `data:` without a space tested, the doc says network errors throw and a cut stream needs the caller's "no done = error" rule (task in M1-21).
 - ai-gateway has a similar SSE reader, but the web app may not import ai-gateway (the browser never talks to LLMs) and this one parses JSON per event. A shared SSE package is a question for the end-of-M1 packages review.
 
 ---
@@ -884,6 +885,8 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 
 **Acceptance criteria**
 - [ ] `modules/board` contains no import from `modules/chat` (lint).
+
+- [ ] A stream that ends without `done` (connection lost, or cut mid-event → a final INVALID_JSON item) is shown as an error, not left spinning; a read that throws (network) too (M1-20 review).
 
 ---
 
