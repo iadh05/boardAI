@@ -14,6 +14,8 @@ import type { Logger } from '../logger.ts';
 
 export type TracingConfig = { endpoint: string } | null;
 
+const ignore = () => {};
+
 /** Where OTLP/HTTP expects traces, under the collector's base URL. */
 export const otlpTracesUrl = (endpoint: string) => `${endpoint.replace(/\/+$/, '')}/v1/traces`;
 
@@ -30,7 +32,7 @@ export const startTracing = (
   // without this, a stopped Grafana container just means an empty Tempo and no clue why.
   const warn = (message: string) => logger.warn('telemetry', { message });
   diag.setLogger(
-    { error: warn, warn, info: () => {}, debug: () => {}, verbose: () => {} },
+    { error: warn, warn, info: ignore, debug: ignore, verbose: ignore },
     DiagLogLevel.WARN,
   );
   const provider = new NodeTracerProvider({
