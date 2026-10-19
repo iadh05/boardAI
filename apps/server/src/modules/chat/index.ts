@@ -6,14 +6,21 @@ import { createReviewBoard, type ReviewAgent } from './application/reviewBoard.t
 // The chat module (architecture §6): the AI reviewer behind POST /api/chat.
 // main.ts gives it an agent (infra/createReviewAgent) — or a fake one in tests.
 
-export type ChatModuleDeps = { agent: ReviewAgent; logger: Logger; reporter?: ErrorReporter };
+export type ChatModuleDeps = {
+  agent: ReviewAgent;
+  logger: Logger;
+  /** The model's context window (config): sizes the chat history budget. */
+  contextTokens: number;
+  reporter?: ErrorReporter;
+};
 
 export const createChatModule = ({
   agent,
   logger,
+  contextTokens,
   reporter = noErrorReporter,
 }: ChatModuleDeps) => ({
-  routes: createChatRoutes(createReviewBoard({ agent, reporter }), logger),
+  routes: createChatRoutes(createReviewBoard({ agent, contextTokens, reporter }), logger),
 });
 
 export type { ReviewAgent } from './application/reviewBoard.ts';

@@ -5,7 +5,7 @@ import { createApp } from './main.ts';
 
 const config = {
   port: 3000,
-  llm: { provider: 'fake', model: 'test', timeoutMs: 5_000 },
+  llm: { provider: 'fake', model: 'test', timeoutMs: 5_000, contextTokens: 16_384 },
   logLevel: 'info',
   errorTracking: null,
   tracing: null,

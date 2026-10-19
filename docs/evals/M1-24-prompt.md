@@ -20,6 +20,8 @@
 | v3 | v2 + "Go through the boxes one by one: what if it fails, or gets ten times the traffic? Usual fixes: LB, cache, replica, queue." | 1/3 | 0/3 | 2/3 | 3/3 | 2/4 — reverted |
 | v2, rerun | same prompt, stricter rule (connected) | 3/3 | 0/3 | 1/3 | 3/3 | 2/4 |
 | **v2, both runs** | 6 runs per sample | **5/6** | 0/6 | **3/6** | **6/6** | |
+| v2 + M1-24b scope, 16k (2026-10-19) | 6 runs per sample | 1/6 | 1/6 | 1/6 | 6/6 | regression: "no proposal" |
+| same, 128k context (M1-24c) | 6 runs per sample | 1/6 | 1/6 | 3/6 | 6/6 | context not the cause |
 
 **Honest reading:** v2 met the ticket's bar ("2 of 3 flaws") on its first measurement and is borderline on the rerun. Both no-lb failures in the rerun were "no proposal at all" — v1's failure mode coming back now and then (sampling at temperature 0.7), not wrong boxes. Tuning until a lucky run passes would only fit the prompt to three boards; the next step is M5: 15 boards, more runs, controlled sampling.
 

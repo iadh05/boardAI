@@ -4,14 +4,9 @@ import { fail, ok, type ChatMessage, type Result } from '@designroom/domain';
 // If the prompt is longer than the context, Ollama silently drops its start — the system prompt
 // and the tool rules — and the model goes off the rails without any error (M1-18 review).
 
-const CONTEXT_TOKENS = 16_384; // designroom-qwen's num_ctx (infra/ollama/Modelfile)
-// System prompt + tool definitions (~1,000 tokens), up to 5 rounds of tool results, and the answer.
-const RESERVED_TOKENS = 4_000;
-
 export const CHAT_POLICY = {
-  contextTokens: CONTEXT_TOKENS,
-  /** What the board listing and the chat history may use together. */
-  historyBudgetTokens: CONTEXT_TOKENS - RESERVED_TOKENS,
+  /** System prompt + tool definitions (~1,000 tokens), up to 5 rounds of tool results, the answer. */
+  reservedTokens: 4_000,
   /** Rough size of a token in English text — good enough for a budget, no tokenizer needed. */
   charsPerToken: 4,
   /** Model calls per request: a model that keeps calling tools is stopped (agent loop). */
@@ -21,14 +16,21 @@ export const CHAT_POLICY = {
 export type ChatPolicyErrorCode = 'BOARD_TOO_LARGE';
 
 /**
+ * What the board listing and the chat history may use together, in characters, for a model with
+ * `contextTokens` of context (config: LLM_CONTEXT_TOKENS, the Modelfile's num_ctx).
+ */
+export const historyBudgetChars = (contextTokens: number) =>
+  (contextTokens - CHAT_POLICY.reservedTokens) * CHAT_POLICY.charsPerToken;
+
+/**
  * The most recent messages that fit next to the board in the model's context. The latest message
  * is always kept; the kept history never starts with an assistant message.
  */
 export const fitHistory = (
   messages: readonly ChatMessage[],
-  { boardChars }: { boardChars: number },
+  { boardChars, contextTokens }: { boardChars: number; contextTokens: number },
 ): Result<ChatMessage[], ChatPolicyErrorCode> => {
-  let room = CHAT_POLICY.historyBudgetTokens * CHAT_POLICY.charsPerToken - boardChars;
+  let room = historyBudgetChars(contextTokens) - boardChars;
   let start = messages.length;
   while (start > 0) {
     const size = messages[start - 1]?.content.length ?? 0;

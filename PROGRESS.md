@@ -43,6 +43,7 @@
 | M1-24b | Scope guard: system design only — a classifier call before the review, fixed reply when off topic (30/30), stricter prompt | #43 |
 | M1-25 | Sentry web + server, off without a DSN; page and chat error boundaries; no board/chat/prompt data sent | #44 |
 | M1-26a | Traces: one chat request = one trace (HTTP → review → agent → scope check / rounds → LLM calls, tools), trace id in logs; M1-26 split into a/b/c | #45 |
+| M1-24c | Context 128k (9.9 GB, 100% GPU), chat budget from `LLM_CONTEXT_TOKENS`; found a review regression since M1-24b ("no proposal") → M1-24e | #49 |
 
 ## In progress
 

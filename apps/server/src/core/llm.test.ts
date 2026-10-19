@@ -19,7 +19,13 @@ const scenarios = JSON.stringify({
 describe('createLlmProvider', () => {
   it('plays the scenario file for the fake model', async () => {
     const provider = createLlmProvider(
-      { provider: 'fake', model: 'm', timeoutMs: 1_000, scenarioFile: 'scenarios.json' },
+      {
+        provider: 'fake',
+        model: 'm',
+        timeoutMs: 1_000,
+        contextTokens: 16_384,
+        scenarioFile: 'scenarios.json',
+      },
       (path) => (path === 'scenarios.json' ? scenarios : ''),
     );
     expect(await ask(provider, 'hi')).toEqual([{ type: 'text', delta: 'Hello!' }]);
@@ -28,13 +34,25 @@ describe('createLlmProvider', () => {
   it('refuses to start with a scenario file that is not valid, naming the file', () => {
     expect(() =>
       createLlmProvider(
-        { provider: 'fake', model: 'm', timeoutMs: 1_000, scenarioFile: 'bad.json' },
+        {
+          provider: 'fake',
+          model: 'm',
+          timeoutMs: 1_000,
+          contextTokens: 16_384,
+          scenarioFile: 'bad.json',
+        },
         () => '{"scenarios": []}',
       ),
     ).toThrow(/bad\.json/);
     expect(() =>
       createLlmProvider(
-        { provider: 'fake', model: 'm', timeoutMs: 1_000, scenarioFile: 'broken.json' },
+        {
+          provider: 'fake',
+          model: 'm',
+          timeoutMs: 1_000,
+          contextTokens: 16_384,
+          scenarioFile: 'broken.json',
+        },
         () => '{not json',
       ),
     ).toThrow(/broken\.json/);
@@ -42,7 +60,7 @@ describe('createLlmProvider', () => {
 
   it('without a scenario file, the fake model says how to give it one', async () => {
     const provider = createLlmProvider(
-      { provider: 'fake', model: 'm', timeoutMs: 1_000 },
+      { provider: 'fake', model: 'm', timeoutMs: 1_000, contextTokens: 16_384 },
       () => '',
     );
     const [chunk] = await ask(provider, 'anything');
@@ -59,6 +77,7 @@ describe('createLlmProvider', () => {
         baseUrl: 'http://localhost:11434/v1',
         model: 'm',
         timeoutMs: 1_000,
+        contextTokens: 16_384,
       },
       () => '',
     );
