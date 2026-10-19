@@ -1,0 +1,16 @@
+data: {"id":"c1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant","content":null,"tool_calls":[{"index":0,"id":"call_a","type":"function","function":{"name":"add_node","arguments":""}}]},"finish_reason":null}]}
+
+data: {"id":"c1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"kind\":\"ca"}}]},"finish_reason":null}]}
+
+data: {"id":"c1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"id":"call_b","type":"function","function":{"name":"connect_nodes","arguments":"{\"source\":"}}]},"finish_reason":null}]}
+
+data: {"id":"c1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"che\",\"label\":\"Cache\"}"}}]},"finish_reason":null}]}
+
+data: {"id":"c1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"function":{"arguments":"\"n3\",\"target\":\"n5\"}"}}]},"finish_reason":null}]}
+
+data: {"id":"c1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}
+
+data: {"id":"c1","object":"chat.completion.chunk","choices":[],"usage":{"prompt_tokens":120,"completion_tokens":30,"total_tokens":150}}
+
+data: [DONE]
+

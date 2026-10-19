@@ -1,14 +1,14 @@
 // M1-15: records raw streaming responses from Ollama's OpenAI-compatible endpoint, byte for byte,
 // so the ai-gateway (M1-16) can be tested against what the provider really sends — no network.
 //
-//   node scripts/record-fixture.ts [model]   (default qwen3.5:9b; writes scripts/fixtures/*.sse)
+//   node scripts/record-fixture.ts [model]   (default qwen3.5:9b; writes packages/ai-gateway/src/providers/fixtures/*.sse)
 //
 // Needs a running Ollama — never part of `pnpm test`.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const model = process.argv[2] ?? 'qwen3.5:9b';
-const dir = new URL('./fixtures/', import.meta.url);
+const dir = new URL('../packages/ai-gateway/src/providers/fixtures/', import.meta.url);
 mkdirSync(dir, { recursive: true });
 
 const tools = [
