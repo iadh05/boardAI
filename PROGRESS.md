@@ -41,7 +41,7 @@
 | M1-23 | Proposal card (Accept / Reject / out of date), ghosts placed once and accepted where shown, demo e2e journeys, Stop e2e | #41 |
 | M1-24 | Prompt v2 from sample boards (1/4 → 3/4, injection never obeyed), `scripts/review-samples.ts`, summary never shows an id | #42 |
 | M1-24b | Scope guard: system design only — a classifier call before the review, fixed reply when off topic (30/30), stricter prompt | #43 |
-| M1-25 | Sentry web + server, off without a DSN; page and chat error boundaries; no board/chat/prompt data sent | this PR |
+| M1-25 | Sentry web + server, off without a DSN; page and chat error boundaries; no board/chat/prompt data sent | #44 |
 
 ## In progress
 
