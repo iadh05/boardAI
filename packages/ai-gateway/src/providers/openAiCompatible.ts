@@ -136,6 +136,7 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
         stream: true,
         stream_options: { include_usage: true },
         ...(options.disableThinking === false ? {} : { reasoning_effort: 'none' }),
+        ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
         messages: input.messages.map(toWireMessage),
         ...(input.tools?.length ? { tools: input.tools.map(toWireTool) } : {}),
       };

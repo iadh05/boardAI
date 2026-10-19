@@ -204,6 +204,20 @@ describe('openAiCompatible provider — the request', () => {
     expect(body.model).toBe('gpt-x');
     expect(body).not.toHaveProperty('reasoning_effort');
     expect(body).not.toHaveProperty('tools');
+    expect(body).not.toHaveProperty('temperature'); // the model's own default (Modelfile)
+  });
+
+  it('sends the temperature a call asks for: 0 for a classifier that must answer the same', async () => {
+    const fetchFn = replying('data: [DONE]\n\n');
+    const provider = createOpenAiCompatibleProvider({
+      baseUrl: 'http://localhost:11434/v1',
+      model: 'm',
+      fetch: fetchFn,
+    });
+    await drain(provider.stream({ ...input, temperature: 0 }));
+
+    const [, init] = fetchFn.mock.calls[0] ?? [];
+    expect(JSON.parse(init?.body as string)).toMatchObject({ temperature: 0 });
   });
 });
 
