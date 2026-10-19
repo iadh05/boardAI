@@ -1,12 +1,9 @@
-import {
-  createFakeProvider,
-  createGateway,
-  createOpenAiCompatibleProvider,
-  type LlmProvider,
-} from '@designroom/ai-gateway';
+import { createGateway, type LlmProvider } from '@designroom/ai-gateway';
 import { Hono } from 'hono';
-import type { Config, LlmConfig } from './core/config.ts';
+import { readFileSync } from 'node:fs';
+import type { Config } from './core/config.ts';
 import { notFound, onError } from './core/errors.ts';
+import { createLlmProvider } from './core/llm.ts';
 import type { Logger } from './core/logger.ts';
 import { requestContext } from './core/requestContext.ts';
 import { createChatModule, createReviewAgent } from './modules/chat/index.ts';
@@ -22,15 +19,10 @@ export type AppDeps = {
   llmProvider?: LlmProvider;
 };
 
-const providerFor = (llm: LlmConfig): LlmProvider =>
-  llm.provider === 'openai-compatible'
-    ? createOpenAiCompatibleProvider({ baseUrl: llm.baseUrl, model: llm.model })
-    : // No scripted answers yet: scenario files for the e2e runs come with M1-19b.
-      createFakeProvider([]);
-
 export const createApp = (deps: AppDeps) => {
   const llm = createGateway({
-    provider: deps.llmProvider ?? providerFor(deps.config.llm),
+    provider:
+      deps.llmProvider ?? createLlmProvider(deps.config.llm, (path) => readFileSync(path, 'utf8')),
     timeoutMs: deps.config.llm.timeoutMs,
     retries: 1,
   });

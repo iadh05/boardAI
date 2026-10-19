@@ -10,6 +10,11 @@ export default defineConfig({
     // No /api proxy here: in dev the app is opened through Nginx (http://localhost:8080), which
     // routes /api to the server, the same single origin as in production (architecture §14).
   },
+  preview: {
+    // The e2e runs serve the production build without Nginx: forward /api to the server they
+    // start (playwright.config.ts sets API_URL to the fake-model server).
+    proxy: { '/api': process.env.API_URL ?? 'http://localhost:3000' },
+  },
   build: {
     rolldownOptions: {
       output: {

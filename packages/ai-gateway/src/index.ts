@@ -19,3 +19,8 @@ export {
   type OpenAiCompatibleOptions,
 } from './providers/openAiCompatible.ts';
 export { createFakeProvider, type FakeProvider, type FakeStep } from './providers/fake.ts';
+export {
+  createScenarioProvider,
+  ScenarioFileSchema,
+  type ScenarioFile,
+} from './providers/scenario.ts';

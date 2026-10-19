@@ -1,0 +1,32 @@
+{
+  "scenarios": [
+    {
+      "name": "missing-cache",
+      "when": "review",
+      "rounds": [
+        [
+          { "type": "text", "delta": "Every read goes straight to the database, " },
+          { "type": "text", "delta": "so it will be the first thing to slow down. " },
+          {
+            "type": "toolCall",
+            "name": "add_node",
+            "arguments": { "kind": "cache", "label": "Cache", "near": "n3" }
+          }
+        ],
+        [
+          {
+            "type": "toolCall",
+            "name": "connect_nodes",
+            "arguments": { "source": "n3", "target": "n5", "label": "reads" }
+          }
+        ],
+        [{ "type": "text", "delta": "I propose a cache between the API and the database." }]
+      ]
+    },
+    {
+      "name": "model-down",
+      "when": "outage",
+      "rounds": [[{ "type": "error", "code": "UNAVAILABLE", "message": "connection refused" }]]
+    }
+  ]
+}

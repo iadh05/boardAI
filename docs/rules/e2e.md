@@ -55,7 +55,7 @@ e2e/
 
 - MUST: each test starts from a known state and doesn't depend on another test's leftovers or order (`fullyParallel: true`).
 - MUST: test data is built in the test (or via `e2e/data/` builders), visible in the spec — no hidden shared fixtures that several tests mutate.
-- MUST: the AI is always the **fake LLM** (`LLM_PROVIDER=fake` + a scenario file) — never the real model. Results must be deterministic.
+- MUST: the AI is always the **fake LLM** (`LLM_PROVIDER=fake` + a scenario file) — never the real model. Results must be deterministic. Playwright starts that server itself on :3100 and `vite preview` forwards `/api` to it; scenarios are in `e2e/fixtures/llm/scenarios.json`, chosen by text in the user's message.
 - SHOULD: when the app gains persistence (M2/M3), seed and clean data through the API, not by clicking through the UI.
 
 ## Naming and tags
