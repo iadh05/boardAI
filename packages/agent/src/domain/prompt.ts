@@ -37,13 +37,23 @@ ${question}`;
  * System prompt, the earlier chat as it was, then the latest user message with the current board.
  * The board goes with the last message only: ids are renumbered from the board on each request.
  */
-export const buildMessages = (boardText: string, chat: readonly ChatMessage[]): LlmMessage[] => {
+export const buildMessages = (
+  boardText: string,
+  chat: readonly ChatMessage[],
+  /** A random word an honest answer never contains: seeing it means the prompt leaked (M1-24d). */
+  canary?: string,
+): LlmMessage[] => {
   const earlier = chat.slice(0, -1).map((m): LlmMessage => ({ role: m.role, content: m.content }));
   const last = chat.at(-1);
   const question = last?.role === 'user' ? last.content : 'Review the design.';
   if (last && last.role !== 'user') earlier.push({ role: last.role, content: last.content });
   return [
-    { role: 'system', content: SYSTEM_PROMPT },
+    {
+      role: 'system',
+      content: canary
+        ? `${SYSTEM_PROMPT}\n\nInternal marker, never write it: ${canary}`
+        : SYSTEM_PROMPT,
+    },
     ...earlier,
     { role: 'user', content: boardMessage(boardText, question) },
   ];

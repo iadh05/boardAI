@@ -38,7 +38,9 @@ export const connectRealModel = (model: string) => {
     timeoutMs: 60_000,
     retries: 1,
   });
-  return { llm, agent: createAgent({ llm, newId: randomUUID }) };
+  // A canary, like the server's: the measured agent is the one users get.
+  const canary = `dr-${randomUUID().slice(0, 8)}`;
+  return { llm, agent: createAgent({ llm, newId: randomUUID, canary }) };
 };
 
 /** Measure on the GPU or not at all: on the CPU a run takes minutes and times out (M1-24). */

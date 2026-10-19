@@ -8,7 +8,8 @@ import type {
 } from '@designroom/ai-gateway';
 import type { Board, ChatMessage, Proposal } from '@designroom/domain';
 import { boardToText } from '../domain/boardToText.ts';
-import { buildMessages } from '../domain/prompt.ts';
+import { createLeakWatch } from '../domain/leakWatch.ts';
+import { buildMessages, SYSTEM_PROMPT } from '../domain/prompt.ts';
 import { OUT_OF_SCOPE_REPLY, type Scope } from '../domain/scope.ts';
 import { summarize } from '../domain/summary.ts';
 import { AGENT_TOOLS, createDraft, runToolCall } from '../domain/tools.ts';
@@ -36,7 +37,16 @@ export type AgentDeps = {
   maxRounds?: number;
   /** The scope guard; by default one short call to `llm`. Injected in tests. */
   checkScope?: (question: ScopeQuestion) => Promise<Scope>;
+  /**
+   * A random word put in the system prompt (M1-24d): if an answer writes it, the prompt is
+   * leaking, even translated. Random per server start (infra); none in most tests.
+   */
+  canary?: string;
 };
+
+/** Said instead of the rest of an answer that started giving the system prompt away. */
+export const LEAK_STOPPED_REPLY =
+  'I don’t share my instructions. Ask me about the architecture on your board.';
 
 export type AgentInput = {
   board: Board;
@@ -88,7 +98,17 @@ export const createAgent = (deps: AgentDeps) => {
       }
 
       const maxRounds = deps.maxRounds ?? DEFAULT_MAX_ROUNDS;
-      const conversation: LlmMessage[] = buildMessages(boardToText(board, draft.aliases), messages);
+      const conversation: LlmMessage[] = buildMessages(
+        boardToText(board, draft.aliases),
+        messages,
+        deps.canary,
+      );
+      // Output guard: the answer is cut where it starts reciting the prompt (OWASP LLM07).
+      const watch = createLeakWatch({
+        prompt: SYSTEM_PROMPT,
+        allowed: OUT_OF_SCOPE_REPLY,
+        ...(deps.canary ? { canary: deps.canary } : {}),
+      });
       let spoke = false; // an earlier round wrote something
       let finished = false; // the model stopped calling tools by itself
 
@@ -124,6 +144,16 @@ export const createAgent = (deps: AgentDeps) => {
             const answer = context.with(step.inside, () => deps.llm.chat(request));
             for await (const chunk of answer) {
               if (chunk.type === 'text') {
+                // Checked before it is shown: the piece that completes a leak never reaches the user.
+                if (watch.feed(chunk.delta)) {
+                  agent.span.setAttribute('designroom.agent.leak_stopped', true);
+                  yield {
+                    type: 'text',
+                    delta: `${said || spoke ? '\n\n' : ''}${LEAK_STOPPED_REPLY}`,
+                  };
+                  yield { type: 'done' }; // no proposal: this answer is not one to act on
+                  return; // stops reading: the gateway cancels the model call
+                }
                 // A new round's text starts a new paragraph, not glued to the last sentence.
                 if (said === '' && spoke) yield { type: 'text', delta: '\n\n' };
                 said += chunk.delta;

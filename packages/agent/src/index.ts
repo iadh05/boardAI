@@ -3,6 +3,7 @@
 
 export {
   createAgent,
+  LEAK_STOPPED_REPLY,
   type AgentDeps,
   type AgentEvent,
   type AgentInput,

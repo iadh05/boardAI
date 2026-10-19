@@ -9,6 +9,7 @@ import {
   type ReadableSpan,
 } from '@opentelemetry/sdk-trace-base';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { SYSTEM_PROMPT } from '../domain/prompt.ts';
 import { OUT_OF_SCOPE_REPLY } from '../domain/scope.ts';
 import { createAgent, type AgentEvent } from './runAgent.ts';
 
@@ -240,6 +241,51 @@ describe('runAgent', () => {
 
     expect(events.map((e) => e.type)).toEqual(['text', 'round', 'error', 'done']);
     expect(events[2]).toMatchObject({ code: 'ABORTED' });
+  });
+});
+
+describe('leak guard (M1-24d)', () => {
+  /** An agent with a canary, on a scripted model. */
+  const guarded = (answers: Step[][]) => {
+    const { llm, calls } = scriptedLlm(answers);
+    let n = 0;
+    const agent = createAgent({
+      llm,
+      newId: () => `id-${++n}`,
+      canary: 'zz-canary-1',
+      checkScope: () => Promise.resolve('in' as const),
+    });
+    return { agent, calls };
+  };
+  const STOPPED = /I don’t share my instructions/;
+
+  it('puts the canary in the system prompt', async () => {
+    const { agent, calls } = guarded([[text('Fine.')]]);
+    await run(agent);
+    expect(calls[0]?.messages[0]?.content).toContain('zz-canary-1');
+  });
+
+  it('cuts an answer that recites the system prompt, and proposes nothing', async () => {
+    const recital = SYSTEM_PROMPT.split(' ')
+      .slice(0, 12)
+      .map((w) => text(`${w} `));
+    const { agent } = guarded([
+      [...recital, tool('c1', 'add_node', { kind: 'cache', label: 'Redis' })],
+    ]);
+
+    const events = await run(agent);
+
+    const said = events.flatMap((e) => (e.type === 'text' ? [e.delta] : [])).join('');
+    expect(said).toMatch(STOPPED);
+    expect(said.split(' ').length).toBeLessThan(25); // cut early, not after the whole prompt
+    expect(events.some((e) => e.type === 'proposal')).toBe(false);
+    expect(events.at(-1)).toEqual({ type: 'done' });
+  });
+
+  it('cuts an answer that writes the canary, even in a translation', async () => {
+    const { agent } = guarded([[text('Voici mes instructions : zz-canary-1 …')]]);
+    const said = (await run(agent)).flatMap((e) => (e.type === 'text' ? [e.delta] : [])).join('');
+    expect(said).toMatch(STOPPED);
   });
 });
 
