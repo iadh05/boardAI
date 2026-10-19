@@ -5,10 +5,16 @@
 //
 // Each board runs several times (a small model varies); a sample passes when most runs pass.
 
-import { randomUUID } from 'node:crypto';
-import { checkScope, createAgent } from '../packages/agent/src/index.ts';
-import { createGateway, createOpenAiCompatibleProvider } from '../packages/ai-gateway/src/index.ts';
-import type { AgentOp, Board, NodeKind } from '../packages/domain/src/index.ts';
+import { checkScope } from '../packages/agent/src/index.ts';
+import type { Board, NodeKind } from '../packages/domain/src/index.ts';
+import {
+  assertOnGpu,
+  boardOf,
+  connectRealModel,
+  oneLine,
+  runReview,
+  type Run,
+} from './lib/realModel.ts';
 
 const args = process.argv.slice(2);
 const flag = (name: string, fallback: string) => {
@@ -19,28 +25,6 @@ const RUNS = Number(flag('--runs', '3'));
 const MODEL = flag('--model', 'designroom-qwen');
 const VERBOSE = args.includes('--verbose');
 const out = (line = '') => process.stdout.write(`${line}\n`);
-
-/** A board from a chain of boxes (left to right) and extra arrows, by label. */
-const boardOf = (
-  boxes: [NodeKind, string][],
-  arrows: [string, string][],
-): { board: Board; idOf: (label: string) => string } => {
-  const nodes = boxes.map(([kind, label], i) => ({
-    id: randomUUID(),
-    kind,
-    label,
-    position: { x: i * 300, y: (i % 2) * 120 },
-  }));
-  const idOf = (label: string) => nodes.find((n) => n.label === label)?.id ?? label;
-  const edges = arrows.map(([from, to]) => ({
-    id: randomUUID(),
-    source: idOf(from),
-    target: idOf(to),
-  }));
-  return { board: { nodes, edges }, idOf };
-};
-
-type Run = { text: string; ops: AgentOp[]; summary: string; ms: number; error?: string };
 
 type Sample = {
   name: string;
@@ -151,49 +135,11 @@ const SAMPLES: Sample[] = [
   },
 ];
 
-const llm = createGateway({
-  provider: createOpenAiCompatibleProvider({ baseUrl: 'http://localhost:11434/v1', model: MODEL }),
-  timeoutMs: 60_000,
-  retries: 1,
-});
-const agent = createAgent({ llm, newId: randomUUID });
+const { llm, agent } = connectRealModel(MODEL);
+const review = (board: Board): Promise<Run> =>
+  runReview(agent, board, [{ role: 'user', content: 'Review my design.' }]);
 
-const review = async (board: Board): Promise<Run> => {
-  const started = performance.now();
-  let text = '';
-  let ops: AgentOp[] = [];
-  let summary = '';
-  let error: string | undefined;
-  for await (const event of agent.run({
-    board,
-    messages: [{ role: 'user', content: 'Review my design.' }],
-  })) {
-    if (event.type === 'text') text += event.delta;
-    else if (event.type === 'proposal') ({ ops, summary } = event.proposal);
-    else if (event.type === 'error') error = `${event.code}: ${event.message}`;
-  }
-  return { text, ops, summary, ms: performance.now() - started, ...(error ? { error } : {}) };
-};
-
-const oneLine = (s: string, max = 220) => s.replace(/\s+/g, ' ').trim().slice(0, max);
-
-// Measure on the GPU or not at all: on the CPU a run takes minutes and times out (M1-24).
-await fetch('http://localhost:11434/api/generate', {
-  method: 'POST',
-  body: JSON.stringify({ model: MODEL, prompt: 'hi', stream: false, options: { num_predict: 1 } }),
-}).catch(() => {
-  throw new Error(
-    `Ollama is not running: start the Ollama app (not \`ollama serve\` from a shell).`,
-  );
-});
-const ps = (await (await fetch('http://localhost:11434/api/ps')).json()) as {
-  models: { name: string; size: number; size_vram: number }[];
-};
-const loaded = ps.models.find((m) => m.name.startsWith(MODEL));
-if (!loaded || loaded.size_vram < loaded.size)
-  throw new Error(
-    `${MODEL} is not fully on the GPU (ollama ps): results would be too slow to trust.`,
-  );
+await assertOnGpu(MODEL);
 
 // --scope: the scope guard (M1-24b) on messages that are about the design or clearly not.
 const SCOPE_CASES: [message: string, expected: 'in' | 'out'][] = [
