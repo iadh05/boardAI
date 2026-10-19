@@ -14,7 +14,7 @@ import { OUT_OF_SCOPE_REPLY, type Scope } from '../domain/scope.ts';
 import { summarize } from '../domain/summary.ts';
 import { AGENT_TOOLS, createDraft, runToolCall } from '../domain/tools.ts';
 import { checkScope, type ScopeQuestion } from './checkScope.ts';
-import { markFailed, startSpan } from './telemetry.ts';
+import { createAgentMetrics, markFailed, startSpan, toolLabel } from './telemetry.ts';
 
 // The agent loop (architecture §7): the model answers; its tool calls run on a draft of the board;
 // the results go back to the model; repeat until it stops calling tools or the round limit.
@@ -64,7 +64,11 @@ const isGatewayError = (error: unknown): error is GatewayError =>
   error.name === 'LlmError' &&
   typeof (error as GatewayError).code === 'string';
 
+const TOOL_NAMES = AGENT_TOOLS.map((t) => t.name);
+
 export const createAgent = (deps: AgentDeps) => {
+  const metered = createAgentMetrics();
+
   async function* review(
     { board, messages, signal }: AgentInput,
     parent: Context,
@@ -88,6 +92,7 @@ export const createAgent = (deps: AgentDeps) => {
           }),
         );
         guard.span.setAttribute('designroom.agent.scope', scope);
+        metered.scope(scope);
       } finally {
         guard.span.end();
       }
@@ -180,9 +185,8 @@ export const createAgent = (deps: AgentDeps) => {
           if (calls.length > 0) {
             conversation.push({ role: 'assistant', content: said, toolCalls: calls });
             for (const call of calls) {
-              const used = startSpan(`tool ${call.name}`, 'TOOL', step.inside, {
-                'tool.name': call.name,
-              });
+              const name = toolLabel(call.name, TOOL_NAMES);
+              const used = startSpan(`tool ${name}`, 'TOOL', step.inside, { 'tool.name': name });
               const outcome = runToolCall(draft, call, deps);
               draft = outcome.draft;
               if (!outcome.ok) {
@@ -190,6 +194,7 @@ export const createAgent = (deps: AgentDeps) => {
                 markFailed(used.span, outcome.reply); // what the model was told
               }
               used.span.end();
+              metered.toolCall(name, outcome.ok);
               conversation.push({ role: 'tool', toolCallId: call.id, content: outcome.reply });
             }
           }
@@ -221,6 +226,7 @@ export const createAgent = (deps: AgentDeps) => {
         'designroom.agent.ops': draft.ops.length,
       });
       agent.span.end();
+      if (rounds > 0) metered.review(rounds); // none when the scope guard answered
     }
   }
 
