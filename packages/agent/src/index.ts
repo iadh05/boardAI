@@ -1,0 +1,14 @@
+// @designroom/agent — the AI reviewer's logic (architecture §7). The LLM gateway is injected:
+// this package imports only its types, so tests run the agent on a fake model.
+
+export { createAliases, type Aliases } from './domain/aliases.ts';
+export { boardToText } from './domain/boardToText.ts';
+export {
+  AGENT_TOOLS,
+  createDraft,
+  runToolCall,
+  type Draft,
+  type ToolCallInput,
+  type ToolDeps,
+  type ToolOutcome,
+} from './domain/tools.ts';
