@@ -54,6 +54,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | doing |
 | M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | todo |
 | M1-25 | Sentry (web + server) | obs | S | doing |
+| M1-25b | Local error tracking with GlitchTip (Sentry-compatible) | obs | S | todo |
 | M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | doing |
 | M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | todo |
 | M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | todo |
@@ -1119,6 +1120,20 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - Install gotcha: after adding Sentry, `node_modules` held two vitest copies (one with the `@opentelemetry/api` peer), so jest-dom's types attached to the wrong one and `packages/diagram` failed typecheck. `pnpm dedupe` fixed it.
 
 ---
+
+## M1-25b — Local error tracking with GlitchTip
+**Status:** todo · **Size:** S · **Depends on:** M1-25, Docker
+
+*Why (2026-10-19):* M1-25's last criterion ("a test error shows in Sentry") needs a sentry.io account, and sends errors off the machine. GlitchTip is an open-source error tracker that accepts the **official Sentry SDKs**: same code, only the DSN changes. Light (a few containers: GlitchTip, Postgres, Redis; reported ~0.5–2 GB RAM) where self-hosted Sentry wants ~16 GB + swap. Nothing leaves the machine (architecture §9).
+
+**Tasks**
+- [ ] `docker-compose.yml`: GlitchTip from its **official** compose file (check glitchtip.com install docs for the current version), pinned image tag, bound to 127.0.0.1, its own volume.
+- [ ] Local admin user, an organisation, two projects (web, server); DSNs in `apps/web/.env` and `apps/server/.env` (never committed); `.env.example` comments mention GlitchTip.
+- [ ] Docs: how to start it and open the dashboard (README or docs/).
+
+**Acceptance criteria**
+- [ ] A test error from the web app and one from the server show in local GlitchTip with their stack traces (closes M1-25's last criterion, locally).
+- [ ] Server log at startup: `"errorTracking":"sentry"` with the GlitchTip DSN.
 
 ## M1-26 — OpenTelemetry + Grafana (split into 26a, 26b, 26c)
 *Split 2026-10-19: one L ticket would be one PR far past ~400 lines (general.md), and 26b/26c need Docker, which is not available on this machine yet (the Windows "Virtual Machine Platform" feature). 26a needs no Docker.*
