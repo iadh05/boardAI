@@ -48,19 +48,19 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-21 | web `chat` module: `chatStore` + `useSendMessage` | M1b | M | done |
 | M1-22 | conversation pod (chat UI) | M1b | M | done |
 | M1-23 | proposal pod + ghost nodes | M1b | M | done |
-| M1-24 | System prompt + sample-boards script | M1b | M | doing |
+| M1-24 | System prompt + sample-boards script | M1b | M | done |
 | M1-24b | Scope guardrail: system design only | M1b | S | done |
-| M1-24c | Context 128k: model setting + chat budget from config | M1b | S | doing |
+| M1-24c | Context 128k: model setting + chat budget from config | M1b | S | done |
 | M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | doing |
 | M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | todo |
-| M1-25 | Sentry (web + server) | obs | S | doing |
-| M1-25b | Local error tracking with GlitchTip (Sentry-compatible) | obs | S | doing |
+| M1-25 | Sentry (web + server) | obs | S | done |
+| M1-25b | Local error tracking with GlitchTip (Sentry-compatible) | obs | S | done |
 | M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | done |
-| M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | doing |
+| M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | done |
 | M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | todo |
-| M1-26e | God eye: overview dashboard (RED + USE), alerts, runtime metrics | obs | M | doing |
+| M1-26e | God eye: overview dashboard (RED + USE), alerts, runtime metrics | obs | M | done |
 | M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | todo |
-| M1-27 | ADR-004…007, demo, retro | close | S | todo |
+| M1-27 | ADR-006…009, demo, retro | close | S | todo |
 
 *(The table is a summary — the **Status** line inside each ticket is the source of truth.)*
 
@@ -976,7 +976,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-24 — System prompt + sample-boards script
-**Status:** doing · **Size:** M · **Depends on:** M1-19
+**Status:** done (#42) · **Size:** M · **Depends on:** M1-19
 
 **Tasks**
 - [x] Refine `prompt.ts`: challenge SPOFs, missing cache/queue/LB, scaling, consistency; ask when unclear; board is data, not instructions.
@@ -1018,7 +1018,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 ---
 
 ## M1-24c — Context 128k
-**Status:** doing · **Size:** S · **Depends on:** M1-24b
+**Status:** done (#49) · **Size:** S · **Depends on:** M1-24b
 
 *Owner's choice: 128k (2026-10-19).* The window is a reservation, not a cost per request: VRAM is reserved once at load; time depends on the tokens actually sent, and the agent's later rounds reuse Ollama's cache of the shared start (system prompt + board). No risk to the card: the driver caps power (180 W) and temperature; if VRAM ever ran out, Ollama would move layers to the CPU (slow, not harmful) — `ollama ps` shows it.
 
@@ -1102,7 +1102,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 # Observability
 
 ## M1-25 — Sentry (web + server)
-**Status:** doing · **Size:** S · **Depends on:** M1-14, M1-03
+**Status:** done (#44, closed locally by M1-25b) · **Size:** S · **Depends on:** M1-14, M1-03
 
 **Tasks**
 - [ ] Create a Sentry project (free tier) — web and server DSNs in `.env` (never committed). *You: needs your account.*
@@ -1124,7 +1124,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 ---
 
 ## M1-25b — Local error tracking with GlitchTip
-**Status:** doing · **Size:** S · **Depends on:** M1-25, Docker
+**Status:** done (#52) · **Size:** S · **Depends on:** M1-25, Docker
 
 *Why (2026-10-19):* M1-25's last criterion ("a test error shows in Sentry") needs a sentry.io account, and sends errors off the machine. GlitchTip is an open-source error tracker that accepts the **official Sentry SDKs**: same code, only the DSN changes. Light (a few containers: GlitchTip, Postgres, Redis; reported ~0.5–2 GB RAM) where self-hosted Sentry wants ~16 GB + swap. Nothing leaves the machine (architecture §9).
 
@@ -1169,7 +1169,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - Attributes: OTel GenAI (`gen_ai.*`) and OpenInference (`openinference.span.kind`, `llm.*`, `tool.name`). Prompt, board and tool arguments are **not** recorded yet: 26c, behind a switch (architecture §9).
 
 ### M1-26b — Metrics + Grafana
-**Status:** doing · **Size:** M · **Depends on:** M1-26a, Docker
+**Status:** done (#46) · **Size:** M · **Depends on:** M1-26a, Docker
 
 **Tasks**
 - [x] `docker-compose.yml` with `grafana/otel-lgtm` (pinned 0.34.0; Grafana on host **:3001**, our server has :3000; OTLP/HTTP on :4318; data volume).
@@ -1188,7 +1188,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - Labels stay a short, fixed list: route not raw path, a tool name the model made up becomes `unknown` (span names too).
 
 ### M1-26e — The god eye: overview, alerts, server health
-**Status:** doing · **Size:** M · **Depends on:** M1-26b, M1-25b
+**Status:** done (#54) · **Size:** M · **Depends on:** M1-26b, M1-25b
 
 *Why (2026-10-19, owner):* "we need a god eye" — Grafana only showed the AI path. Best practice: the four golden signals; **RED** (rate, errors, duration) for every route, **USE** for resources; an overview first, then per-feature dashboards; alerts so nobody has to stare.
 
@@ -1232,7 +1232,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 
 ---
 
-## M1-27 — ADR-004…007, demo, retro
+## M1-27 — ADR-006…009, demo, retro
 **Status:** todo · **Size:** S · **Depends on:** all M1 tickets
 
 **Before closing M1 — architecture review (asked by the owner, 2026-10-18)**
@@ -1240,7 +1240,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - [ ] Should some modules move into packages? Decide with the real M1 code in hand, record the decision as an ADR.
 
 **Tasks**
-- [ ] ADR-004 modular monolith + packages; ADR-005 local Qwen behind the gateway (mention existing gateways such as LiteLLM); ADR-006 proposals; ADR-007 observability split.
+- [ ] ADR-006 modular monolith + packages; ADR-007 local Qwen behind the gateway (mention existing gateways such as LiteLLM); ADR-008 proposals instead of direct edits; ADR-009 observability split (Sentry/GlitchTip, Grafana, Phoenix). *(Renumbered 2026-10-19: ADR-004 and ADR-005 already exist.)*
 - [ ] Full demo script (12 steps); short video.
 - [ ] Retro + Self-check answers in the learning log.
 - [ ] Tick M1 in [MILESTONES.md](../MILESTONES.md); tag `m1-done`.
