@@ -213,7 +213,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (outcome) (rate(llm_request_duration_seconds_count{outcome!=\"ok\"}[$__rate_interval])) * 60",
+          "expr": "sum by (outcome) (rate(llm_request_duration_seconds_count{outcome!~\"ok|stopped\"}[$__rate_interval])) * 60",
           "legendFormat": "{{outcome}}"
         }
       ]

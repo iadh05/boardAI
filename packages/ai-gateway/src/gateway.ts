@@ -122,19 +122,24 @@ export const createGateway = (options: GatewayOptions): AiGateway => {
     const model = input.model ?? options.model;
     const span = startLlmSpan(model, parent);
     const started = now();
+    let measured = false; // by usage or by a failure; else the reader stopped before the end
     try {
       for await (const chunk of call(input)) {
         if (chunk.type === 'usage') {
           span.setAttributes(usageAttributes(chunk.usage));
           metered.succeeded(model ?? 'unknown', chunk.usage);
+          measured = true;
         }
         yield chunk;
       }
     } catch (error) {
       recordFailure(span, error);
       metered.failed(model ?? 'unknown', error, now() - started);
+      measured = true;
       throw error;
     } finally {
+      // The scope guard stops after its first word: still a model call, so still counted.
+      if (!measured) metered.stopped(model ?? 'unknown', now() - started);
       span.end();
     }
   }

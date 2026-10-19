@@ -89,6 +89,10 @@ export const createLlmMetrics = () => {
       tokens.add(usage.inputTokens, { model, direction: 'input' });
       tokens.add(usage.outputTokens, { model, direction: 'output' });
     },
+    /** The reader stopped before the end: no usage was reported, the duration is still known. */
+    stopped: (model: string, ms: number) => {
+      duration.record(ms / 1000, { model, outcome: 'stopped' });
+    },
     failed: (model: string, error: unknown, ms: number) => {
       const outcome = error instanceof LlmError ? error.code : 'BUG';
       duration.record(ms / 1000, { model, outcome });

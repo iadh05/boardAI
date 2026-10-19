@@ -461,6 +461,29 @@ describe('gateway — metrics', () => {
     ]);
   });
 
+  it('counts a call the reader stopped early (the scope guard reads one word) as stopped', async () => {
+    const { gateway, clock } = setup(
+      providerOf(function* () {
+        clock.t += 300;
+        yield text('DESIGN');
+        yield text(' because…');
+      }),
+      { model: 'qwen' },
+    );
+
+    for await (const chunk of gateway.chat(input)) {
+      expect(chunk).toEqual({ type: 'text', delta: 'DESIGN' });
+      break;
+    }
+
+    expect(await points('llm_request_duration_seconds')).toEqual([
+      {
+        attributes: { model: 'qwen', outcome: 'stopped' },
+        value: expect.objectContaining({ count: 1, sum: 0.3 }) as unknown,
+      },
+    ]);
+  });
+
   it('counts a failed call by its error code, and how long it took to fail', async () => {
     const { gateway, clock } = setup(
       providerOf(() => {

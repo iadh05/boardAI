@@ -20,8 +20,10 @@ services:
   lgtm:
     image: grafana/otel-lgtm:0.34.0
     ports:
-      - '3001:3000' # Grafana UI (admin / admin). Host 3001: our server already has 3000.
-      - '4318:4318' # OTLP over HTTP: traces, metrics, logs
+      # Bound to this machine only: Grafana's login is admin / admin, and anyone reaching :4318
+      # could push fake data. Host 3001: our server already has 3000.
+      - '127.0.0.1:3001:3000' # Grafana UI
+      - '127.0.0.1:4318:4318' # OTLP over HTTP: traces, metrics, logs
     volumes:
       - lgtm-data:/data # keep dashboards' history across restarts
       # Our "AI reviewer" dashboard, loaded at startup (edit in Grafana, then export the JSON here).
