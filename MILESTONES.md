@@ -300,4 +300,7 @@ M1 → M2 → M3 → A1 → M4 → M5 → M6 → Portfolio finish
 ---
 
 ## Later (ideas parked, not now)
+- **M7 — Detailed design (to discuss):** API endpoints, layers and contracts per component. Until then the AI reviewer stays at system level (components, data, connections) — decided 2026-10-19.
+- Agent web search for real-world use cases (fits A3); voice in the room (A6 step 3) or several agent personas (A3 multi-agent) — decided 2026-10-19, after M1.
+- Situation card: the scenario (users, peaks, budget) pinned on the board, read by the AI on every request; shared in M2 — the three-architects journey.
 -
