@@ -38,11 +38,17 @@ const setup = (script: (AgentEvent | Error)[]) => {
   const lines: string[] = [];
   const logger = createLogger({ level: 'debug', write: (l) => lines.push(l), now: () => 0 });
   const { agent, inputs } = fakeAgent(script);
-  const review = createReviewBoard({ agent });
+  const reported: { error: unknown; context?: Record<string, unknown> }[] = [];
+  const review = createReviewBoard({
+    agent,
+    reporter: { report: (error, context) => reported.push({ error, context }) },
+  });
   return {
-    review: (req: ChatRequest, signal?: AbortSignal) => review(req, { logger, signal }),
+    review: (req: ChatRequest, signal?: AbortSignal) =>
+      review(req, { logger, signal, requestId: 'req-1' }),
     inputs,
     lines,
+    reported,
   };
 };
 
@@ -135,7 +141,8 @@ describe('reviewBoard', () => {
   );
 
   it('turns a bug into an error event and done, and logs it: the stream never just stops', async () => {
-    const { review, lines } = setup([{ type: 'text', delta: 'Hmm' }, new TypeError('boom')]);
+    const bug = new TypeError('boom');
+    const { review, lines, reported } = setup([{ type: 'text', delta: 'Hmm' }, bug]);
 
     const events = await collect(review);
 
@@ -145,6 +152,11 @@ describe('reviewBoard', () => {
       { type: 'done' },
     ]);
     expect(lines.join('\n')).toMatch(/"level":"error".*boom/);
+    // To Sentry: it happened inside the stream, past Hono's handler. The request id joins the
+    // Sentry event to the request's log lines.
+    expect(reported).toEqual([
+      { error: bug, context: { where: 'chat stream', requestId: 'req-1' } },
+    ]);
   });
 
   it('ends with exactly one done even if the agent forgets it', async () => {

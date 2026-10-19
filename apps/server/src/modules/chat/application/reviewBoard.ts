@@ -2,6 +2,7 @@ import { boardToText, createAliases, type AgentEvent, type AgentInput } from '@d
 import type { LlmErrorCode } from '@designroom/ai-gateway';
 import type { ChatEvent, ChatRequest, Result } from '@designroom/domain';
 import type { Logger } from '../../../core/logger.ts';
+import { noErrorReporter, type ErrorReporter } from '../../../core/observability/errorReporter.ts';
 import { fitHistory, type ChatPolicyErrorCode } from '../domain/chatPolicy.ts';
 
 // Use case "review my board" (architecture §10): apply the chat policy, run the agent, and turn
@@ -10,10 +11,17 @@ import { fitHistory, type ChatPolicyErrorCode } from '../domain/chatPolicy.ts';
 /** The port this use case needs; infra/ builds it from @designroom/agent and the gateway. */
 export type ReviewAgent = { run(input: AgentInput): AsyncIterable<AgentEvent> };
 
-export type ReviewBoardDeps = { agent: ReviewAgent };
+export type ReviewBoardDeps = {
+  agent: ReviewAgent;
+  /** Bugs inside the stream happen past Hono's error handler: they are reported from here. */
+  reporter?: ErrorReporter;
+};
 
-/** Per request: the request's own logger (it carries the request id) and its cancel signal. */
-export type ReviewOptions = { logger: Logger; signal?: AbortSignal };
+/**
+ * Per request: the request's own logger (it carries the request id), its cancel signal, and the
+ * id itself, so a bug reported to error tracking can be joined to the request's log lines.
+ */
+export type ReviewOptions = { logger: Logger; signal?: AbortSignal; requestId?: string | null };
 
 /** What the user reads when the model fails: what happened and what to do (general.md). */
 const USER_MESSAGE: Record<LlmErrorCode, string> = {
@@ -27,10 +35,10 @@ const USER_MESSAGE: Record<LlmErrorCode, string> = {
 const SOMETHING_WENT_WRONG = 'Something went wrong on our side. Please try again.';
 
 export const createReviewBoard =
-  ({ agent }: ReviewBoardDeps) =>
+  ({ agent, reporter = noErrorReporter }: ReviewBoardDeps) =>
   (
     request: ChatRequest,
-    { logger, signal }: ReviewOptions,
+    { logger, signal, requestId }: ReviewOptions,
   ): Result<AsyncIterable<ChatEvent>, ChatPolicyErrorCode> => {
     const boardChars = boardToText(request.board, createAliases(request.board)).length;
     const history = fitHistory(request.messages, { boardChars });
@@ -74,6 +82,7 @@ export const createReviewBoard =
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
         });
+        reporter.report(error, { where: 'chat stream', requestId });
         yield { type: 'error', message: SOMETHING_WENT_WRONG };
       }
       yield { type: 'done' };

@@ -5,12 +5,12 @@ import { createLogger } from './logger.ts';
 
 const silent = createLogger({ level: 'info', write: () => {} });
 
-const appThrowing = (error: unknown) => {
+const appThrowing = (error: unknown, reported: unknown[] = []) => {
   const app = new Hono();
   app.get('/boom', () => {
     throw error;
   });
-  app.onError(onError(silent));
+  app.onError(onError(silent, { report: (e) => reported.push(e) }));
   return app;
 };
 
@@ -39,5 +39,15 @@ describe('onError', () => {
     expect(await res.json()).toEqual({
       error: { code: 'INTERNAL', message: 'Something went wrong on our side. Please try again.' },
     });
+  });
+
+  it('reports unexpected errors to error tracking (Sentry), not expected ones', async () => {
+    const reported: unknown[] = [];
+    const bug = new Error('cannot read properties of undefined');
+
+    await appThrowing(bug, reported).request('/boom');
+    await appThrowing(new AppError('VALIDATION_FAILED', 'Bad input'), reported).request('/boom');
+
+    expect(reported).toEqual([bug]); // a 400 is the user's mistake, not a bug to alert on
   });
 });

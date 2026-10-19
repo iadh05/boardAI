@@ -3,7 +3,7 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-24 prompt + samples → M1-25 Sentry next (M1-13 structure verdict pending)
+**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** M1-25 Sentry → M1-26 OpenTelemetry + Grafana next (M1-13 structure verdict pending)
 
 ## Done
 
@@ -40,7 +40,8 @@
 | M1-UX2 | Nothing hides boxes: no fit on the first box, spawn avoids the toolbar, hints in the toolbar panel | #40 |
 | M1-23 | Proposal card (Accept / Reject / out of date), ghosts placed once and accepted where shown, demo e2e journeys, Stop e2e | #41 |
 | M1-24 | Prompt v2 from sample boards (1/4 → 3/4, injection never obeyed), `scripts/review-samples.ts`, summary never shows an id | #42 |
-| M1-24b | Scope guard: system design only — a classifier call before the review, fixed reply when off topic (30/30), stricter prompt | this PR |
+| M1-24b | Scope guard: system design only — a classifier call before the review, fixed reply when off topic (30/30), stricter prompt | #43 |
+| M1-25 | Sentry web + server, off without a DSN; page and chat error boundaries; no board/chat/prompt data sent | #44 |
 
 ## In progress
 

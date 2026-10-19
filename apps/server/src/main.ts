@@ -5,6 +5,7 @@ import type { Config } from './core/config.ts';
 import { notFound, onError } from './core/errors.ts';
 import { createLlmProvider } from './core/llm.ts';
 import type { Logger } from './core/logger.ts';
+import { noErrorReporter, type ErrorReporter } from './core/observability/errorReporter.ts';
 import { requestContext } from './core/requestContext.ts';
 import { createChatModule, createReviewAgent } from './modules/chat/index.ts';
 import { createHealthModule } from './modules/health/index.ts';
@@ -17,9 +18,12 @@ export type AppDeps = {
   logger: Logger;
   /** Replaces the provider chosen by config: tests script the model's answers. */
   llmProvider?: LlmProvider;
+  /** Error tracking (Sentry), started once in index.ts; none in tests. */
+  reporter?: ErrorReporter;
 };
 
 export const createApp = (deps: AppDeps) => {
+  const reporter = deps.reporter ?? noErrorReporter;
   const llm = createGateway({
     provider:
       deps.llmProvider ?? createLlmProvider(deps.config.llm, (path) => readFileSync(path, 'utf8')),
@@ -33,10 +37,10 @@ export const createApp = (deps: AppDeps) => {
   app.route('/api/health', createHealthModule().routes);
   app.route(
     '/api/chat',
-    createChatModule({ agent: createReviewAgent(llm), logger: deps.logger }).routes,
+    createChatModule({ agent: createReviewAgent(llm), logger: deps.logger, reporter }).routes,
   );
 
   app.notFound(notFound);
-  app.onError(onError(deps.logger));
+  app.onError(onError(deps.logger, reporter));
   return app;
 };
