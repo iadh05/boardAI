@@ -49,7 +49,11 @@ export const createChatRoutes = (reviewBoard: ReviewBoard, moduleLogger: Logger)
     }
 
     // The browser closing the tab aborts this signal: the agent and the model call stop with it.
-    const started = reviewBoard(parsed.data, { logger, signal: c.req.raw.signal });
+    const started = reviewBoard(parsed.data, {
+      logger,
+      signal: c.req.raw.signal,
+      requestId: c.res.headers.get('X-Request-Id'), // set by requestContext
+    });
     if (!started.ok) throw new AppError('BOARD_TOO_LARGE', started.error.message);
 
     // Nginx buffers responses unless told not to; the chat must arrive token by token (§14).

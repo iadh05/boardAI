@@ -17,8 +17,11 @@ export type ReviewBoardDeps = {
   reporter?: ErrorReporter;
 };
 
-/** Per request: the request's own logger (it carries the request id) and its cancel signal. */
-export type ReviewOptions = { logger: Logger; signal?: AbortSignal };
+/**
+ * Per request: the request's own logger (it carries the request id), its cancel signal, and the
+ * id itself, so a bug reported to error tracking can be joined to the request's log lines.
+ */
+export type ReviewOptions = { logger: Logger; signal?: AbortSignal; requestId?: string | null };
 
 /** What the user reads when the model fails: what happened and what to do (general.md). */
 const USER_MESSAGE: Record<LlmErrorCode, string> = {
@@ -35,7 +38,7 @@ export const createReviewBoard =
   ({ agent, reporter = noErrorReporter }: ReviewBoardDeps) =>
   (
     request: ChatRequest,
-    { logger, signal }: ReviewOptions,
+    { logger, signal, requestId }: ReviewOptions,
   ): Result<AsyncIterable<ChatEvent>, ChatPolicyErrorCode> => {
     const boardChars = boardToText(request.board, createAliases(request.board)).length;
     const history = fitHistory(request.messages, { boardChars });
@@ -79,7 +82,7 @@ export const createReviewBoard =
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
         });
-        reporter.report(error, { where: 'chat stream' });
+        reporter.report(error, { where: 'chat stream', requestId });
         yield { type: 'error', message: SOMETHING_WENT_WRONG };
       }
       yield { type: 'done' };

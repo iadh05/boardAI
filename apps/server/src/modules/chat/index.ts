@@ -1,5 +1,5 @@
 import type { Logger } from '../../core/logger.ts';
-import type { ErrorReporter } from '../../core/observability/errorReporter.ts';
+import { noErrorReporter, type ErrorReporter } from '../../core/observability/errorReporter.ts';
 import { createChatRoutes } from './api/chatRoutes.ts';
 import { createReviewBoard, type ReviewAgent } from './application/reviewBoard.ts';
 
@@ -8,8 +8,12 @@ import { createReviewBoard, type ReviewAgent } from './application/reviewBoard.t
 
 export type ChatModuleDeps = { agent: ReviewAgent; logger: Logger; reporter?: ErrorReporter };
 
-export const createChatModule = ({ agent, logger, reporter }: ChatModuleDeps) => ({
-  routes: createChatRoutes(createReviewBoard({ agent, ...(reporter ? { reporter } : {}) }), logger),
+export const createChatModule = ({
+  agent,
+  logger,
+  reporter = noErrorReporter,
+}: ChatModuleDeps) => ({
+  routes: createChatRoutes(createReviewBoard({ agent, reporter }), logger),
 });
 
 export type { ReviewAgent } from './application/reviewBoard.ts';

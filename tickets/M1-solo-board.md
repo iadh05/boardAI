@@ -1028,6 +1028,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - Privacy: Sentry v11 sends request bodies, gen-AI inputs/outputs and stack variables by default. All off via `dataCollection`: the board, chat and prompt stay on this machine (architecture §9).
 - Expected errors (`AppError`: 400, 413…) are not reported; only bugs.
 - Bundle: named imports + own chunk `error-tracking` = 32 kB gzip (150 kB with `import * as Sentry`).
+- Follow-up (needs your Sentry auth token): build web source maps and upload them on deploy (`@sentry/vite-plugin`), else browser stack traces show minified code. Server traces are readable already (tsx runs the TS source).
 - Install gotcha: after adding Sentry, `node_modules` held two vitest copies (one with the `@opentelemetry/api` peer), so jest-dom's types attached to the wrong one and `packages/diagram` failed typecheck. `pnpm dedupe` fixed it.
 
 ---
@@ -1042,6 +1043,7 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 - [ ] Server: OTel Node SDK in `core/observability`; HTTP spans; manual spans for `reviewBoard` and each agent round.
 - [ ] ai-gateway: span per LLM call with model, tokens, latency attributes; metrics `llm_request_duration`, `llm_time_to_first_token`, `llm_tokens_total`, `tool_call_errors_total`.
 - [ ] Logs carry the trace id.
+- [ ] Sentry (M1-25) already registers its own global OpenTelemetry setup, even with tracing off. Start the OTel SDK so the two don't clash: Sentry's `skipOpenTelemetrySetup: true`, or Sentry's span processor in our provider (check the Sentry docs).
 - [ ] Grafana dashboard "AI reviewer" (export the JSON into the repo).
 - [ ] **Phoenix**: add the container to `docker-compose.yml` (UI on :6006); second trace exporter in the server pointing at Phoenix's OTLP HTTP endpoint (check the Phoenix docs for the exact path).
 - [ ] Name agent/LLM span attributes with **OpenInference** conventions (span kind LLM / TOOL / AGENT, model name, token counts, input/output, tool name + arguments) so Phoenix shows them as an agent trace.

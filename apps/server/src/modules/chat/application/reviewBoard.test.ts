@@ -38,10 +38,14 @@ const setup = (script: (AgentEvent | Error)[]) => {
   const lines: string[] = [];
   const logger = createLogger({ level: 'debug', write: (l) => lines.push(l), now: () => 0 });
   const { agent, inputs } = fakeAgent(script);
-  const reported: unknown[] = [];
-  const review = createReviewBoard({ agent, reporter: { report: (e) => reported.push(e) } });
+  const reported: { error: unknown; context?: Record<string, unknown> }[] = [];
+  const review = createReviewBoard({
+    agent,
+    reporter: { report: (error, context) => reported.push({ error, context }) },
+  });
   return {
-    review: (req: ChatRequest, signal?: AbortSignal) => review(req, { logger, signal }),
+    review: (req: ChatRequest, signal?: AbortSignal) =>
+      review(req, { logger, signal, requestId: 'req-1' }),
     inputs,
     lines,
     reported,
@@ -148,7 +152,11 @@ describe('reviewBoard', () => {
       { type: 'done' },
     ]);
     expect(lines.join('\n')).toMatch(/"level":"error".*boom/);
-    expect(reported).toEqual([bug]); // to Sentry: it happened inside the stream, past Hono's handler
+    // To Sentry: it happened inside the stream, past Hono's handler. The request id joins the
+    // Sentry event to the request's log lines.
+    expect(reported).toEqual([
+      { error: bug, context: { where: 'chat stream', requestId: 'req-1' } },
+    ]);
   });
 
   it('ends with exactly one done even if the agent forgets it', async () => {
