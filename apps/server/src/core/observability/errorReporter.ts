@@ -64,6 +64,10 @@ export const countErrors = (reporter: ErrorReporter): ErrorReporter => {
       description: 'Unexpected errors (bugs) reported to error tracking.',
       unit: '{error}',
     });
+  // Both series exist from the start, at 0. A counter that first appears at 1 is invisible to
+  // increase()/rate(): Prometheus never saw it at 0, so the first bug wouldn't show or alert.
+  counter.add(0, { where: 'http' });
+  counter.add(0, { where: 'chat_stream' });
   return {
     report: (error, context) => {
       const where =

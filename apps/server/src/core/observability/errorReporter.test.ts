@@ -10,6 +10,23 @@ class TestReader extends MetricReader {
 }
 
 describe('countErrors', () => {
+  it('starts both counts at 0, so the very first bug shows as an increase (dashboard, alert)', async () => {
+    metrics.disable();
+    const reader = new TestReader();
+    metrics.setGlobalMeterProvider(new MeterProvider({ readers: [reader] }));
+
+    countErrors({ report: () => {} });
+
+    const { resourceMetrics } = await reader.collect();
+    const metric = resourceMetrics.scopeMetrics
+      .flatMap((s) => s.metrics)
+      .find((m) => m.descriptor.name === 'server_errors_reported_total');
+    expect((metric?.dataPoints ?? []).map((p) => [p.attributes, p.value])).toEqual([
+      [{ where: 'http' }, 0],
+      [{ where: 'chat_stream' }, 0],
+    ]);
+  });
+
   it('counts every reported bug by where it happened, and still reports it', async () => {
     metrics.disable();
     const reader = new TestReader();
@@ -31,8 +48,8 @@ describe('countErrors', () => {
     ]);
     // Counted even without a DSN: the overview shows bugs whether or not GlitchTip is running.
     expect(points).toEqual([
-      [{ where: 'chat_stream' }, 1],
       [{ where: 'http' }, 2],
+      [{ where: 'chat_stream' }, 1],
     ]);
     expect(reported).toHaveLength(3);
   });
