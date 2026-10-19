@@ -8,14 +8,15 @@ import { sendMessage, type SendMessageDeps } from './sendMessage.ts';
 // Sending a chat message, as a React Query mutation (architecture §5.3). The answer itself goes
 // to the chat store as it streams; the mutation only says whether a send is in flight.
 
-const appDeps: SendMessageDeps = {
+/** The app's real dependencies; tests pass their own. */
+export const chatAppDeps: SendMessageDeps = {
   fetch: (...args) => fetch(...args),
   chat: useChatStore,
   currentBoard,
   showProposal,
 };
 
-export const useSendMessage = (deps: SendMessageDeps = appDeps) => {
+export const useSendMessage = (deps: SendMessageDeps = chatAppDeps) => {
   // The request in flight, so "stop" can abort it (and the model with it, server side).
   const inFlight = useRef<AbortController | null>(null);
   // The chat going away (unmount) stops its request: no stream writing for nobody.
