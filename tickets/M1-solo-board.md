@@ -50,7 +50,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-23 | proposal pod + ghost nodes | M1b | M | done |
 | M1-24 | System prompt + sample-boards script | M1b | M | doing |
 | M1-24b | Scope guardrail: system design only | M1b | S | doing |
-| M1-25 | Sentry (web + server) | obs | S | todo |
+| M1-25 | Sentry (web + server) | obs | S | doing |
 | M1-26 | OpenTelemetry + Grafana | obs | L | todo |
 | M1-27 | ADR-004…007, demo, retro | close | S | todo |
 
@@ -1012,17 +1012,23 @@ First manual pass over every journey (laptop, phone, keyboard), 2026-10-18 — f
 # Observability
 
 ## M1-25 — Sentry (web + server)
-**Status:** todo · **Size:** S · **Depends on:** M1-14, M1-03
+**Status:** doing · **Size:** S · **Depends on:** M1-14, M1-03
 
 **Tasks**
-- [ ] Create a Sentry project (free tier) — web and server DSNs in `.env` (never committed).
-- [ ] Web: `core/observability` init + React error boundary in `app/`.
-- [ ] Server: `core/observability` init + Hono error handler reporting unexpected errors.
-- [ ] Disabled when DSN unset.
+- [ ] Create a Sentry project (free tier) — web and server DSNs in `.env` (never committed). *You: needs your account.*
+- [x] Web: `core/observability` init + React error boundary in `app/` (page boundary + chat-panel boundary).
+- [x] Server: `core/observability` init + Hono error handler reporting unexpected errors (also errors inside the chat stream).
+- [x] Disabled when DSN unset.
 
 **Acceptance criteria**
-- [ ] A test error from each side shows in Sentry with a readable stack trace.
-- [ ] `pnpm test` runs without any Sentry config.
+- [ ] A test error from each side shows in Sentry with a readable stack trace. *Needs your DSN; web stack traces need source maps uploaded (follow-up).*
+- [x] `pnpm test` runs without any Sentry config.
+
+**Notes**
+- Privacy: Sentry v11 sends request bodies, gen-AI inputs/outputs and stack variables by default. All off via `dataCollection`: the board, chat and prompt stay on this machine (architecture §9).
+- Expected errors (`AppError`: 400, 413…) are not reported; only bugs.
+- Bundle: named imports + own chunk `error-tracking` = 32 kB gzip (150 kB with `import * as Sentry`).
+- Install gotcha: after adding Sentry, `node_modules` held two vitest copies (one with the `@opentelemetry/api` peer), so jest-dom's types attached to the wrong one and `packages/diagram` failed typecheck. `pnpm dedupe` fixed it.
 
 ---
 
