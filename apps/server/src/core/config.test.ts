@@ -15,6 +15,7 @@ describe('loadConfig', () => {
       },
       logLevel: 'info',
       errorTracking: null, // off unless SENTRY_DSN is set
+      tracing: null, // off unless OTEL_EXPORTER_OTLP_ENDPOINT is set
     });
   });
 
@@ -23,6 +24,15 @@ describe('loadConfig', () => {
       loadConfig({ ...valid, SENTRY_DSN: 'https://key@o1.ingest.sentry.io/1' }).errorTracking,
     ).toEqual({ dsn: 'https://key@o1.ingest.sentry.io/1', environment: 'development' });
     expect(() => loadConfig({ ...valid, SENTRY_DSN: 'not a url' })).toThrow(/SENTRY_DSN/);
+  });
+
+  it('exports traces when an OTLP endpoint is set', () => {
+    expect(
+      loadConfig({ ...valid, OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318' }).tracing,
+    ).toEqual({ endpoint: 'http://localhost:4318' });
+    expect(() => loadConfig({ ...valid, OTEL_EXPORTER_OTLP_ENDPOINT: 'grafana' })).toThrow(
+      /OTEL_EXPORTER_OTLP_ENDPOINT/,
+    );
   });
 
   it('reads PORT as a number', () => {

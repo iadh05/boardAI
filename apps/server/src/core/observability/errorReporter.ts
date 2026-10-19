@@ -27,6 +27,9 @@ export const createErrorReporter = (
     environment: config.environment,
     // Errors only: traces go to OpenTelemetry → Grafana and Phoenix (M1-26).
     tracesSampleRate: 0,
+    // Our own OpenTelemetry SDK owns tracing (tracing.ts): Sentry must not register a competing
+    // provider. Already v11's default; explicit so an upgrade can't change it silently.
+    enableOpenTelemetrySetup: false,
     // Only the error and its stack. Sentry v11 collects request bodies, gen-AI inputs/outputs and
     // stack variables by default — here they would carry the board, the chat and the prompt,
     // which stay on this machine (architecture §9).
