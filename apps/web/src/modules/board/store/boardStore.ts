@@ -27,13 +27,20 @@ import {
   type Proposal,
   type ZoneSize,
 } from '@designroom/domain';
+import * as Y from 'yjs';
 import { create } from 'zustand';
 import { createId } from '../../../core/lib/ids.ts';
+import { BOARD_MAPS, readBoard, writeBoard } from '../lib/boardDoc.ts';
 import { withPlacements, type Placements } from '../lib/placement.ts';
 
 // The board module's single source of client state (architecture §5.3). Actions delegate every
-// rule to @designroom/domain, so the UI never re-implements them. In M2 the same actions will
-// write to a Yjs document instead — components won't notice.
+// rule to @designroom/domain, so the UI never re-implements them. Since M2 the board itself lives
+// in a shared Yjs document (ADR-010): an action computes the next board with a domain op and
+// writes the difference; every change to the document — this tab's or another's — is read back
+// into `board`. Components didn't change. The proposal, placements and editing state stay local.
+
+/** Moves within this long count as one undo step (a drag). */
+const UNDO_CAPTURE_MS = 500;
 
 export type BoardState = {
   board: Board;
@@ -49,6 +56,9 @@ export type BoardState = {
   editingNodeId: string | null;
   /** The zone whose title is open for editing (a new zone opens like this). */
   editingZoneId: string | null;
+  /** This tab has a change it can undo / redo (never another person's change). */
+  canUndo: boolean;
+  canRedo: boolean;
 };
 
 export type BoardActions = {
@@ -91,6 +101,11 @@ export type BoardActions = {
   /** Opens a node's label for editing (one node at a time); ignored for unknown ids. */
   startEditing: (id: string) => void;
   stopEditing: () => void;
+  /** Reverts this tab's last change (a drag counts as one); other people's changes stay. */
+  undo: () => void;
+  redo: () => void;
+  /** What comes next is a new undo step, even within the drag window (e.g. at the end of a drag). */
+  endUndoStep: () => void;
 };
 
 export type BoardStore = BoardState & BoardActions;
@@ -99,15 +114,63 @@ export type BoardStoreDeps = {
   /** Id generator; injected so tests are deterministic. */
   newId: () => string;
   initialBoard?: Board;
+  /** The shared document (a room's, in the app); a private one when absent. */
+  doc?: Y.Doc;
 };
 
-export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardStoreDeps) =>
+export const createBoardStore = ({
+  newId,
+  initialBoard = emptyBoard(),
+  doc = new Y.Doc(),
+}: BoardStoreDeps) =>
   create<BoardStore>()((set, get) => {
-    /** Commits a domain result: new board on success, unchanged board + error on failure. */
+    /** Marks this tab's own writes: undo tracks only these. */
+    const mine = Symbol('this tab');
+    const maps = BOARD_MAPS.map((name) => doc.getMap(name));
+    const history = new Y.UndoManager(maps, {
+      trackedOrigins: new Set([mine]),
+      captureTimeout: UNDO_CAPTURE_MS,
+    });
+
+    // A starting board is written as no one's change: there is nothing to undo before it.
+    if (initialBoard.nodes.length + initialBoard.edges.length + (initialBoard.zones?.length ?? 0))
+      writeBoard(doc, readBoard(doc), initialBoard);
+
+    /** A local change succeeded: its read-back also clears the last error, in the same update. */
+    let clearError = false;
+
+    // Every change to the document — this tab's, another tab's, an undo — is read back here.
+    const refresh = () => {
+      const board = readBoard(doc);
+      const { editingNodeId, editingZoneId } = get();
+      const cleared = clearError ? { lastError: null } : {};
+      clearError = false;
+      set({
+        board,
+        ...cleared,
+        // A waiting proposal is placed again: the board change may have taken one of its spots.
+        placements: null,
+        canUndo: history.undoStack.length > 0,
+        canRedo: history.redoStack.length > 0,
+        // Someone else deleted what this tab was editing.
+        ...(editingNodeId && !board.nodes.some((n) => n.id === editingNodeId)
+          ? { editingNodeId: null }
+          : {}),
+        ...(editingZoneId && !board.zones?.some((z) => z.id === editingZoneId)
+          ? { editingZoneId: null }
+          : {}),
+      });
+    };
+    doc.on('update', refresh);
+
+    /** Commits a domain result: written to the document on success, an error on failure. */
     const commit = (result: BoardResult): boolean => {
       if (result.ok) {
-        // A waiting proposal is placed again: the board change may have taken one of its spots.
-        set({ board: result.value, lastError: null, placements: null });
+        clearError = true;
+        writeBoard(doc, get().board, result.value, mine);
+        // Nothing changed (e.g. renamed to the same label): no read-back, clear it here.
+        if (clearError) set({ lastError: null });
+        clearError = false;
         return true;
       }
       set({ lastError: result.error });
@@ -115,13 +178,15 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
     };
 
     return {
-      board: initialBoard,
+      board: readBoard(doc),
       proposal: null,
       proposalError: null,
       placements: null,
       lastError: null,
       editingNodeId: null,
       editingZoneId: null,
+      canUndo: false,
+      canRedo: false,
 
       addNode: (kind, position) => {
         const id = newId();
@@ -207,8 +272,10 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
         if (!proposal) return;
         const result = applyOps(board, proposal.ops, withPlacements(placements));
         if (result.ok) {
+          history.stopCapturing(); // the proposal is its own undo step
+          writeBoard(doc, board, result.value, mine);
+          history.stopCapturing();
           set({
-            board: result.value,
             proposal: null,
             placements: null,
             proposalError: null,
@@ -235,6 +302,14 @@ export const createBoardStore = ({ newId, initialBoard = emptyBoard() }: BoardSt
         if (get().board.nodes.some((n) => n.id === id)) set({ editingNodeId: id });
       },
       stopEditing: () => set({ editingNodeId: null }),
+
+      undo: () => {
+        history.undo();
+      },
+      redo: () => {
+        history.redo();
+      },
+      endUndoStep: () => history.stopCapturing(),
     };
   });
 

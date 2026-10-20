@@ -111,3 +111,43 @@ describe('Zones from the toolbar', () => {
     await waitFor(() => expect(store.getState().placements?.cache?.x).toBeGreaterThan(0));
   });
 });
+
+describe('Toolbar — undo and redo (M2-03)', () => {
+  it('Undo and Redo buttons revert and restore your last change', async () => {
+    const store = renderBoard();
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    const redo = screen.getByRole('button', { name: 'Redo' });
+    expect(undo).toBeDisabled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add Cache' }));
+    expect(undo).toBeEnabled();
+    await userEvent.click(undo);
+    expect(store.getState().board.nodes).toEqual([]);
+    await userEvent.click(redo);
+    expect(store.getState().board.nodes).toHaveLength(1);
+  });
+
+  it('Ctrl+Z undoes, Ctrl+Shift+Z and Ctrl+Y redo', async () => {
+    const store = renderBoard();
+    await userEvent.click(screen.getByRole('button', { name: 'Add Cache' }));
+
+    await userEvent.keyboard('{Control>}z{/Control}');
+    expect(store.getState().board.nodes).toEqual([]);
+    await userEvent.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    expect(store.getState().board.nodes).toHaveLength(1);
+    await userEvent.keyboard('{Control>}z{/Control}');
+    await userEvent.keyboard('{Control>}y{/Control}');
+    expect(store.getState().board.nodes).toHaveLength(1);
+  });
+
+  it('Ctrl+Z inside a text field is the field’s own undo, not the board’s', async () => {
+    const store = renderBoard();
+    await userEvent.click(screen.getByRole('button', { name: 'Add Custom' })); // opens its label
+    const field = await screen.findByRole('textbox', { name: 'Node label' });
+
+    await userEvent.type(field, 'x');
+    await userEvent.keyboard('{Control>}z{/Control}');
+
+    expect(store.getState().board.nodes).toHaveLength(1);
+  });
+});
