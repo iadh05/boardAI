@@ -24,7 +24,10 @@ export type RoomStatusProps = {
 /** Header part of a room: are my edits reaching the others, and the link to invite them. */
 export function RoomStatus({ store = useConnectionStore }: RoomStatusProps) {
   const status = store((s) => s.status);
+  const loaded = store((s) => s.loaded);
   const roomId = store((s) => s.roomId);
+  // Connected but the board not here yet: an empty canvas would look like an empty room.
+  const label = status === 'connected' && !loaded ? 'Loading the board…' : LABEL[status];
   const [copy, setCopy] = useState<'idle' | 'copied' | 'refused'>('idle');
   if (!roomId) return null;
   const link = `${window.location.origin}${roomPath(roomId)}`;
@@ -40,7 +43,7 @@ export function RoomStatus({ store = useConnectionStore }: RoomStatusProps) {
     <div className="flex items-center gap-3 text-sm">
       <p role="status" className="flex items-center gap-2 text-muted">
         <span aria-hidden="true" className={`size-2 rounded-full ${DOT[status]}`} />
-        {LABEL[status]}
+        {label}
       </p>
       {copy === 'refused' ? (
         <Input

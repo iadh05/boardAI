@@ -16,6 +16,8 @@ describe('RoomStatus (M2-05)', () => {
     const store = setup();
     expect(screen.getByRole('status')).toHaveTextContent('Connecting…');
     act(() => store.getState().setStatus('connected'));
+    expect(screen.getByRole('status')).toHaveTextContent('Loading the board…');
+    act(() => store.getState().setLoaded());
     expect(screen.getByRole('status')).toHaveTextContent('Connected');
     act(() => store.getState().setStatus('offline'));
     expect(screen.getByRole('status')).toHaveTextContent(

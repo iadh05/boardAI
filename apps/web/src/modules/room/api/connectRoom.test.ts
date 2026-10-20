@@ -5,20 +5,25 @@ import { connectRoom, type RoomProvider } from './connectRoom.ts';
 
 /** A provider we can drive: the real one needs a server (covered by the e2e journeys). */
 const fakeProvider = () => {
-  const handlers: Record<string, ((event: { status: string }) => void)[]> = {};
+  const onStatus: ((event: { status: string }) => void)[] = [];
+  const onSync: ((synced: boolean) => void)[] = [];
   let destroyed = false;
   const provider: RoomProvider = {
-    on: (event, handler) => {
-      (handlers[event] ??= []).push(handler);
-    },
+    on: ((event: 'status' | 'sync', handler: never) => {
+      if (event === 'status') onStatus.push(handler);
+      else onSync.push(handler);
+    }) as RoomProvider['on'],
     destroy: () => {
       destroyed = true;
     },
   };
   const emit = (status: string) => {
-    for (const h of handlers.status ?? []) h({ status });
+    for (const h of onStatus) h({ status });
   };
-  return { provider, emit, isDestroyed: () => destroyed };
+  const sync = (synced: boolean) => {
+    for (const h of onSync) h(synced);
+  };
+  return { provider, emit, sync, isDestroyed: () => destroyed };
 };
 
 const setup = () => {
@@ -56,6 +61,15 @@ describe('connecting to a room (M2-05)', () => {
     expect(store.getState().status).toBe('offline');
     fake.emit('connecting');
     expect(store.getState().status).toBe('connecting');
+  });
+
+  it('knows when the room’s board has arrived', () => {
+    const { fake, store } = setup();
+    expect(store.getState().loaded).toBe(false);
+    fake.sync(false);
+    expect(store.getState().loaded).toBe(false);
+    fake.sync(true);
+    expect(store.getState().loaded).toBe(true);
   });
 
   it('remembers the room id for the link', () => {

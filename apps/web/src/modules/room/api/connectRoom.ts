@@ -8,7 +8,11 @@ import type { ConnectionStatus, useConnectionStore } from '../store/connectionSt
 
 /** What we use of the y-websocket provider (injected, so tests need no server). */
 export type RoomProvider = {
-  on: (event: 'status', handler: (event: { status: string }) => void) => void;
+  on: {
+    (event: 'status', handler: (event: { status: string }) => void): void;
+    /** true once the room's board has been received (and after each reconnect). */
+    (event: 'sync', handler: (synced: boolean) => void): void;
+  };
   destroy: () => void;
 };
 
@@ -35,6 +39,9 @@ export const connectRoom = ({ doc, roomId, location, store, createProvider }: Co
   provider.on('status', ({ status }) => {
     const mapped = STATUS[status];
     if (mapped) store.getState().setStatus(mapped);
+  });
+  provider.on('sync', (synced) => {
+    if (synced) store.getState().setLoaded();
   });
   return () => provider.destroy();
 };
