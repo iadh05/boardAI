@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Awareness } from 'y-protocols/awareness';
 import * as Y from 'yjs';
 import { createConnectionStore } from '../store/connectionStore.ts';
 import { connectRoom, type RoomProvider } from './connectRoom.ts';
@@ -13,6 +14,7 @@ const fakeProvider = () => {
       if (event === 'status') onStatus.push(handler);
       else onSync.push(handler);
     }) as RoomProvider['on'],
+    awareness: new Awareness(new Y.Doc()),
     destroy: () => {
       destroyed = true;
     },
@@ -31,7 +33,7 @@ const setup = () => {
   const store = createConnectionStore();
   const calls: { url: string; room: string; doc: Y.Doc }[] = [];
   const doc = new Y.Doc();
-  const leave = connectRoom({
+  const { leave } = connectRoom({
     doc,
     roomId: 'k3x9a2b7q1zm',
     location: { protocol: 'https:', host: 'designroom.example' },

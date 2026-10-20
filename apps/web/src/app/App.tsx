@@ -6,7 +6,7 @@ import { Button } from '../core/ui/index.ts';
 import { AppShell } from '../layout/AppShell.tsx';
 import { BoardCanvas } from '../modules/board/index.ts';
 import { ChatPanel } from '../modules/chat/index.ts';
-import { RoomStatus } from '../modules/room/index.ts';
+import { moveMyCursor, RemoteCursors, RoomStatus } from '../modules/room/index.ts';
 
 /** Shown if the page itself crashes: say so, and offer the way out. */
 const pageCrashed = (
@@ -43,7 +43,12 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <AppShell
           headerActions={<RoomStatus />}
-          canvas={<BoardCanvas />}
+          canvas={
+            // The board knows nothing about rooms: the app hands it the room's cursors (M2-06).
+            <BoardCanvas onPointerMove={moveMyCursor}>
+              <RemoteCursors />
+            </BoardCanvas>
+          }
           sidePanel={
             <ErrorBoundary fallback={chatCrashed}>
               <ChatPanel />

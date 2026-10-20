@@ -25,6 +25,15 @@ describe('RoomStatus (M2-05)', () => {
     );
   });
 
+  it('says how many people are here once connected', () => {
+    const store = setup();
+    act(() => {
+      store.getState().setStatus('connected');
+      store.getState().setLoaded();
+    });
+    expect(screen.getByText('Just you')).toBeInTheDocument();
+  });
+
   it('copies the room link to share it', async () => {
     const user = userEvent.setup();
     setup();

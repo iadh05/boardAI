@@ -1,3 +1,4 @@
+import type { Awareness } from 'y-protocols/awareness';
 import type * as Y from 'yjs';
 import type { ConnectionStatus, useConnectionStore } from '../store/connectionStore.ts';
 
@@ -13,6 +14,8 @@ export type RoomProvider = {
     /** true once the room's board has been received (and after each reconnect). */
     (event: 'sync', handler: (synced: boolean) => void): void;
   };
+  /** Presence (who's here, their cursor): relayed by the server, never saved (M2-06). */
+  awareness: Awareness;
   destroy: () => void;
 };
 
@@ -30,7 +33,10 @@ const STATUS: Record<string, ConnectionStatus> = {
   disconnected: 'offline',
 };
 
-/** Connects; returns how to leave. Same origin as the page: Nginx forwards /ws/ (M2-05). */
+/**
+ * Connects; returns the room's presence and how to leave. Same origin as the page: Nginx
+ * forwards /ws/ (M2-05).
+ */
 export const connectRoom = ({ doc, roomId, location, store, createProvider }: ConnectRoomDeps) => {
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
   store.getState().setRoom(roomId);
@@ -43,5 +49,7 @@ export const connectRoom = ({ doc, roomId, location, store, createProvider }: Co
   provider.on('sync', (synced) => {
     if (synced) store.getState().setLoaded();
   });
-  return () => provider.destroy();
+  return { awareness: provider.awareness, leave: () => provider.destroy() };
 };
+
+export type RoomConnection = ReturnType<typeof connectRoom>;
