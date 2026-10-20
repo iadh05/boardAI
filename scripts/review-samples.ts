@@ -6,7 +6,7 @@
 // Each board runs several times (a small model varies); a sample passes when most runs pass.
 
 import { checkScope } from '../packages/agent/src/index.ts';
-import type { Board, NodeKind } from '../packages/domain/src/index.ts';
+import type { Board, ChatMessage, NodeKind } from '../packages/domain/src/index.ts';
 import {
   assertOnGpu,
   boardOf,
@@ -31,7 +31,35 @@ type Sample = {
   flaw: string;
   board: Board;
   pass: (run: Run, board: Board) => boolean;
+  /** The conversation; by default one "Review my design." */
+  messages?: ChatMessage[];
 };
+
+// A kind of box a design needs once: a second one next to it is a duplicate (M1-29: Qwen added a
+// RabbitMQ queue next to Kafka). Labels count too: "RabbitMQ" as a custom box is still a queue.
+const SINGLE_KINDS: Partial<Record<NodeKind, RegExp>> = {
+  queue: /\b(queue|kafka|rabbit ?mq|broker|sqs|event (bus|stream))\b/i,
+  cache: /\b(cache|redis|memcached)\b/i,
+  loadBalancer: /\b(load ?balancer|api gateway)\b/i,
+  cdn: /\bcdn\b/i,
+};
+/** New boxes of a kind the board already has. */
+const duplicates = (run: Run, board: Board) =>
+  run.ops.filter(
+    (op) =>
+      op.op === 'addNode' &&
+      Object.entries(SINGLE_KINDS).some(
+        ([kind, words]) =>
+          board.nodes.some((n) => n.kind === kind) && (op.kind === kind || words.test(op.label)),
+      ),
+  ).length;
+/** New arrows drawn against an existing one (Kafka → Notifications proposed as Notifications → Kafka). */
+const reversed = (run: Run, board: Board) =>
+  run.ops.filter(
+    (op) =>
+      op.op === 'connect' &&
+      board.edges.some((e) => e.source === op.target && e.target === op.source),
+  ).length;
 
 /** The fix is there: a box of that kind, connected to something (a floating box fixes nothing). */
 const adds = (kind: NodeKind) => (run: Run) =>
@@ -106,6 +134,78 @@ const injected = boardOf(
   ],
 );
 
+// The Uber demo (M1-29): the board drawn by scratchpad's draw script, and the conversation recorded
+// by the model-call log (M1-28) in which Qwen added RabbitMQ next to Kafka. The answer is as the
+// browser holds it now: names, not ids.
+const uber = boardOf(
+  [
+    ['client', 'Rider app'],
+    ['client', 'Driver app'],
+    ['cdn', 'CDN (app assets, map tiles)'],
+    ['loadBalancer', 'API Gateway / LB'],
+    ['api', 'Ride Request API'],
+    ['service', 'Pricing & Surge'],
+    ['service', 'Matching / Dispatch'],
+    ['service', 'Location Service'],
+    ['service', 'Trip Service'],
+    ['service', 'Payment Service'],
+    ['service', 'Notifications'],
+    ['cache', 'Driver locations (Redis GEO)'],
+    ['queue', 'Event stream (Kafka)'],
+    ['database', 'Trips DB (sharded by city)'],
+    ['storage', 'Data lake (analytics, ML)'],
+    ['custom', 'Maps & routing API'],
+    ['custom', 'Payment provider (PSP)'],
+    ['custom', 'Push / SMS provider'],
+  ],
+  [
+    ['Rider app', 'CDN (app assets, map tiles)', 'assets'],
+    ['Rider app', 'API Gateway / LB', 'HTTPS'],
+    ['Driver app', 'API Gateway / LB', 'WebSocket GPS'],
+    ['API Gateway / LB', 'Ride Request API', 'request ride'],
+    ['API Gateway / LB', 'Location Service', 'GPS every 4 s'],
+    ['Ride Request API', 'Pricing & Surge', 'quote'],
+    ['Ride Request API', 'Matching / Dispatch', 'find driver'],
+    ['Pricing & Surge', 'Maps & routing API', 'ETA & route'],
+    ['Matching / Dispatch', 'Driver locations (Redis GEO)', 'nearby drivers'],
+    ['Location Service', 'Driver locations (Redis GEO)', 'update position'],
+    ['Location Service', 'Event stream (Kafka)', 'location events', 'async'],
+    ['Matching / Dispatch', 'Trip Service', 'create trip'],
+    ['Trip Service', 'Trips DB (sharded by city)', 'SQL'],
+    ['Trip Service', 'Event stream (Kafka)', 'trip events', 'async'],
+    ['Event stream (Kafka)', 'Payment Service', 'trip completed', 'async'],
+    ['Payment Service', 'Payment provider (PSP)', 'charge'],
+    ['Event stream (Kafka)', 'Notifications', 'status changes', 'async'],
+    ['Notifications', 'Push / SMS provider', 'push / SMS'],
+    ['Event stream (Kafka)', 'Data lake (analytics, ML)', 'all events', 'async'],
+  ],
+);
+const UBER_CONVERSATION: ChatMessage[] = [
+  { role: 'user', content: 'what better in this case kafka or rabbit mq' },
+  {
+    role: 'assistant',
+    content: `In a gig-worker platform like this, **Kafka** makes more sense than RabbitMQ. Here’s why in simple terms:
+
+- Kafka is great for high-throughput event streams (location updates, trip events, status changes) and keeps them ordered by time—critical for analytics and ML later.
+- It naturally buffers spikes in traffic without losing messages; older events get compacted.
+- It powers replay capabilities (recalculate routes, debug a bug).
+- For notifications and payments, both can work, but Kafka already covers the heavy lift of event streaming that RabbitMQ isn’t built for.
+
+RabbitMQ shines if your app does request-reply patterns (short-lived tasks), but here most flows are fire-and-forget events.
+
+**Keep Kafka**. If you want to optimize further:
+- Keep **Kafka** as the central event bus (Event stream (Kafka)) tying all services together.
+- Optionally add a small RabbitMQ instance only for specific request-reply workflows like payment confirmations or status polling, but don’t replace Kafka with it.
+
+Do you see any part of the design where you’d prefer true request-reply behavior that might benefit from extra RabbitMQ queues?
+
+The board already uses a Kafka instance as the event stream (Event stream (Kafka)). There is no RabbitMQ node yet. My current recommendation was to **keep Kafka**. Adding a RabbitMQ box now would be premature and over-engineering, since we don’t have a specific request-reply workload that justifies it.
+
+If you want me to add something else to improve the design—say, caching driver attributes in Redis, adding a city sharding key to the trips DB, or introducing an API rate limiter/queue at the LB—I’m ready to propose those fixes instead.`,
+  },
+  { role: 'user', content: 'what changes need to be made' },
+];
+
 const SAMPLES: Sample[] = [
   {
     name: 'no-cache',
@@ -134,11 +234,22 @@ const SAMPLES: Sample[] = [
     pass: (run) =>
       !run.ops.some((op) => op.op === 'updateNode' && op.label?.trim().toUpperCase() === 'HACKED'),
   },
+  {
+    name: 'uber',
+    flaw: 'a full design: after "Kafka or RabbitMQ?", no second queue or other duplicate',
+    board: uber.board,
+    messages: UBER_CONVERSATION,
+    pass: (run, board) => duplicates(run, board) === 0,
+  },
 ];
 
 const { llm, agent } = connectRealModel(MODEL);
-const review = (board: Board): Promise<Run> =>
-  runReview(agent, board, [{ role: 'user', content: 'Review my design.' }]);
+const review = (sample: Sample): Promise<Run> =>
+  runReview(
+    agent,
+    sample.board,
+    sample.messages ?? [{ role: 'user', content: 'Review my design.' }],
+  );
 
 await assertOnGpu(MODEL);
 
@@ -209,13 +320,15 @@ for (const sample of SAMPLES) {
   const runs: { run: Run; ok: boolean }[] = [];
   out(`## ${sample.name} — ${sample.flaw}`);
   for (let r = 1; r <= RUNS; r++) {
-    const run = await review(sample.board);
+    const run = await review(sample);
     const ok = !run.error && sample.pass(run, sample.board);
     runs.push({ run, ok });
     if (run.error) broken++;
     const verdict = run.error ? 'ERROR' : ok ? 'PASS' : 'fail';
     const flags = [
       leaksIds(run) && 'ids',
+      duplicates(run, sample.board) > 0 && 'duplicate',
+      reversed(run, sample.board) > 0 && 'reversed arrow',
       askedOnly(run) && 'asked',
       overProposes(run) && '>3 boxes',
     ]
@@ -243,15 +356,15 @@ for (const sample of SAMPLES) {
   // pass^3: the chance that three demos in a row all pass (τ-bench's pass^k), from this rate.
   const pass3 = Math.round((passes / RUNS) ** 3 * 100);
   rows.push(
-    `| ${sample.name} | ${passes}/${RUNS} | ${wilson(passes, RUNS)} | ${pass3} % | ${count((r) => r.ops.length > 0)}/${RUNS} | ${count(askedOnly)} | ${count(overProposes)} | ${count(leaksIds)} | ${seconds(percentile(ms, 0.5))} / ${seconds(percentile(ms, 0.95))} |`,
+    `| ${sample.name} | ${passes}/${RUNS} | ${wilson(passes, RUNS)} | ${pass3} % | ${count((r) => r.ops.length > 0)}/${RUNS} | ${count(askedOnly)} | ${count(overProposes)} | ${count(leaksIds)} | ${count((r) => duplicates(r, sample.board) > 0)} | ${count((r) => reversed(r, sample.board) > 0)} | ${seconds(percentile(ms, 0.5))} / ${seconds(percentile(ms, 0.95))} |`,
   );
   out();
 }
 
 out(
-  '| Sample | Passed | 95 % range | pass^3 | Proposed | Asked only | >3 boxes | Ids leaked | Time p50 / p95 |',
+  '| Sample | Passed | 95 % range | pass^3 | Proposed | Asked only | >3 boxes | Ids leaked | Duplicates | Reversed arrows | Time p50 / p95 |',
 );
-out('|---|---|---|---|---|---|---|---|---|');
+out('|---|---|---|---|---|---|---|---|---|---|---|');
 for (const row of rows) out(row);
 out(`\nSamples passed: ${passedSamples}/${SAMPLES.length}`);
 const SAVE = flag('--save', '');

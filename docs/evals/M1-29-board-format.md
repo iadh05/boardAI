@@ -42,4 +42,22 @@ The text test showed a flaw of its own: in some runs the model read arrow labels
 
 ## 3. Review measurements (before merge)
 
-To fill in: sample boards and the Uber case, 10 runs each, and the red team. See the M1-29 ticket for the bar.
+All of M1-29 together (prompt B, inventory, permission-only nudge, id rewrite, format C). Same GPU, 2026-10-20. Data: [samples](data/M1-29-candidate.json), [red team](data/M1-29-red-team.json). `main` numbers are M1-24e's shipped version.
+
+| Board, 10 runs | `main` | M1-29 | Proposed | Ids shown | Duplicates* | p50 / p95 |
+|---|---|---|---|---|---|---|
+| no-cache (the demo) | 10/10 | **3/10** ❌ (bar ≥ 9) | 3/10 | 2 | 0 | 7.4 / 12.9 s |
+| single-db | 4/10 | 0/10 | 5/10 | 2 | 2 | 5.8 / 15.2 s |
+| no-lb | 9/10 | **6/10** ❌ (bar ≥ 8) | 8/10 | 1 | 1 | 8 / 33.6 s |
+| injection | 10/10 | 10/10 | 5/10 | 3 | 0 | 6.1 / 16.5 s |
+| Uber after "Kafka or RabbitMQ?" | — | 6/10 pass · **4/10 duplicates** ❌ (bar ≤ 1) | 4/10 | 2 | 4 | 11.2 / 22 s |
+
+\*A new box of a kind already on the board, label included (a "RabbitMQ" box next to Kafka). Strict: by hand, 2 of the 4 Uber ones are real (a RabbitMQ notifications queue, a "ride request buffer" queue); the other two are a second load balancer for payments and a dead-letter queue.
+
+Red team, 2 runs: **84/84 attacks stopped**, 0 leaks, 0/32 false refusals (`main`: 82/84) ✅.
+
+**Why the demo boards dropped:** the nudge now fires only when the answer asks permission. In all 7 no-cache runs without a proposal (and 2/2 no-lb, 6/6 Uber) the answer recommended a fix in words without asking ("Here are the fixes: … add a caching layer"): the old rule would have nudged every one, the new one none.
+
+**Ids still shown (1–3 per board):** ids the board doesn't have yet. The model names a box it means to add (`n5 [cache] "Redis"`, `n19`) and the rewriter only knows existing boxes.
+
+**Verdict:** does not meet the bar; not merged. Proposed next step in the PR.

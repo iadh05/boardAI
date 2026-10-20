@@ -14,7 +14,7 @@ const OLLAMA = 'http://localhost:11434';
 /** A board from boxes (laid out left to right) and arrows between them, by label. */
 export const boardOf = (
   boxes: [NodeKind, string][],
-  arrows: [string, string][],
+  arrows: [from: string, to: string, label?: string, mode?: 'async'][],
 ): { board: Board; idOf: (label: string) => string } => {
   const nodes = boxes.map(([kind, label], i) => ({
     id: randomUUID(),
@@ -23,10 +23,12 @@ export const boardOf = (
     position: { x: i * 300, y: (i % 2) * 120 },
   }));
   const idOf = (label: string) => nodes.find((n) => n.label === label)?.id ?? label;
-  const edges = arrows.map(([from, to]) => ({
+  const edges = arrows.map(([from, to, label, mode]) => ({
     id: randomUUID(),
     source: idOf(from),
     target: idOf(to),
+    ...(label ? { label } : {}),
+    ...(mode ? { mode } : {}),
   }));
   return { board: { nodes, edges }, idOf };
 };
