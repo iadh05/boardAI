@@ -226,7 +226,7 @@ export const createAgent = (deps: AgentDeps) => {
             !nudged &&
             round < maxRounds &&
             draft.ops.length === 0 &&
-            shouldNudge(said) // asks permission for a change, instead of proposing it (M1-29)
+            shouldNudge(said) // recommends a fix, not "no change" and not only an option (M1-29)
           ) {
             nudged = true;
             finished = false;
