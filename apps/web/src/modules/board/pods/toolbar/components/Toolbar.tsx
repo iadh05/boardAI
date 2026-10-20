@@ -65,46 +65,48 @@ export function Toolbar({ store }: ToolbarProps) {
   return (
     <DiagramPanel position="top-left">
       <div ref={panel} className="flex flex-col items-start gap-2">
-        <div
-          role="toolbar"
-          aria-label="Add a node"
-          className="flex flex-wrap gap-1 rounded-lg border border-line bg-surface p-1 shadow-sm"
-        >
-          {TOOLBAR_KINDS.map((kind) => (
-            <ToolButton
-              key={kind}
-              icon={KIND_ICON[kind]}
-              caption={KIND_DEFAULT_LABEL[kind]}
-              label={`Add ${KIND_DEFAULT_LABEL[kind]}`}
-              onClick={() => add(kind)}
+        {/* One box, two toolbars: `contents` lets both flow in the same rows, so Undo / Redo
+            fill the gap after Zone instead of taking a row of their own (found by hand, M2).
+            For screen readers they stay two toolbars: "Add a node" and "History". */}
+        <div className="flex flex-wrap gap-1 rounded-lg border border-line bg-surface p-1 shadow-sm">
+          <div role="toolbar" aria-label="Add a node" className="contents">
+            {TOOLBAR_KINDS.map((kind) => (
+              <ToolButton
+                key={kind}
+                icon={KIND_ICON[kind]}
+                caption={KIND_DEFAULT_LABEL[kind]}
+                label={`Add ${KIND_DEFAULT_LABEL[kind]}`}
+                onClick={() => add(kind)}
+              />
+            ))}
+            <span
+              role="separator"
+              aria-orientation="vertical"
+              className="mx-1 w-px self-stretch bg-line"
             />
-          ))}
+            <ToolButton icon={SquareDashed} caption="Zone" label="Add Zone" onClick={addZoneHere} />
+          </div>
           <span
             role="separator"
             aria-orientation="vertical"
             className="mx-1 w-px self-stretch bg-line"
           />
-          <ToolButton icon={SquareDashed} caption="Zone" label="Add Zone" onClick={addZoneHere} />
-        </div>
-        <div
-          role="toolbar"
-          aria-label="History"
-          className="flex gap-1 rounded-lg border border-line bg-surface p-1 shadow-sm"
-        >
-          <ToolButton
-            icon={Undo2}
-            caption="Undo"
-            onClick={undo}
-            disabled={!canUndo}
-            className="disabled:opacity-40"
-          />
-          <ToolButton
-            icon={Redo2}
-            caption="Redo"
-            onClick={redo}
-            disabled={!canRedo}
-            className="disabled:opacity-40"
-          />
+          <div role="toolbar" aria-label="History" className="contents">
+            <ToolButton
+              icon={Undo2}
+              caption="Undo"
+              onClick={undo}
+              disabled={!canUndo}
+              className="disabled:opacity-40"
+            />
+            <ToolButton
+              icon={Redo2}
+              caption="Redo"
+              onClick={redo}
+              disabled={!canRedo}
+              className="disabled:opacity-40"
+            />
+          </div>
         </div>
         {hint && (
           // w-0 + min-w-full: as wide as the toolbar, never wider. min-h-10: room for two lines

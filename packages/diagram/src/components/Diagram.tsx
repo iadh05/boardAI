@@ -10,6 +10,7 @@ import {
   ReactFlowProvider,
   useNodesInitialized,
   useReactFlow,
+  useStoreApi,
   type Edge,
   type EdgeChange,
   type EdgeTypes,
@@ -26,6 +27,7 @@ import {
   type ReactNode,
 } from 'react';
 import { canvasChanges, commitMoves, mergeEdges, mergeNodes } from '../flow/changes.ts';
+import { fitPadding } from '../flow/fitPadding.ts';
 import { createZoneDrag, type DragItem } from '../flow/zoneDrag.ts';
 import { toReactFlow, type BoxNode, type FlowNode } from '../flow/toReactFlow.ts';
 import type { DiagramEdge, DiagramNode, DiagramPosition, DiagramZone } from '../types.ts';
@@ -114,7 +116,12 @@ const nodeTypes: NodeTypes = { box: BoxNodeView, zone: ZoneView };
 const NO_ZONES: readonly DiagramZone[] = [];
 const DEFAULT_MIN_ZONE = { width: 200, height: 100 };
 const edgeTypes: EdgeTypes = { routed: RoutedEdge };
-const FIT_VIEW = { maxZoom: 1 };
+/**
+ * Zooming out down to a quarter, not React Flow's half: a fit on a narrow canvas must be able to
+ * show the whole board (found by hand, M2) — you zoom in from there.
+ */
+const MIN_ZOOM = 0.25;
+const FIT_VIEW = { maxZoom: 1, minZoom: MIN_ZOOM };
 const DELETE_KEYS = ['Backspace', 'Delete'];
 
 /** An architecture diagram: boxes, arrows routed between their sides, labels. Controlled. */
@@ -294,9 +301,31 @@ function DiagramCanvas({
 
   // fitKey changed: fit once the boxes are measured (React Flow can't fit what it hasn't drawn).
   const nodesDrawn = useNodesInitialized();
+  const flowStore = useStoreApi();
   const fitFor = useRef(fitKey);
-  const fitPending = useRef(false);
+  // Opening with content: fit once drawn (React Flow's own fit-on-open ignores the panels).
+  const fitPending = useRef(fitOnOpen);
   const hasContent = nodesProp.length > 0 || zonesProp.length > 0;
+  /** Fits the diagram to the part of the pane no panel covers (the app's toolbar, …). */
+  const fitAroundPanels = () => {
+    const pane = flowStore.getState().domNode;
+    if (!pane) return void fitView(FIT_VIEW);
+    const box = pane.getBoundingClientRect();
+    const panels = [...pane.querySelectorAll('.react-flow__panel')].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.left - box.left, y: r.top - box.top, width: r.width, height: r.height };
+    });
+    const pad = fitPadding({ width: box.width, height: box.height }, panels);
+    void fitView({
+      ...FIT_VIEW,
+      padding: {
+        top: `${pad.top}px`,
+        right: `${pad.right}px`,
+        bottom: `${pad.bottom}px`,
+        left: `${pad.left}px`,
+      },
+    });
+  };
   useEffect(() => {
     if (fitKey === fitFor.current) return;
     fitFor.current = fitKey;
@@ -307,8 +336,8 @@ function DiagramCanvas({
   useEffect(() => {
     if (!fitPending.current || !nodesDrawn) return;
     fitPending.current = false;
-    void fitView(FIT_VIEW);
-  }, [fitKey, nodesDrawn, fitView]);
+    fitAroundPanels();
+  });
 
   return (
     <DiagramContext value={context}>
@@ -345,12 +374,11 @@ function DiagramCanvas({
               deleteKeyCode={DELETE_KEYS}
               snapToGrid={snapGrid !== null}
               snapGrid={snapGrid === null ? undefined : [snapGrid, snapGrid]}
-              // Fit only a diagram that opens with content. On an empty one React Flow would fit when
-              // the first box appears, moving the camera under whatever covers the canvas (the
-              // app's toolbar) — the app already placed that box where the user can see it.
-              fitView={fitOnOpen}
-              fitViewOptions={FIT_VIEW}
+              // No fitView here: fitAroundPanels does it (on open with content, and on fitKey), so
+              // boxes never land under the app's toolbar. An empty diagram isn't fitted: the app
+              // places the first box where the user can see it.
               aria-label={ariaLabel}
+              minZoom={MIN_ZOOM}
               onPointerMove={
                 onPointerMove &&
                 ((event) =>
