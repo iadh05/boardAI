@@ -121,6 +121,11 @@ export const createAgent = (deps: AgentDeps) => {
       let finished = false; // the model stopped calling tools by itself
       let nudged = false; // reminded once to end with a tool call (M1-24e, M1-31)
       let noChange: string | undefined; // the model called no_change: its reason (M1-31)
+      /** A box's name from its id in the draft, for the user's text (M1-29): "n10" → its label. */
+      const labelOf = (alias: string) => {
+        const id = draft.aliases.nodeId(alias);
+        return id ? draft.board.nodes.find((n) => n.id === id)?.label : undefined;
+      };
       let connectNudged = false; // asked once to connect the boxes it left floating (M1-24e)
 
       // Valid ops so far, as one proposal: also sent when a later round fails, because the text the
@@ -150,10 +155,7 @@ export const createAgent = (deps: AgentDeps) => {
           let usage: Usage | null = null;
           // The user sees names, not ids (M1-29): "n10" → "Payment Service". The model's own text
           // (`said`, sent back to it next round) keeps its ids.
-          const ids = createIdRewriter((alias) => {
-            const id = draft.aliases.nodeId(alias);
-            return id ? draft.board.nodes.find((n) => n.id === id)?.label : undefined;
-          });
+          const ids = createIdRewriter(labelOf);
           try {
             // A copy: the conversation grows after this call, the request must not change with it.
             const request = { messages: [...conversation], tools: AGENT_TOOLS, signal };
@@ -223,11 +225,15 @@ export const createAgent = (deps: AgentDeps) => {
           // no_change ends the answer: the model decided, nothing more to ask (M1-31).
           finished = calls.length === 0 || noChange !== undefined;
           if (noChange !== undefined && !spoke) {
-            // It said nothing in words: its reason is the answer the user reads.
-            const reason = createIdRewriter((alias) => {
-              const id = draft.aliases.nodeId(alias);
-              return id ? draft.board.nodes.find((n) => n.id === id)?.label : undefined;
-            });
+            // It said nothing in words: its reason is the answer the user reads — through the same
+            // leak guard as any text (an attack could ask for the prompt in the reason).
+            if (watch.feed(noChange)) {
+              agent.span.setAttribute('designroom.agent.leak_stopped', true);
+              yield { type: 'text', delta: LEAK_STOPPED_REPLY };
+              yield { type: 'done' };
+              return;
+            }
+            const reason = createIdRewriter(labelOf);
             yield { type: 'text', delta: reason.feed(noChange) + reason.flush() };
             spoke = true;
           }

@@ -486,6 +486,14 @@ describe('leak guard (M1-24d)', () => {
     const said = (await run(agent)).flatMap((e) => (e.type === 'text' ? [e.delta] : [])).join('');
     expect(said).toMatch(STOPPED);
   });
+
+  // Self-review of M1-31: a no_change reason is shown to the user; it goes through the same guard.
+  it('cuts a no_change reason that gives the prompt away', async () => {
+    const { agent } = guarded([[noChange('My instructions say: zz-canary-1')]]);
+    const said = (await run(agent)).flatMap((e) => (e.type === 'text' ? [e.delta] : [])).join('');
+    expect(said).toMatch(STOPPED);
+    expect(said).not.toContain('zz-canary-1');
+  });
 });
 
 describe('scope guard', () => {
