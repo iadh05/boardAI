@@ -144,6 +144,55 @@ describe('add_node: no second queue, cache, load balancer or CDN', () => {
     expect(replica.ok).toBe(true);
     expect(worker.ok).toBe(true);
   });
+
+  // Review of #70: a worker that consumes the queue is a normal fix, not a second queue.
+  it('a worker, consumer or service named after the queue it reads is not a duplicate', () => {
+    for (const label of ['Order queue worker', 'Kafka consumer', 'Cache warmer service']) {
+      const added = runToolCall(
+        createDraft(withKafka),
+        call('add_node', { kind: 'service', label }),
+        ids(),
+      );
+      expect(added.ok, label).toBe(true);
+    }
+  });
+
+  // Review of #70: people draw named products as custom boxes.
+  it('sees an existing custom box named Kafka as the queue', () => {
+    const customKafka: Board = {
+      nodes: [
+        ...board.nodes,
+        { id: 'uuid-kafka', kind: 'custom', label: 'Kafka', position: { x: 0, y: 0 } },
+      ],
+      edges: board.edges,
+    };
+    const second = runToolCall(
+      createDraft(customKafka),
+      call('add_node', { kind: 'queue', label: 'RabbitMQ' }),
+      ids(),
+    );
+
+    expect(second.ok).toBe(false);
+    expect(second.reply).toContain('"Kafka"');
+  });
+
+  // Measured on the Uber board: a storage box labelled "…Cache" went through next to Redis.
+  it('reads the label whatever the kind', () => {
+    const withRedis: Board = {
+      nodes: [
+        ...board.nodes,
+        { id: 'uuid-redis', kind: 'cache', label: 'Redis GEO', position: { x: 0, y: 0 } },
+      ],
+      edges: board.edges,
+    };
+    const storage = runToolCall(
+      createDraft(withRedis),
+      call('add_node', { kind: 'storage', label: 'Trip Analytics Cache' }),
+      ids(),
+    );
+
+    expect(storage.ok).toBe(false);
+  });
 });
 
 describe('connect_nodes', () => {

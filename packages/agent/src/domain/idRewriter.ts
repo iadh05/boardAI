@@ -20,9 +20,23 @@ export const createIdRewriter = (labelOf: (id: string) => string | undefined) =>
   const namedAfter = (rest: string, label: string) =>
     rest.replace(OPENERS, '').toLowerCase().startsWith(label.toLowerCase());
 
+  /** The end of what was already shown: an id in the next chunk may follow its name. */
+  let shownTail = '';
+  const words = (text: string): string[] => text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+  /** The word right before an id is part of its name ("the Payment Service (n10)", "Kafka (n13)"). */
+  const namedBefore = (before: string, label: string) => {
+    const last = words(before).at(-1);
+    return last !== undefined && words(label).includes(last);
+  };
+
   const rewrite = (text: string) =>
     text
-      .replace(IN_PARENS, (whole, id: string) => (labelOf(id) ? '' : whole))
+      .replace(IN_PARENS, (whole, id: string, at: number, all: string) => {
+        const label = labelOf(id);
+        if (!label) return whole;
+        // Generic words before ("the bus (n13)"): the id was the only name; keep it, readable.
+        return namedBefore(shownTail + all.slice(0, at), label) ? '' : ` (${label})`;
+      })
       .replace(
         ID,
         (
@@ -66,7 +80,9 @@ export const createIdRewriter = (labelOf: (id: string) => string | undefined) =>
       const text = held + delta;
       const end = safeEnd(text);
       held = text.slice(end);
-      return rewrite(text.slice(0, end));
+      const shown = rewrite(text.slice(0, end));
+      shownTail = (shownTail + shown).slice(-80);
+      return shown;
     },
     /** Everything still held, at the end of the answer. */
     flush: (): string => {

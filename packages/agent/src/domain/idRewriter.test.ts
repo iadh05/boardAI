@@ -72,6 +72,17 @@ describe('ids rewritten to labels (M1-29)', () => {
     expect(rewrite('before `', 'n11` so')).toBe('before Notifications so');
   });
 
+  // Review of #70: "connect it to the database (n2)" lost the only name of the box.
+  it('an id in parentheses after generic words becomes the name in parentheses', () => {
+    expect(rewrite('Send it to the bus (n13) first.')).toBe(
+      'Send it to the bus (Event stream (Kafka)) first.',
+    );
+    expect(rewrite('Send it to the bus (', 'n13) first.')).toBe(
+      'Send it to the bus (Event stream (Kafka)) first.',
+    );
+    expect(rewrite('Notifications (`n11`) retries.')).toBe('Notifications retries.');
+  });
+
   it('flush releases what was held at the end', () => {
     expect(rewrite('ends with n1')).toBe('ends with n1'); // n1 unknown here: kept as is
     expect(rewrite('ends with n10')).toBe('ends with Payment Service');

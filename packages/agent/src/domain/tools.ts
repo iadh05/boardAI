@@ -95,11 +95,24 @@ const ONE_OF_A_KIND: Partial<Record<NodeKind, RegExp>> = {
   cdn: /\bcdn\b/i,
 };
 
+/** A box that works *with* a queue or cache, not one: "Order queue worker", "Kafka consumer". */
+const ROLE = /\b(worker|consumer|processor|service|warmer|api)\b/i;
+const JOBS = Object.keys(ONE_OF_A_KIND) as NodeKind[];
+
+/**
+ * Which one-of-a-kind job a box does: its kind, or what its label names whatever its kind (a
+ * custom "Kafka", a storage "Analytics cache"; review of #70). None for the boxes around it.
+ */
+const jobOf = (kind: NodeKind, label: string): NodeKind | undefined => {
+  if (kind in ONE_OF_A_KIND) return kind;
+  if (ROLE.test(label)) return undefined;
+  return JOBS.find((job) => ONE_OF_A_KIND[job]?.test(label));
+};
+
 /** The box already doing the job of the one the model wants to add, if any. */
 const alreadyThere = (board: Board, kind: NodeKind, label: string) => {
-  const sameJob = (k: NodeKind) =>
-    k === kind || ((kind === 'custom' || kind === 'service') && ONE_OF_A_KIND[k]?.test(label));
-  return board.nodes.find((n) => n.kind in ONE_OF_A_KIND && sameJob(n.kind));
+  const job = jobOf(kind, label);
+  return job && board.nodes.find((n) => jobOf(n.kind, n.label) === job);
 };
 
 type Planned = { op: AgentOp; aliases: Aliases; describe: (board: Board) => string };
@@ -162,7 +175,7 @@ const plan = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
       const existing = alreadyThere(draft.board, args.data.kind, args.data.label);
       if (existing)
         return refuse(
-          `There is already a ${existing.kind}: ${nodeLine(draft.board, existing.id, draft.aliases)}. Do not add a second one: connect to it, or rename it with update_node to show it does more (e.g. "Redis (cluster, 3 nodes)").`,
+          `There is already a ${jobOf(existing.kind, existing.label) ?? existing.kind}: ${nodeLine(draft.board, existing.id, draft.aliases)}. Do not add a second one: connect to it, or rename it with update_node to show it does more (e.g. "Redis (cluster, 3 nodes)").`,
         );
       const near = args.data.near === undefined ? undefined : resolve(args.data.near);
       if (args.data.near !== undefined && near === undefined) return unknown(args.data.near);
