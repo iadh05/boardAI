@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button, Icon, Input } from '../../../../../core/ui/index.ts';
 import { roomPath } from '../../../lib/roomLink.ts';
 import { useConnectionStore, type ConnectionStatus } from '../../../store/connectionStore.ts';
+import { usePresenceStore } from '../../../store/presenceStore.ts';
 
 const LABEL: Record<ConnectionStatus, string> = {
   connected: 'Connected',
@@ -17,12 +18,17 @@ const DOT: Record<ConnectionStatus, string> = {
 };
 
 export type RoomStatusProps = {
-  /** The app's connection store unless a test passes its own. */
+  /** The app's stores unless a test passes its own. */
   store?: typeof useConnectionStore;
+  presence?: typeof usePresenceStore;
 };
 
-/** Header part of a room: are my edits reaching the others, and the link to invite them. */
-export function RoomStatus({ store = useConnectionStore }: RoomStatusProps) {
+/** Header part of a room: are my edits reaching the others, who's here, the link to invite them. */
+export function RoomStatus({
+  store = useConnectionStore,
+  presence = usePresenceStore,
+}: RoomStatusProps) {
+  const others = presence((s) => s.others.length);
   const status = store((s) => s.status);
   const loaded = store((s) => s.loaded);
   const roomId = store((s) => s.roomId);
@@ -45,6 +51,9 @@ export function RoomStatus({ store = useConnectionStore }: RoomStatusProps) {
         <span aria-hidden="true" className={`size-2 rounded-full ${DOT[status]}`} />
         {label}
       </p>
+      {status === 'connected' && (
+        <p className="text-muted">{others === 0 ? 'Just you' : `${others + 1} here`}</p>
+      )}
       {copy === 'refused' ? (
         <Input
           aria-label="Room link"

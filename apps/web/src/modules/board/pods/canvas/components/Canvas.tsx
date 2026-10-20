@@ -5,7 +5,7 @@ import {
   MAX_LABEL_LENGTH,
   MIN_ZONE_SIZE,
 } from '@designroom/domain';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useBoardStore } from '../../../store/boardStore.ts';
 import { Toolbar } from '../../toolbar/index.ts';
 import { toDiagram } from '../mappers/toDiagram.tsx';
@@ -16,10 +16,14 @@ const MINIMAP_FROM = 8;
 export type CanvasProps = {
   /** The board store to show; the app's store by default, a test store in tests. */
   store?: typeof useBoardStore;
+  /** Where the pointer is on the board, as it moves (null: it left). For live cursors (M2). */
+  onPointerMove?: (position: { x: number; y: number } | null) => void;
+  /** More to draw on the board, from other modules (other people's cursors, M2). */
+  children?: ReactNode;
 };
 
 /** The diagram area: @designroom/diagram, driven by the board store (ADR-004). */
-export function Canvas({ store = useBoardStore }: CanvasProps) {
+export function Canvas({ store = useBoardStore, onPointerMove, children }: CanvasProps) {
   const board = store((s) => s.board);
   const proposal = store((s) => s.proposal);
   const editingNodeId = store((s) => s.editingNodeId);
@@ -84,8 +88,10 @@ export function Canvas({ store = useBoardStore }: CanvasProps) {
         onZoneEditStart={startEditingZone}
         onZoneLabelCommit={renameZone}
         onZoneEditEnd={stopEditingZone}
+        {...(onPointerMove ? { onPointerMove } : {})}
       >
         <Toolbar store={store} />
+        {children}
       </Diagram>
     </div>
   );

@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { Awareness } from 'y-protocols/awareness';
 import * as Y from 'yjs';
 import { createConnectionStore } from '../store/connectionStore.ts';
 import type { RoomProvider } from './connectRoom.ts';
 import { joinRoomFromUrl } from './joinRoomFromUrl.ts';
 
-const provider: RoomProvider = { on: () => undefined, destroy: () => undefined };
+const provider: RoomProvider = {
+  on: () => undefined,
+  awareness: new Awareness(new Y.Doc()),
+  destroy: () => undefined,
+};
 
 const join = (pathname: string) => {
   const replaced: string[] = [];

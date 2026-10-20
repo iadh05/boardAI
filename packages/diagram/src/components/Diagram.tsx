@@ -8,6 +8,7 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  useReactFlow,
   type Edge,
   type EdgeChange,
   type EdgeTypes,
@@ -92,8 +93,13 @@ export type DiagramProps = {
   snapGrid?: number | null;
   /** Show the overview map (bottom right). */
   minimap?: boolean;
-  /** Panels drawn over the diagram (see DiagramPanel). */
+  /** Panels drawn over the diagram (see DiagramPanel), markers pinned to it (DiagramMarker). */
   children?: ReactNode;
+  /**
+   * Where the pointer is on the diagram (diagram coordinates), as it moves; null when it leaves.
+   * For showing it to others (live cursors).
+   */
+  onPointerMove?: (position: DiagramPosition | null) => void;
 };
 
 // Defined once, outside any component: a new object each render would remount every node.
@@ -141,6 +147,7 @@ function DiagramCanvas({
   onZoneEditStart,
   onZoneLabelCommit,
   onZoneEditEnd,
+  onPointerMove,
   router,
   snapGrid = 20,
   minimap = true,
@@ -275,6 +282,8 @@ function DiagramCanvas({
     [editingZoneId, minZoneSize],
   );
 
+  const { screenToFlowPosition } = useReactFlow();
+
   return (
     <DiagramContext value={context}>
       <ZoneContext value={zoneContext}>
@@ -316,6 +325,12 @@ function DiagramCanvas({
               fitView={fitOnOpen}
               fitViewOptions={FIT_VIEW}
               aria-label={ariaLabel}
+              onPointerMove={
+                onPointerMove &&
+                ((event) =>
+                  onPointerMove(screenToFlowPosition({ x: event.clientX, y: event.clientY })))
+              }
+              onPointerLeave={onPointerMove && (() => onPointerMove(null))}
             >
               {/* Panels first: they come before the zoom controls when tabbing. */}
               {children}

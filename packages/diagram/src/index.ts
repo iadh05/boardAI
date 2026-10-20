@@ -19,3 +19,5 @@ export type {
 } from './types.ts';
 export type { DiagramRouter, Route, RouterBox, RouterLink } from './router/types.ts';
 export type { DiagramRect } from './flow/viewport.ts';
+export { DiagramMarker } from './components/DiagramMarker.tsx';
+export type { DiagramMarkerProps } from './components/DiagramMarker.tsx';
