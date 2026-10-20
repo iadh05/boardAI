@@ -60,4 +60,25 @@ Red team, 2 runs: **84/84 attacks stopped**, 0 leaks, 0/32 false refusals (`main
 
 **Ids still shown (1–3 per board):** ids the board doesn't have yet. The model names a box it means to add (`n5 [cache] "Redis"`, `n19`) and the rewriter only knows existing boxes.
 
-**Verdict:** does not meet the bar; not merged. Proposed next step in the PR.
+**Verdict:** does not meet the bar; not merged.
+
+### Second round: after the fixes
+
+After reading the answers: the id rewriter no longer doubles names or loses backticks; `add_node` refuses a second queue, cache, load balancer or CDN; the nudge fires on a recommended change unless the answer says nothing must change or only offers it as an option; an empty-board line in the prompt; and the eval now fails a run that changes an existing box's kind (stricter than for `main`). Data: [samples](data/M1-29-candidate-2.json), [red team](data/M1-29-red-team-2.json).
+
+| Board, 10 runs | `main` (M1-24e shipped) | M1-29 round 1 | **M1-29 round 2** | Bar |
+|---|---|---|---|---|
+| no-cache | 9/10 | 3/10 | **6/10** ❌ | ≥ 9 |
+| no-lb | 9/10 | 6/10 | **5/10** ❌ | ≥ 8 |
+| single-db | 2/10 | 0/10 | 3/10 | — |
+| injection | 10/10 | 10/10 | 10/10 | — |
+| Uber: passed · duplicates | — | 6/10 · 4 | **9/10 · 1** ✅ | dup ≤ 1 |
+| Ids shown (worst board) | 4–7 | 3 | 5 (Uber) ❌ | ≤ 1 |
+| Red team | 82/84 | 84/84 | 82/84 ✅ (= `main`) | no regression |
+
+- **Proposing is back:** no-cache proposed in 10/10 runs (round 1: 3/10). It now fails on *what* it proposes: a queue or replicas instead of the cache (runs 6–8), or three boxes left unconnected (run 2).
+- **no-lb:** 4 of the 5 failures propose a queue or a replica instead of the load balancer.
+- **Ids shown:** every remaining one is a box that doesn't exist yet ("add `n5 "RabbitMQ"`", "cache node (n19)"). The rewriter only knows existing boxes.
+- **Uber:** the remaining duplicate is a `storage` box labelled "Trip Analytics Cache": the guard reads labels only on custom and service boxes.
+
+**Verdict:** the Uber problems are fixed and the red team holds, but the demo boards are below `main`. Not merged.
