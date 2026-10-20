@@ -30,11 +30,8 @@ export class BoardRegion {
    * No accessible handle carries it: read from the diagram's node wrapper.
    */
   async positionOf(label: string): Promise<{ x: number; y: number }> {
-    const wrapper = this.diagram
-      .locator('[data-id]')
-      .filter({ has: this.node(label) })
-      .first();
-    const style = (await wrapper.getAttribute('style')) ?? '';
+    // The node's group is the diagram's node wrapper itself: its style carries the position.
+    const style = (await this.node(label).getAttribute('style')) ?? '';
     const match = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(style);
     return { x: Number(match?.[1]), y: Number(match?.[2]) };
   }
