@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { diag, metrics, trace } from '@opentelemetry/api';
 import { MeterProvider } from '@opentelemetry/sdk-metrics';
 import { afterEach, describe, expect, it } from 'vitest';
-import { otlpUrl, startTelemetry, toLogRecord } from './telemetry.ts';
+import { otlpUrl, startTelemetry, toLogRecord, traceDestinations } from './telemetry.ts';
 
 /** A stand-in collector on a free port: answers 200 to everything, remembers the paths. */
 const fakeCollector = async () => {
@@ -81,6 +81,24 @@ describe('toLogRecord (M1-26d)', () => {
       toLogRecord({ time: 0, level, msg: '', fields: {} }).severityNumber;
     expect([severity('debug'), severity('info'), severity('warn'), severity('error')]).toEqual([
       5, 9, 13, 17,
+    ]);
+  });
+});
+
+describe('traceDestinations (M1-26c)', () => {
+  it('sends spans to the collector, and to Phoenix too when it is set', () => {
+    expect(traceDestinations({ endpoint: 'http://localhost:4318' })).toEqual([
+      { url: 'http://localhost:4318/v1/traces', encoding: 'json' },
+    ]);
+    expect(
+      traceDestinations({
+        endpoint: 'http://localhost:4318',
+        phoenixEndpoint: 'http://localhost:6006',
+      }),
+    ).toEqual([
+      { url: 'http://localhost:4318/v1/traces', encoding: 'json' },
+      // Phoenix answers 415 to JSON: protobuf only.
+      { url: 'http://localhost:6006/v1/traces', encoding: 'protobuf' },
     ]);
   });
 });

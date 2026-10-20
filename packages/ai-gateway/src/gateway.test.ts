@@ -356,6 +356,50 @@ describe('gateway — tracing', () => {
     expect(exporter.getFinishedSpans()[0]?.name).toBe('chat other');
   });
 
+  // M1-26c: what was asked and answered, for Phoenix — only when the server turns it on (local).
+  it('records the messages and the answer as OpenInference attributes when asked to', async () => {
+    const { gateway } = setup(
+      createFakeProvider([
+        [
+          text('Add a cache.'),
+          { type: 'toolCall', call: { id: 'c1', name: 'add_node', arguments: { kind: 'cache' } } },
+        ],
+      ]),
+      { recordContent: true },
+    );
+
+    await drain(
+      gateway.chat({
+        messages: [
+          { role: 'system', content: 'You review designs.' },
+          { role: 'user', content: 'Review it' },
+        ],
+      }),
+    );
+
+    expect(exporter.getFinishedSpans()[0]?.attributes).toMatchObject({
+      'llm.input_messages.0.message.role': 'system',
+      'llm.input_messages.0.message.content': 'You review designs.',
+      'llm.input_messages.1.message.role': 'user',
+      'llm.input_messages.1.message.content': 'Review it',
+      'input.value': 'Review it',
+      'llm.output_messages.0.message.role': 'assistant',
+      'llm.output_messages.0.message.content': 'Add a cache.',
+      'llm.output_messages.0.message.tool_calls.0.tool_call.function.name': 'add_node',
+      'llm.output_messages.0.message.tool_calls.0.tool_call.function.arguments': '{"kind":"cache"}',
+      'output.value': 'Add a cache.',
+    });
+  });
+
+  it('records no content by default: prompts and boards stay out of traces', async () => {
+    const { gateway } = setup(createFakeProvider([[text('Add a cache.')]]));
+
+    await drain(gateway.chat(input));
+
+    const keys = Object.keys(exporter.getFinishedSpans()[0]?.attributes ?? {});
+    expect(keys.filter((k) => /message|input\.value|output\.value/.test(k))).toEqual([]);
+  });
+
   it('marks a failed call as an error, with its code', async () => {
     const { gateway } = setup(
       providerOf(() => {

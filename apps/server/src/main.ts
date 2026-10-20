@@ -39,6 +39,7 @@ export const createApp = (deps: AppDeps) => {
     model: deps.config.llm.model, // names the LLM spans
     timeoutMs: deps.config.llm.timeoutMs,
     retries: 1,
+    recordContent: deps.config.traceContent, // prompts and answers in spans: local Phoenix only
   });
   // Opt-in (LLM_CALL_LOG): every model call, exactly as sent and answered, for diagnosing the agent.
   const callLog = deps.config.llmCallLog;
@@ -61,7 +62,7 @@ export const createApp = (deps: AppDeps) => {
   app.route(
     '/api/chat',
     createChatModule({
-      agent: createReviewAgent(llm),
+      agent: createReviewAgent(llm, { recordContent: deps.config.traceContent }),
       logger: deps.logger,
       contextTokens: deps.config.llm.contextTokens,
       reporter,

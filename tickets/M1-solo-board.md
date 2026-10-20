@@ -1290,12 +1290,12 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 **Result (2026-10-21):** checked end to end with the fake model. One chat request gave 6 log lines in Loki (`{service_name="designroom-server"}`), each with `trace_id` equal to our `traceId`, and the same trace in Tempo: 13 spans, from `POST /api/chat` down to each tool call.
 
 ### M1-26c — Phoenix + feedback
-**Status:** todo · **Size:** M · **Depends on:** M1-26a, Docker
+**Status:** doing (Phoenix part in review; feedback todo) · **Size:** M · **Depends on:** M1-26a, Docker
 
 **Tasks**
-- [ ] **Phoenix**: add the container to `docker-compose.yml` (UI on :6006); second trace exporter in the server pointing at Phoenix's OTLP HTTP endpoint (check the Phoenix docs for the exact path).
-- [ ] OpenInference input/output: prompt, board text, tool arguments and results — behind a switch, local only (architecture §9).
-- [ ] Same switch for a refused tool call's span status: today it holds the reply the model got, which can quote a label (M1-26a review).
+- [x] **Phoenix**: `arizephoenix/phoenix:20.19.0` in `docker-compose.yml` behind the `agent` profile (UI and OTLP on :6006, SQLite in a volume); a second trace exporter when `PHOENIX_COLLECTOR_ENDPOINT` is set. Phoenix takes OTLP in **protobuf only** (415 to JSON), so its exporter is `exporter-trace-otlp-proto`; Grafana keeps JSON. Traces filed under the project "designroom".
+- [x] OpenInference input/output: prompt, board text, tool arguments and results — behind a switch (`TRACE_CONTENT=true`), local only (architecture §9).
+- [x] Same switch for a refused tool call's span status: without it, the status says "refused", not the reply (which can quote a label).
 - [ ] Add `traceId` to the `proposal` event; on Accept/Reject the web app calls `POST /api/chat/feedback`, and the server records it on the trace as feedback (Phoenix annotations API — check the docs).
 
 **Acceptance criteria**
