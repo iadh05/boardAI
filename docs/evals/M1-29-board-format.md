@@ -1,0 +1,45 @@
+# M1-29 — How the board reaches the model
+
+**Question (owner, 2026-10-20):** is the board better given to the model as text, SVG or an image? Tried before deciding.
+**Model:** `designroom-qwen` (Qwen3.5 9B, Q4_K_M, thinking off), RTX 5060 Ti, 100 % GPU. Spike scripts kept out of the repo; they called Ollama directly because the gateway carries text only.
+
+## 1. Text vs SVG vs screenshot
+
+Four boards (no-cache, single-db, no-lb: 4–6 boxes; Uber: 18 boxes, 19 arrows), 5 runs per board × format.
+
+- **Text:** the agent's board text, at the time `n1 [client] "Rider app" -> n3 ("assets")`.
+- **SVG:** what an "export as SVG" gives: boxes with label and kind, arrows with markers and labels.
+- **Image:** a screenshot of the real canvas, toolbar and minimap hidden: what the user sees, cut-off labels included.
+
+**Reading test:** "list every box and every arrow", scored against the board.
+
+| Board | Text | SVG | Image |
+|---|---|---|---|
+| Small boards, arrows found | 100 % | 80–100 % | 100 % |
+| Uber, arrows found | 79 % | 47 % | 36 % |
+| Uber, input tokens | 678 | 3,807 | 990 |
+
+**Review test:** the real system prompt with "Review my design." The known flaw was named in 14/15 runs with text, 10/15 with SVG and 13/15 with the image. By hand on the Uber answers, the image caused the most claims that something already on the board was missing (3–4/5, e.g. "no load balancer in front of the API Gateway"), against 0–1/5 for text.
+
+**Decision:** keep text. The first run had the toolbar in the screenshot and the model listed buttons as boxes; it was re-run without it, and the numbers above are from the clean screenshot. Vision stays for photo → diagram (A3).
+
+## 2. Which text layout
+
+The text test showed a flaw of its own: in some runs the model read arrow labels as boxes (`-> n4 ("HTTPS")` → "Rider app → HTTPS"). Uber board, reading test, 10 runs each. Bar set before measuring: ≥ 95 % of arrows on average, no run under 80 %, ≤ 50 % more tokens.
+
+| Layout | Example | Arrows found | Worst run | Perfect runs | Tokens |
+|---|---|---|---|---|---|
+| Before | `n1 [client] "Rider app" -> n3 ("assets"), n4 ("HTTPS")` | 57 % | 5 % | 1/10 | 678 |
+| A | `-> n3 (label "assets"), n4 (label "HTTPS")` | 87 % | 68 % | 1/10 | 711 |
+| B | `-> n3 "CDN (app assets, map tiles)" (label "assets")` | 83 % | 16 % | 1/10 | 830 |
+| **C** | `Boxes:` then `Arrows:` with `n1 -> n3 (label "assets")` | **100 %** | **100 %** | **10/10** | **788** |
+| D | C with both ends named | 100 % | 100 % | 10/10 | 1,005 |
+
+- Before: 4 of 10 runs collapsed to ≤ 11 %: every arrow label taken for a box.
+- A and B: the same two arrows missed in most runs (Payment Service → PSP, Notifications → Push / SMS), short lines in the middle of the listing; B once stopped after 3 arrows.
+- **Chosen: C**: as accurate as D for 22 % fewer tokens.
+- Caveat: the reading test asks for a list of arrows, which C already is. The review measurements below check that reviews don't get worse.
+
+## 3. Review measurements (before merge)
+
+To fill in: sample boards and the Uber case, 10 runs each, and the red team. See the M1-29 ticket for the bar.

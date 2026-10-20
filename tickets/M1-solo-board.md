@@ -53,6 +53,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-24c | Context 128k: model setting + chat budget from config | M1b | S | done |
 | M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | doing |
 | M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | todo |
+| M1-29 | Agent fixes from replays: duplicates, nudge, ids, board text | M1b | M | doing |
 | M1-25 | Sentry (web + server) | obs | S | done |
 | M1-25b | Local error tracking with GlitchTip (Sentry-compatible) | obs | S | done |
 | M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | done |
@@ -1088,6 +1089,22 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 
 **Acceptance criteria**
 - [ ] Before/after table; prompt v3 merged only with equal or better numbers.
+
+## M1-29 — Agent fixes from replays
+**Status:** doing · **Size:** M · **Depends on:** M1-28 (the model-call log the replays came from)
+
+*Why (2026-10-20):* on the Uber demo, Qwen added a second queue next to Kafka, invented changes after answering "nothing needs to change", and wrote ids (`n10`) to the user. Replaying the recorded calls separated prompt problems from code problems. Then a format test (text vs SVG vs screenshot, then five text layouts) showed the board text itself lost arrows. Numbers: [docs/evals/M1-29-board-format.md](../docs/evals/M1-29-board-format.md).
+
+**Tasks**
+- [x] Prompt B: propose only fixes for real problems, nothing if the design meets the requirements; never a second component of a kind already on the board.
+- [x] "Already on the board, by kind" inventory inside the `<board>` block (replay: duplicates 3/8 → 0/8).
+- [x] Propose nudge only when the answer asks permission ("Would you like me to…"), never on "no change needed" or a comparison.
+- [x] Ids rewritten to box names in the streamed text, also when split across chunks (ids leaked in ~9/10 answers whatever the prompt said); the model's own history keeps them.
+- [x] Board text: boxes, then one line per arrow with `label` spelled out (Uber reading: 57 % → 100 % of arrows, 10/10 runs).
+- [ ] Measure before merge, 10 runs each: no-cache ≥ 9/10, no-lb ≥ 8/10, Uber case duplicates ≤ 1/10, ids shown ≤ 1/10, red team no regression.
+
+**Acceptance criteria**
+- [ ] The bar above is met; numbers in the eval note and the PR; owner review before merge (agent PR).
 
 ---
 
