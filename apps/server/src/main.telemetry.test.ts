@@ -56,7 +56,14 @@ describe('telemetry of a request', () => {
   it('HTTP → review board → agent → scope check and rounds → LLM calls, in one trace', async () => {
     const spans = await chat([
       [{ type: 'text', delta: 'DESIGN' }], // the scope guard's call
-      [{ type: 'text', delta: 'Looks fine.' }],
+      [
+        { type: 'text', delta: 'Looks fine.' },
+        // Every answer ends with a tool call (M1-31): here, nothing to change.
+        {
+          type: 'toolCall',
+          call: { id: 'c1', name: 'no_change', arguments: { reason: 'The design fits.' } },
+        },
+      ],
     ]);
 
     const byName = (name: string) => spans.find((s) => s.name === name);

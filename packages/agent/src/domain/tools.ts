@@ -27,7 +27,13 @@ export const createDraft = (board: Board): Draft => ({
 });
 
 export type ToolCallInput = { name: string; arguments: unknown };
-export type ToolOutcome = { draft: Draft; ok: boolean; reply: string };
+export type ToolOutcome = {
+  draft: Draft;
+  ok: boolean;
+  reply: string;
+  /** The model said nothing should change (no_change): its reason. */
+  noChange?: string;
+};
 export type ToolDeps = {
   /** New node and edge ids. The agent chooses them, never the model (M1-08 review). */
   newId: () => string;
@@ -61,6 +67,19 @@ const toParameters = (schema: z.ZodType): Record<string, unknown> => {
   return parameters;
 };
 
+/**
+ * The model's way to say "nothing to change" (M1-31). With it, every answer can end with a tool
+ * call, and the loop no longer guesses from words whether an answer recommended something.
+ */
+export const NO_CHANGE = 'no_change';
+const NoChangeArgs = z.object({
+  reason: z
+    .string()
+    .min(1)
+    .max(500)
+    .describe('Why nothing on the board should change now, in one or two sentences.'),
+});
+
 export const AGENT_TOOLS: ToolDefinition[] = [
   {
     name: 'add_node',
@@ -76,6 +95,12 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     name: 'connect_nodes',
     description: 'Propose an arrow between two nodes (existing, or added earlier in this answer).',
     parameters: toParameters(ConnectArgs),
+  },
+  {
+    name: NO_CHANGE,
+    description:
+      'Say that nothing on the board should change now (the design is fine, or you only answered a question). Call it instead of proposing.',
+    parameters: toParameters(NoChangeArgs),
   },
 ];
 
@@ -233,6 +258,11 @@ export const runToolCall = (draft: Draft, call: ToolCallInput, deps: ToolDeps): 
     return refused(
       `${call.name}: arguments must be a JSON object, e.g. {"kind": "cache", "label": "Redis"}.`,
     );
+  if (call.name === NO_CHANGE) {
+    const args = NoChangeArgs.safeParse(call.arguments);
+    if (!args.success) return refused(argsError(call.name, args.error));
+    return { draft, ok: true, reply: 'Noted: no change.', noChange: args.data.reason };
+  }
   if (draft.ops.length >= MAX_OPS_PER_PROPOSAL)
     return refused(
       `This proposal already has ${MAX_OPS_PER_PROPOSAL} changes; stop and summarise.`,

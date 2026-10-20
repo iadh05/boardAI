@@ -10,7 +10,7 @@ import type { Board, ChatMessage, Proposal } from '@designroom/domain';
 import { boardToText, inventoryText } from '../domain/boardToText.ts';
 import { createIdRewriter } from '../domain/idRewriter.ts';
 import { createLeakWatch } from '../domain/leakWatch.ts';
-import { connectNudge, PROPOSE_NUDGE, shouldNudge, unconnectedNewBoxes } from '../domain/nudge.ts';
+import { connectNudge, PROPOSE_NUDGE, unconnectedNewBoxes } from '../domain/nudge.ts';
 import { buildMessages, REFUSAL_WORDING, SYSTEM_PROMPT } from '../domain/prompt.ts';
 import { OUT_OF_SCOPE_REPLY, type Scope } from '../domain/scope.ts';
 import { summarize } from '../domain/summary.ts';
@@ -119,7 +119,8 @@ export const createAgent = (deps: AgentDeps) => {
       });
       let spoke = false; // an earlier round wrote something
       let finished = false; // the model stopped calling tools by itself
-      let nudged = false; // asked once to propose what it recommended in words (M1-24e)
+      let nudged = false; // reminded once to end with a tool call (M1-24e, M1-31)
+      let noChange: string | undefined; // the model called no_change: its reason (M1-31)
       let connectNudged = false; // asked once to connect the boxes it left floating (M1-24e)
 
       // Valid ops so far, as one proposal: also sent when a later round fails, because the text the
@@ -204,6 +205,7 @@ export const createAgent = (deps: AgentDeps) => {
               const used = startSpan(`tool ${name}`, 'TOOL', step.inside, { 'tool.name': name });
               const outcome = runToolCall(draft, call, deps);
               draft = outcome.draft;
+              if (outcome.noChange !== undefined) noChange = outcome.noChange;
               if (!outcome.ok) {
                 toolErrors++;
                 markFailed(used.span, outcome.reply); // what the model was told
@@ -218,15 +220,26 @@ export const createAgent = (deps: AgentDeps) => {
             'designroom.agent.tool_errors': toolErrors,
           });
           yield { type: 'round', round, usage, toolCalls: calls.length, toolErrors };
-          finished = calls.length === 0;
-          // Advice in words only, nothing proposed yet: ask once for the proposal (M1-24e).
+          // no_change ends the answer: the model decided, nothing more to ask (M1-31).
+          finished = calls.length === 0 || noChange !== undefined;
+          if (noChange !== undefined && !spoke) {
+            // It said nothing in words: its reason is the answer the user reads.
+            const reason = createIdRewriter((alias) => {
+              const id = draft.aliases.nodeId(alias);
+              return id ? draft.board.nodes.find((n) => n.id === id)?.label : undefined;
+            });
+            yield { type: 'text', delta: reason.feed(noChange) + reason.flush() };
+            spoke = true;
+          }
+          // No tool call at all, nothing proposed: remind once to end with one (M1-31) — propose,
+          // or no_change. No guessing from words what the answer recommended.
           // Only with a round left: otherwise the user would read "I stopped here" for nothing.
           if (
             finished &&
             !nudged &&
             round < maxRounds &&
             draft.ops.length === 0 &&
-            shouldNudge(said) // recommends a fix, not "no change" and not only an option (M1-29)
+            noChange === undefined
           ) {
             nudged = true;
             finished = false;
