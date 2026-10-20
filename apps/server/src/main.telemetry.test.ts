@@ -55,7 +55,7 @@ describe('telemetry of a request', () => {
   it('HTTP → review board → agent → scope check and rounds → LLM calls, in one trace', async () => {
     const spans = await chat([
       [{ type: 'text', delta: 'DESIGN' }], // the scope guard's call
-      [{ type: 'text', delta: 'Add a cache.' }],
+      [{ type: 'text', delta: 'Looks fine.' }],
     ]);
 
     const byName = (name: string) => spans.find((s) => s.name === name);
@@ -106,7 +106,7 @@ describe('telemetry of a request', () => {
   it('puts the trace id on every log line of the request', async () => {
     const lines: string[] = [];
     const spans = await chat(
-      [[{ type: 'text', delta: 'DESIGN' }], [{ type: 'text', delta: 'Add a cache.' }]],
+      [[{ type: 'text', delta: 'DESIGN' }], [{ type: 'text', delta: 'Looks fine.' }]],
       lines,
     );
 

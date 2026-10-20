@@ -300,4 +300,10 @@ M1 → M2 → M3 → A1 → M4 → M5 → M6 → Portfolio finish
 ---
 
 ## Later (ideas parked, not now)
+- **M7 — Detailed design (to discuss):** API endpoints, layers and contracts per component. Until then the AI reviewer stays at system level (components, data, connections) — decided 2026-10-19.
+- Agent web search for real-world use cases (fits A3); voice in the room (A6 step 3) or several agent personas (A3 multi-agent) — decided 2026-10-19, after M1.
+- **Design ↔ code round trip (discuss in M7):**
+  - *Diagram → running app:* each box designed in detail (FE, API, DB, infra) and built by AI agents, wired together (FE calls API, API reads DB). Runs **locally on the user's machine** (a local helper/agent, not the web app — doesn't scale there). Open: templates vs agents per component, does a code change update the board.
+  - *Running app → diagram:* import an existing project (builds on G7), see its architecture drawn, then simulate it (A1): traffic, overloaded servers, chaos — what goes down.
+- Situation card: the scenario (users, peaks, budget) pinned on the board, read by the AI on every request; shared in M2 — the three-architects journey.
 -

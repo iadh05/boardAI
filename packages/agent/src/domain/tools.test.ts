@@ -1,6 +1,6 @@
 import { applyOps, MAX_OPS_PER_PROPOSAL, type Board } from '@designroom/domain';
 import { describe, expect, it } from 'vitest';
-import { AGENT_TOOLS, createDraft, runToolCall, type Draft } from './tools.ts';
+import { AGENT_TOOLS, createDraft, MAX_NEW_BOXES, runToolCall, type Draft } from './tools.ts';
 
 const board: Board = {
   nodes: [
@@ -42,6 +42,27 @@ describe('add_node', () => {
       ids(),
     );
     expect(draft.ops[0]).toMatchObject({ nodeId: 'new-1' });
+  });
+
+  it(`refuses a box beyond ${MAX_NEW_BOXES} per proposal, saying to keep the most important`, () => {
+    const deps = ids();
+    let draft: Draft = createDraft(board);
+    for (const label of ['Redis', 'Queue', 'Replica']) {
+      draft = runToolCall(draft, call('add_node', { kind: 'cache', label }), deps).draft;
+    }
+
+    const fourth = runToolCall(draft, call('add_node', { kind: 'cdn', label: 'CDN' }), deps);
+
+    expect(fourth.ok).toBe(false);
+    expect(fourth.reply).toMatch(/at most 3 new boxes/i);
+    expect(fourth.draft.ops.filter((op) => op.op === 'addNode')).toHaveLength(3);
+    // Connecting and renaming still work: a fix needs its arrows.
+    const connected = runToolCall(
+      fourth.draft,
+      call('connect_nodes', { source: 'n1', target: 'n3' }),
+      deps,
+    );
+    expect(connected.ok).toBe(true);
   });
 });
 
@@ -196,8 +217,10 @@ describe('mistakes the model makes', () => {
   it('too many changes for one proposal', () => {
     const deps = ids();
     let draft = createDraft(board);
+    // Renames, not new boxes: those stop at MAX_NEW_BOXES long before this limit.
     for (let i = 0; i < MAX_OPS_PER_PROPOSAL; i++)
-      draft = runToolCall(draft, call('add_node', { kind: 'service', label: `S${i}` }), deps).draft;
+      draft = runToolCall(draft, call('update_node', { nodeId: 'n1', label: `S${i}` }), deps).draft;
+    expect(draft.ops).toHaveLength(MAX_OPS_PER_PROPOSAL);
 
     failsWith(draft, 'add_node', { kind: 'cache', label: 'one more' }, /already has 20 changes/);
   });
