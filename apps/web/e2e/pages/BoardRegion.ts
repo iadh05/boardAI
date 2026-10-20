@@ -36,6 +36,19 @@ export class BoardRegion {
     return { x: Number(match?.[1]), y: Number(match?.[2]) };
   }
 
+  /**
+   * The panel holding the toolbars, on screen. The toolbars themselves have no box of their own
+   * (they flow inside the panel's), so this is their parent.
+   */
+  toolbarPanel(): Locator {
+    return this.diagram.getByRole('toolbar', { name: 'Add a node' }).locator('xpath=..');
+  }
+
+  /** One click on the diagram's zoom-out button. */
+  async zoomOut(): Promise<void> {
+    await this.diagram.getByRole('button', { name: 'Zoom Out' }).click();
+  }
+
   /** Moves the pointer over the board (others see it as a live cursor). */
   async hover(): Promise<void> {
     const box = await this.diagram.boundingBox();

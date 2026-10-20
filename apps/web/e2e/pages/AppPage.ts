@@ -30,6 +30,11 @@ export class AppPage {
     await this.page.goto(link);
   }
 
+  /** Narrow or wide screen, e.g. a small laptop window (the canvas gets narrow). */
+  async resize(width: number, height: number): Promise<void> {
+    await this.page.setViewportSize({ width, height });
+  }
+
   /** The link of the room this page is in (what "Copy link" shares). */
   roomLink(): string {
     return this.page.url();

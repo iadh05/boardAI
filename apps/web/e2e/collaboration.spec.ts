@@ -76,6 +76,41 @@ test('joining a room with a board shows the whole board (found by hand, M2)', as
     await expect(other.board.node(label)).toBeInViewport();
 });
 
+test('on a narrow screen, the board that arrives is not hidden under the toolbar (found by hand)', async ({
+  app,
+  other,
+}) => {
+  const chain = ['Client', 'API', 'Database'];
+  for (const kind of chain) await app.board.addNode(kind);
+  // A tall, narrow board — a chain drawn top to bottom: a plain fit uses the whole height, so
+  // its top box lands under the toolbar. Zoomed out, so the drags cover twice the distance.
+  await app.board.zoomOut();
+  const api = await app.board.positionOf('API');
+  const client = await app.board.positionOf('Client');
+  const database = await app.board.positionOf('Database');
+  await app.board.move('Client', (api.x - client.x) / 2, -200);
+  await app.board.move('Database', (api.x - database.x) / 2, 200);
+
+  // The desktop layout at its narrowest (below 768 px the page stacks, as on a phone): a canvas
+  // ~410 px wide, where the toolbar wraps onto several rows.
+  await other.resize(800, 860);
+  await other.openRoom(app.roomLink());
+
+  const panel = await other.board.toolbarPanel().boundingBox();
+  if (!panel) throw new Error('the toolbar is not on screen');
+  for (const label of chain) {
+    await expect(other.board.node(label)).toBeInViewport();
+    const box = await other.board.node(label).boundingBox();
+    const overlaps =
+      !!box &&
+      box.x < panel.x + panel.width &&
+      box.x + box.width > panel.x &&
+      box.y < panel.y + panel.height &&
+      box.y + box.height > panel.y;
+    expect(overlaps, `${label} is under the toolbar`).toBe(false);
+  }
+});
+
 test('each person sees the other’s cursor', async ({ app, other }) => {
   await app.board.hover();
   await expect(other.board.cursors()).toHaveCount(1);
