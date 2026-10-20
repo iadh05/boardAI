@@ -8,6 +8,8 @@ import { joinRoomFromUrl } from './joinRoomFromUrl.ts';
 const provider: RoomProvider = {
   on: () => undefined,
   awareness: new Awareness(new Y.Doc()),
+  connect: () => undefined,
+  disconnect: () => undefined,
   destroy: () => undefined,
 };
 

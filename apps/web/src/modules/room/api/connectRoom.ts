@@ -16,7 +16,14 @@ export type RoomProvider = {
   };
   /** Presence (who's here, their cursor): relayed by the server, never saved (M2-06). */
   awareness: Awareness;
+  connect: () => void;
+  disconnect: () => void;
   destroy: () => void;
+};
+
+/** The browser's own idea of the network (window 'online' / 'offline' in the app). */
+export type NetworkEvents = {
+  onChange: (handler: (online: boolean) => void) => () => void;
 };
 
 export type ConnectRoomDeps = {
@@ -25,6 +32,7 @@ export type ConnectRoomDeps = {
   location: Pick<Location, 'protocol' | 'host'>;
   store: typeof useConnectionStore;
   createProvider: (serverUrl: string, roomId: string, doc: Y.Doc) => RoomProvider;
+  network?: NetworkEvents;
 };
 
 const STATUS: Record<string, ConnectionStatus> = {
@@ -37,7 +45,14 @@ const STATUS: Record<string, ConnectionStatus> = {
  * Connects; returns the room's presence and how to leave. Same origin as the page: Nginx
  * forwards /ws/ (M2-05).
  */
-export const connectRoom = ({ doc, roomId, location, store, createProvider }: ConnectRoomDeps) => {
+export const connectRoom = ({
+  doc,
+  roomId,
+  location,
+  store,
+  createProvider,
+  network,
+}: ConnectRoomDeps) => {
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
   store.getState().setRoom(roomId);
   store.getState().setStatus('connecting');
@@ -49,7 +64,24 @@ export const connectRoom = ({ doc, roomId, location, store, createProvider }: Co
   provider.on('sync', (synced) => {
     if (synced) store.getState().setLoaded();
   });
-  return { awareness: provider.awareness, leave: () => provider.destroy() };
+  // When the network goes, an open WebSocket isn't told: the provider would notice only after
+  // its own timeout (up to 30 s), saying "Connected" all along. The browser knows at once — say
+  // "Offline" and stop trying; reconnect when it's back (edits made meanwhile are sent then).
+  const stopWatching = network?.onChange((online) => {
+    if (online) {
+      provider.connect();
+    } else {
+      provider.disconnect();
+      store.getState().setStatus('offline');
+    }
+  });
+  return {
+    awareness: provider.awareness,
+    leave: () => {
+      stopWatching?.();
+      provider.destroy();
+    },
+  };
 };
 
 export type RoomConnection = ReturnType<typeof connectRoom>;

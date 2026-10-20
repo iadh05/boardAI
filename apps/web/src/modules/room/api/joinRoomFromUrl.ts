@@ -2,7 +2,7 @@ import { newRoomId } from '@designroom/domain';
 import type * as Y from 'yjs';
 import { roomFromPath, roomPath } from '../lib/roomLink.ts';
 import type { useConnectionStore } from '../store/connectionStore.ts';
-import { connectRoom, type RoomProvider } from './connectRoom.ts';
+import { connectRoom, type NetworkEvents, type RoomProvider } from './connectRoom.ts';
 
 export type JoinRoomDeps = {
   doc: Y.Doc;
@@ -12,6 +12,7 @@ export type JoinRoomDeps = {
   replacePath: (path: string) => void;
   randomBytes: (count: number) => Uint8Array;
   createProvider: (serverUrl: string, roomId: string, doc: Y.Doc) => RoomProvider;
+  network?: NetworkEvents;
 };
 
 /**
@@ -25,11 +26,19 @@ export const joinRoomFromUrl = ({
   replacePath,
   randomBytes,
   createProvider,
+  network,
 }: JoinRoomDeps) => {
   let roomId = roomFromPath(location.pathname);
   if (!roomId) {
     roomId = newRoomId(randomBytes);
     replacePath(roomPath(roomId));
   }
-  return connectRoom({ doc, roomId, location, store, createProvider });
+  return connectRoom({
+    doc,
+    roomId,
+    location,
+    store,
+    createProvider,
+    ...(network ? { network } : {}),
+  });
 };

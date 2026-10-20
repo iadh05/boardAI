@@ -27,6 +27,18 @@ export const joinRoomFromUrl = () => {
     // show other tabs' edits while the server never got them. Every edit goes through the server.
     createProvider: (url, roomId, doc) =>
       new WebsocketProvider(url, roomId, doc, { disableBc: true }),
+    network: {
+      onChange: (handler) => {
+        const online = () => handler(true);
+        const offline = () => handler(false);
+        window.addEventListener('online', online);
+        window.addEventListener('offline', offline);
+        return () => {
+          window.removeEventListener('online', online);
+          window.removeEventListener('offline', offline);
+        };
+      },
+    },
   });
   presence = startPresence({ awareness: room.awareness, store: usePresenceStore });
   return room;
