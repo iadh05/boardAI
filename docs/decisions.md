@@ -186,3 +186,29 @@ Zones are shapes, and membership comes from position.
 - **Harder:**
   - Moving a zone has to move the boxes inside it: one op (`moveZone`) does both, so it stays one update and one undo step in M2.
   - A box half-inside a zone needs a rule: it counts as inside when its whole rectangle is.
+
+## ADR-010 — Real-time sync with a CRDT (Yjs), merged field by field
+
+- **Date:** 2026-10-20
+- **Status:** proposed (written overnight on the owner's go; for review)
+- **Milestone:** M2
+
+### Context
+
+In M2 several people edit one board at the same time, with network delays and short offline periods. Each copy must end identical, without losing anyone's edit, and the board must stay a valid graph.
+
+### Options considered
+
+1. **Last write wins on the whole board:** each client sends its full board, the server keeps the latest. Simple, but two people editing at once lose one person's work every time.
+2. **Operational transformation (OT, Google Docs' original approach):** a central server transforms concurrent operations against each other. Correct, but the transform rules for a graph (move vs delete vs connect) are ours to write and prove, and offline editing is hard.
+3. **A CRDT (Yjs):** every copy applies updates in any order and converges; no server decision needed; offline works by design. Mature, small binary updates, presence ("awareness") included. Alternatives: Automerge (heavier, slower for this size), our own CRDT (G1, later, as a learning exercise).
+
+### Decision
+
+Yjs. The board is three `Y.Map`s (`nodes`, `edges`, `zones`); each item is a `Y.Map` of its fields, so concurrent edits to different fields of the same box both survive. Domain ops stay the source of rules: the store computes the next board with them and writes only the difference. Reading repairs what two valid edits can break together (an arrow to a box deleted at the same time; two arrows for the same connection).
+
+### Consequences
+
+- **Easier:** live edits, offline edits and undo of only your own changes (`Y.UndoManager` with tracked origins) come from the library.
+- **Harder:** the document can briefly hold a state no single op would produce, so the read side must repair it; the server becomes stateful (rooms in memory until M3); binary updates are not human-readable in logs.
+- **Same field, same time:** the last write (in Yjs order) wins for that field — two people dragging the same box end at one of the two positions, the same on every screen.
