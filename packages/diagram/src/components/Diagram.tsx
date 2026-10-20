@@ -8,6 +8,7 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  useNodesInitialized,
   useReactFlow,
   type Edge,
   type EdgeChange,
@@ -16,6 +17,7 @@ import {
   type NodeTypes,
 } from '@xyflow/react';
 import {
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -100,6 +102,11 @@ export type DiagramProps = {
    * For showing it to others (live cursors).
    */
   onPointerMove?: (position: DiagramPosition | null) => void;
+  /**
+   * Fit the view to the diagram again whenever this value changes (after its boxes are drawn).
+   * For content that arrives after the diagram opened: a shared board that finished loading.
+   */
+  fitKey?: unknown;
 };
 
 // Defined once, outside any component: a new object each render would remount every node.
@@ -148,6 +155,7 @@ function DiagramCanvas({
   onZoneLabelCommit,
   onZoneEditEnd,
   onPointerMove,
+  fitKey,
   router,
   snapGrid = 20,
   minimap = true,
@@ -282,7 +290,25 @@ function DiagramCanvas({
     [editingZoneId, minZoneSize],
   );
 
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
+
+  // fitKey changed: fit once the boxes are measured (React Flow can't fit what it hasn't drawn).
+  const nodesDrawn = useNodesInitialized();
+  const fitFor = useRef(fitKey);
+  const fitPending = useRef(false);
+  const hasContent = nodesProp.length > 0 || zonesProp.length > 0;
+  useEffect(() => {
+    if (fitKey === fitFor.current) return;
+    fitFor.current = fitKey;
+    // Nothing to show yet: no fit later either, or the view would jump when someone adds the
+    // first box — under the hand of whoever is working on the board.
+    fitPending.current = hasContent;
+  }, [fitKey, hasContent]);
+  useEffect(() => {
+    if (!fitPending.current || !nodesDrawn) return;
+    fitPending.current = false;
+    void fitView(FIT_VIEW);
+  }, [fitKey, nodesDrawn, fitView]);
 
   return (
     <DiagramContext value={context}>

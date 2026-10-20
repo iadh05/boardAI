@@ -6,7 +6,7 @@ import { Button } from '../core/ui/index.ts';
 import { AppShell } from '../layout/AppShell.tsx';
 import { BoardCanvas } from '../modules/board/index.ts';
 import { ChatPanel } from '../modules/chat/index.ts';
-import { moveMyCursor, RemoteCursors, RoomStatus } from '../modules/room/index.ts';
+import { moveMyCursor, RemoteCursors, RoomStatus, useRoomLoaded } from '../modules/room/index.ts';
 
 /** Shown if the page itself crashes: say so, and offer the way out. */
 const pageCrashed = (
@@ -37,6 +37,7 @@ const chatCrashed = (
 export function App() {
   // useState keeps one client for the app's lifetime, even if App re-renders.
   const [queryClient] = useState(createQueryClient);
+  const roomLoaded = useRoomLoaded();
 
   return (
     <ErrorBoundary fallback={pageCrashed}>
@@ -45,7 +46,8 @@ export function App() {
           headerActions={<RoomStatus />}
           canvas={
             // The board knows nothing about rooms: the app hands it the room's cursors (M2-06).
-            <BoardCanvas onPointerMove={moveMyCursor}>
+            // fitKey: when a shared board arrives after the page opened, show all of it.
+            <BoardCanvas onPointerMove={moveMyCursor} fitKey={roomLoaded}>
               <RemoteCursors />
             </BoardCanvas>
           }

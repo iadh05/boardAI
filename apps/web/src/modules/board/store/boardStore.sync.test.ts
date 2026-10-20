@@ -85,6 +85,16 @@ describe('undo / redo — your own changes only (M2-03)', () => {
     expect(b().canUndo).toBe(false); // the button follows the stack, even when nothing changed
   });
 
+  it('separate actions are separate undo steps, however fast they come (found by hand, M2)', () => {
+    const { a } = linkedStores();
+    a().addNode('client', { x: 0, y: 0 });
+    a().addNode('api', { x: 300, y: 0 }); // within the drag window of the first
+    a().addNode('database', { x: 600, y: 0 });
+
+    a().undo();
+    expect(a().board.nodes.map((n) => n.kind)).toEqual(['client', 'api']);
+  });
+
   it('a drag (many moves in a row) is one undo step', () => {
     const { a } = linkedStores();
     const id = a().addNode('api', { x: 0, y: 0 }) ?? '';

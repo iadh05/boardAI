@@ -20,10 +20,12 @@ export type CanvasProps = {
   onPointerMove?: (position: { x: number; y: number } | null) => void;
   /** More to draw on the board, from other modules (other people's cursors, M2). */
   children?: ReactNode;
+  /** Fit the view again when this changes (a shared board finished loading, M2). */
+  fitKey?: unknown;
 };
 
 /** The diagram area: @designroom/diagram, driven by the board store (ADR-004). */
-export function Canvas({ store = useBoardStore, onPointerMove, children }: CanvasProps) {
+export function Canvas({ store = useBoardStore, onPointerMove, children, fitKey }: CanvasProps) {
   const board = store((s) => s.board);
   const proposal = store((s) => s.proposal);
   const editingNodeId = store((s) => s.editingNodeId);
@@ -89,6 +91,7 @@ export function Canvas({ store = useBoardStore, onPointerMove, children }: Canva
         onZoneLabelCommit={renameZone}
         onZoneEditEnd={stopEditingZone}
         {...(onPointerMove ? { onPointerMove } : {})}
+        fitKey={fitKey}
       >
         <Toolbar store={store} />
         {children}
