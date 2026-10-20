@@ -27,26 +27,28 @@ describe('unconnectedNewBoxes (M1-24e)', () => {
   });
 });
 
-describe('shouldNudge — only when the answer asks permission (M1-29)', () => {
-  // Measured by replay on the Uber board: the old rule ("add" + a component word) fired on a
-  // comparison answer ("Kafka or RabbitMQ?") and on "nothing to change", pushing the model to
-  // invent changes. The failure the nudge exists for is asking instead of proposing.
+describe('shouldNudge — a recommended change, not "no change" and not only options (M1-29)', () => {
+  // Replays on the Uber board: the old rule ("add" + a component word) fired on a comparison
+  // answer that mentioned RabbitMQ as an option, and on "nothing to change". A first fix (nudge only
+  // when the answer asks permission) dropped the demo to 3/10: most answers recommend fixes
+  // without asking ("Here are the fixes: …"). Measured, so the rule is now: a recommendation that
+  // isn't only optional, in an answer that doesn't say nothing has to change.
   it.each([
     'Every read hits Postgres. Would you like me to add a Redis cache?',
-    'Do you want me to proceed with adding these components (an idempotency Redis, a queue)?',
+    'Every read hits Postgres: add a Redis cache.',
+    "For more production reality I'd add three things: 1) Caching layer for read-heavy content. How many active users are we targeting?",
     'I recommend a read replica for Postgres. Shall I add it?',
-    'A load balancer is missing. Want me to add one in front of the two APIs?',
-  ])('asks permission for a change: nudge — %s', (answer) => {
+    'A load balancer is missing in front of the two APIs.',
+  ])('recommends a change: nudge — %s', (answer) => {
     expect(shouldNudge(answer)).toBe(true);
   });
 
   it.each([
-    // The recorded answer to "what better in this case kafka or rabbit mq": it mentions adding
-    // RabbitMQ as an option, and asks a question — but not for permission to change anything.
+    // The recorded answer to "what better in this case kafka or rabbit mq".
     'Keep Kafka. Optionally add a small RabbitMQ instance only for request-reply workflows. Do you see any part of the design where you would prefer request-reply?',
     'No changes are needed: Kafka is already the right choice. Would you like me to add a cache anyway?',
     'Nothing needs to change here. Shall I add a queue later if traffic grows?',
-    'Every read hits Postgres: add a Redis cache.', // recommends, but doesn't ask
+    'The only potential enhancement would be adding a RabbitMQ queue if you later need request-reply. But this is not required yet.',
     'How many users do you expect?',
   ])('no nudge — %s', (answer) => {
     expect(shouldNudge(answer)).toBe(false);
