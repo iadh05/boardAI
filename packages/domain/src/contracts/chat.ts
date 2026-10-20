@@ -48,3 +48,14 @@ export const ChatEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('done') }),
 ]);
 export type ChatEvent = z.infer<typeof ChatEventSchema>;
+
+/**
+ * Accept or Reject on a proposal, sent back as feedback on the review's trace (M1-26c). The ids are
+ * OpenTelemetry's hex ids, checked strictly: they go into a request to Phoenix.
+ */
+export const ProposalFeedbackSchema = z.object({
+  traceId: z.string().regex(/^[0-9a-f]{32}$/),
+  spanId: z.string().regex(/^[0-9a-f]{16}$/),
+  verdict: z.enum(['accepted', 'rejected']),
+});
+export type ProposalFeedback = z.infer<typeof ProposalFeedbackSchema>;

@@ -1,4 +1,4 @@
-import { context, type Context } from '@opentelemetry/api';
+import { context, isSpanContextValid, type Context, type Span } from '@opentelemetry/api';
 import type {
   AiGateway,
   LlmErrorCode,
@@ -73,6 +73,15 @@ const isGatewayError = (error: unknown): error is GatewayError =>
 
 const TOOL_NAMES = AGENT_TOOLS.map((t) => t.name);
 
+/**
+ * The agent span's ids, for the proposal: Accept/Reject comes back as feedback on that span
+ * (M1-26c). None when tracing is off (the span is a no-op with an invalid id).
+ */
+const traceOf = (span: Span) => {
+  const ids = span.spanContext();
+  return isSpanContextValid(ids) ? { traceId: ids.traceId, spanId: ids.spanId } : {};
+};
+
 export const createAgent = (deps: AgentDeps) => {
   const metered = createAgentMetrics();
 
@@ -145,6 +154,7 @@ export const createAgent = (deps: AgentDeps) => {
                   id: deps.newId(),
                   summary: summarize(draft.ops, board, draft.board),
                   ops: draft.ops,
+                  ...traceOf(agent.span),
                 },
               },
             ];

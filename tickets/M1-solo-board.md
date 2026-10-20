@@ -62,7 +62,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | done |
 | M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | review |
 | M1-26e | God eye: overview dashboard (RED + USE), alerts, runtime metrics | obs | M | done |
-| M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | todo |
+| M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | review |
 | M1-27 | ADR-006…009, demo, retro | close | S | todo |
 
 *(The table is a summary — the **Status** line inside each ticket is the source of truth.)*
@@ -1290,13 +1290,15 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 **Result (2026-10-21):** checked end to end with the fake model. One chat request gave 6 log lines in Loki (`{service_name="designroom-server"}`), each with `trace_id` equal to our `traceId`, and the same trace in Tempo: 13 spans, from `POST /api/chat` down to each tool call.
 
 ### M1-26c — Phoenix + feedback
-**Status:** doing (Phoenix part in review; feedback todo) · **Size:** M · **Depends on:** M1-26a, Docker
+**Status:** review · **Size:** M · **Depends on:** M1-26a, Docker
 
 **Tasks**
 - [x] **Phoenix**: `arizephoenix/phoenix:20.19.0` in `docker-compose.yml` behind the `agent` profile (UI and OTLP on :6006, SQLite in a volume); a second trace exporter when `PHOENIX_COLLECTOR_ENDPOINT` is set. Phoenix takes OTLP in **protobuf only** (415 to JSON), so its exporter is `exporter-trace-otlp-proto`; Grafana keeps JSON. Traces filed under the project "designroom".
 - [x] OpenInference input/output: prompt, board text, tool arguments and results — behind a switch (`TRACE_CONTENT=true`), local only (architecture §9).
 - [x] Same switch for a refused tool call's span status: without it, the status says "refused", not the reply (which can quote a label).
-- [ ] Add `traceId` to the `proposal` event; on Accept/Reject the web app calls `POST /api/chat/feedback`, and the server records it on the trace as feedback (Phoenix annotations API — check the docs).
+- [x] Add `traceId` (and `spanId`: Phoenix annotates a span) to the `proposal` event, from the agent span when tracing is on; on Accept/Reject the web app calls `POST /api/chat/feedback` (fire and forget), and the server records it: a `proposal_feedback_total{verdict}` metric always, and a human annotation "user verdict" on the agent span in Phoenix (`POST /v1/span_annotations`) when Phoenix is set. Nginx: `/api/chat` is now an exact match, so feedback doesn't use up the chat's rate limit.
+
+**Result (2026-10-21):** checked end to end with the fake model. A review's proposal carried the agent span's ids; Reject → 204 → Phoenix shows "user verdict: rejected (score 0)" on that span.
 
 **Acceptance criteria**
 - [ ] Demo step 10 passes (Phoenix half).
