@@ -21,7 +21,9 @@ type Schema<T> = {
 // valid edits made the document invalid together (a box deleted while someone connected to it).
 
 type Item = { id: string };
-type Collection = 'nodes' | 'edges' | 'zones';
+/** The document's three shared maps (undo tracks all three). */
+export const BOARD_MAPS = ['nodes', 'edges', 'zones'] as const;
+type Collection = (typeof BOARD_MAPS)[number];
 
 /** Where an item sits in the board's lists: Y.Map has no order, every copy must agree on one. */
 const ORDER = 'order';

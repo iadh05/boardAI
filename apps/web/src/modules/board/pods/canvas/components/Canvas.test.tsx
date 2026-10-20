@@ -2,6 +2,8 @@ import { createNode, MAX_LABEL_LENGTH, type Board } from '@designroom/domain';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import * as Y from 'yjs';
+import { readBoard, writeBoard } from '../../../lib/boardDoc.ts';
 import { createBoardStore } from '../../../store/boardStore.ts';
 import { Canvas } from './Canvas.tsx';
 
@@ -17,15 +19,17 @@ const boardWithTwoNodes: Board = {
 };
 
 const renderCanvas = (board: Board) => {
-  const store = createBoardStore({ newId: () => 'x' });
+  const doc = new Y.Doc();
+  const store = createBoardStore({ newId: () => 'x', doc });
   render(
     <div style={{ width: 800, height: 600 }}>
       <Canvas store={store} />
     </div>,
   );
   // Load the board after mount: in jsdom React Flow never measures nodes present on the first
-  // render, so they (and their edges) never show. Browsers are fine.
-  act(() => store.setState({ board }));
+  // render, so they (and their edges) never show. Browsers are fine. Written into the shared
+  // document, like a change from another tab, so the store reads it as it would in the app.
+  act(() => writeBoard(doc, readBoard(doc), board));
   return store;
 };
 
@@ -174,7 +178,7 @@ describe('Canvas — zones', () => {
     fireEvent.click(within(node('Zone: VPC')).getByText('VPC'));
     await userEvent.keyboard('{Delete}');
 
-    expect(store.getState().board.zones).toEqual([]);
+    expect(store.getState().board.zones ?? []).toEqual([]); // absent = none (BoardSchema)
     expect(store.getState().board.nodes).toHaveLength(2);
   });
 
