@@ -34,3 +34,18 @@ const ACTION =
  */
 export const recommendsChange = (answer: string): boolean =>
   COMPONENT.test(answer) && ACTION.test(answer);
+
+/** Asking to be allowed to make the change, instead of proposing it ("Would you like me to…?"). */
+const ASKS_PERMISSION =
+  /\b(would you like me to|do you want me to|want me to|shall i|should i (add|propose|go ahead)|may i|let me know if you('d| would) like me to)\b/i;
+/** The answer's own verdict that nothing has to change: then nothing is to be proposed. */
+const NO_CHANGE =
+  /\b(no (major |structural |immediate |architectural )?changes? (is |are )?(strictly )?(needed|required|necessary)|nothing (needs|has) to change|no changes? needed)\b/i;
+
+/**
+ * Whether to send PROPOSE_NUDGE (M1-29): the answer recommends a change AND asks permission to
+ * make it, and doesn't say nothing needs to change. A comparison ("Kafka or RabbitMQ?") or a
+ * "the design is fine" answer is left alone, even if it mentions adding something as an option.
+ */
+export const shouldNudge = (answer: string): boolean =>
+  recommendsChange(answer) && ASKS_PERMISSION.test(answer) && !NO_CHANGE.test(answer);
