@@ -32,4 +32,25 @@ describe('createLogger', () => {
     logger.child({ requestId: 'r1' }).info('hello');
     expect(records()[0]).toMatchObject({ requestId: 'r1', msg: 'hello' });
   });
+
+  // M1-26d: the same entries also go to Loki (over OTLP), through a sink set at startup.
+  it('also hands each entry to a sink, with the child fields; dropped entries are not sent', () => {
+    const sent: unknown[] = [];
+    const logger = createLogger({
+      level: 'info',
+      write: () => {},
+      now: () => 1_700_000_000_000,
+      sink: (entry) => sent.push(entry),
+    });
+    logger.debug('noise');
+    logger.child({ requestId: 'r1' }).warn('slow', { ms: 900 });
+    expect(sent).toEqual([
+      {
+        time: 1_700_000_000_000,
+        level: 'warn',
+        msg: 'slow',
+        fields: { requestId: 'r1', ms: 900 },
+      },
+    ]);
+  });
 });
