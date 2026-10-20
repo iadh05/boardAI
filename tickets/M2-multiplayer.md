@@ -6,19 +6,19 @@ Spec: [docs/specs/M2-multiplayer.md](../docs/specs/M2-multiplayer.md) · Archite
 
 | ID | Title | Part | Size | Status |
 |---|---|---|---|---|
-| M2-01 | Spec, tickets, ADR-010 (CRDT / Yjs) | docs | S | doing |
-| M2-02 | Board ↔ Yjs document: read with repair, write the difference | web | M | todo |
-| M2-03 | Board store on the document + undo / redo (own changes only) | web | M | todo |
-| M2-04 | Server `collaboration` module: rooms, sync protocol, limits | server | M | todo |
-| M2-05 | Rooms in the app: `/room/:id`, provider, status badge; Nginx and preview `/ws` | web + infra | M | todo |
-| M2-06 | Live cursors with names and colours | web + diagram | M | todo |
-| M2-07 | Two-tab Playwright journeys (live edit, same-box drag, offline, undo) | e2e | M | todo |
-| M2-08 | Checkpoint, decisions, retro | close | S | todo |
+| M2-01 | Spec, tickets, ADR-010 (CRDT / Yjs) | docs | S | done |
+| M2-02 | Board ↔ Yjs document: read with repair, write the difference | web | M | done |
+| M2-03 | Board store on the document + undo / redo (own changes only) | web | M | done |
+| M2-04 | Server `collaboration` module: rooms, sync protocol, limits | server | M | done |
+| M2-05 | Rooms in the app: `/room/:id`, provider, status badge; Nginx and preview `/ws` | web + infra | M | done |
+| M2-06 | Live cursors with names and colours | web + diagram | M | done |
+| M2-07 | Two-tab Playwright journeys (live edit, same-box drag, offline, undo) | e2e | M | done |
+| M2-08 | Checkpoint, decisions, retro | close | S | doing |
 
 ---
 
 ## M2-01 — Spec, tickets, ADR-010
-**Status:** doing · **Size:** S
+**Status:** done (#57) · **Size:** S
 
 **Tasks**
 - [ ] Spec and these tickets.
@@ -27,7 +27,7 @@ Spec: [docs/specs/M2-multiplayer.md](../docs/specs/M2-multiplayer.md) · Archite
 ---
 
 ## M2-02 — Board ↔ Yjs document
-**Status:** todo · **Size:** M · **Depends on:** M2-01
+**Status:** done (#58) · **Size:** M · **Depends on:** M2-01
 
 **Learning goal:** a CRDT merges; your app must still see a valid board.
 
@@ -42,7 +42,7 @@ Spec: [docs/specs/M2-multiplayer.md](../docs/specs/M2-multiplayer.md) · Archite
 ---
 
 ## M2-03 — Board store on the document + undo / redo
-**Status:** todo · **Size:** M · **Depends on:** M2-02
+**Status:** done (#59) · **Size:** M · **Depends on:** M2-02
 
 **Tests first**
 - Every existing store test still passes (actions unchanged).
@@ -57,7 +57,7 @@ Spec: [docs/specs/M2-multiplayer.md](../docs/specs/M2-multiplayer.md) · Archite
 ---
 
 ## M2-04 — Server `collaboration` module
-**Status:** todo · **Size:** M · **Depends on:** M2-01
+**Status:** done (#60) · **Size:** M · **Depends on:** M2-01
 
 **Tests first** (real `ws` clients against the module on a random port, no network beyond localhost)
 - Two clients in one room: an update from one reaches the other; a client joining later gets the whole document.
@@ -73,7 +73,7 @@ Spec: [docs/specs/M2-multiplayer.md](../docs/specs/M2-multiplayer.md) · Archite
 ---
 
 ## M2-05 — Rooms in the app
-**Status:** todo · **Size:** M · **Depends on:** M2-03, M2-04
+**Status:** done (#62) · **Size:** M · **Depends on:** M2-03, M2-04
 
 **Tasks**
 - [ ] `/` opens a new room (`/room/<id>`); `/room/:id` joins it; a malformed id opens a new room.
@@ -85,7 +85,7 @@ Spec: [docs/specs/M2-multiplayer.md](../docs/specs/M2-multiplayer.md) · Archite
 ---
 
 ## M2-06 — Live cursors
-**Status:** todo · **Size:** M · **Depends on:** M2-05
+**Status:** done (#63) · **Size:** M · **Depends on:** M2-05
 
 **Tasks**
 - [ ] `@designroom/diagram`: `onPointerMove(position | null)` in diagram coordinates, and an overlay that draws children at diagram coordinates.
@@ -95,7 +95,7 @@ Spec: [docs/specs/M2-multiplayer.md](../docs/specs/M2-multiplayer.md) · Archite
 ---
 
 ## M2-07 — Two-tab Playwright journeys
-**Status:** todo · **Size:** M · **Depends on:** M2-05, M2-06
+**Status:** done (#64) · **Size:** M · **Depends on:** M2-05, M2-06
 
 - Tab A adds and renames a box → tab B sees it.
 - Both tabs drag the same box at once → both end in the same place.
@@ -106,7 +106,7 @@ Spec: [docs/specs/M2-multiplayer.md](../docs/specs/M2-multiplayer.md) · Archite
 ---
 
 ## M2-08 — Checkpoint and retro
-**Status:** todo · **Size:** S
+**Status:** doing · **Size:** S
 
 - [ ] `docs/checkpoints/M2.md`: demo steps, numbers (update size, message rate while dragging), what's left for M3.
 - [ ] Tick M2 in MILESTONES; update PROGRESS.

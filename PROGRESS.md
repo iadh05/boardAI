@@ -3,7 +3,13 @@
 > Living status of the project — updated in every ticket PR. Read this first when resuming (human or AI).
 > Details: [MILESTONES.md](MILESTONES.md) · [tickets/M1-solo-board.md](tickets/M1-solo-board.md) · [docs/architecture.md](docs/architecture.md)
 
-**Last updated:** 2026-10-19 · **Milestone:** M1 — Solo board + AI reviewer · **Now:** closing M1 — M1-24e prompt v3 (co-written; fixes the "no proposal" regression the M1 demo needs) → M1-26d logs → your decisions (M1-13, M1-24d review, branch protection) → M1-27
+**Last updated:** 2026-10-20 · **Milestones:** M1 closing, **M2 built (in review)** · **Now:** your review — M1-24e (#61, no auto-merge) and the M2 stack #57 → #64 + checkpoint ([docs/checkpoints/M2.md](docs/checkpoints/M2.md)); then M1-26d logs and M1-27
+
+## Overnight 2026-10-19 → 20 (owner asleep, owner's go: "complete M1 and M2")
+
+- **M1-24e (#61):** prompt v3 + **proposal nudge** in the agent loop. Demo board no-cache 1/10 → **10/10**, no-lb 1/10 → 9/10, single-db 2/10 → 4/10; red team 82/84 (5-run rerun: label-injection 39/40 vs main 35/40). Misses the bar on ids written to the user (same as main). Results: [docs/evals/M1-24e-prompt-v3.md](docs/evals/M1-24e-prompt-v3.md).
+- **M2 (#57–#64):** rooms over WebSocket (own Yjs sync server), board on a shared document, undo of your own changes, live cursors, offline editing, two-browser e2e. "Done when" passes in e2e. Checkpoint: [docs/checkpoints/M2.md](docs/checkpoints/M2.md).
+- Project moved out of OneDrive to `C:\Users\Benab\dev\worksdiagram` (the OneDrive copy is untouched).
 
 ## Done
 
