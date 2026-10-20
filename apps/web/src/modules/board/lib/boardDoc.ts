@@ -36,7 +36,9 @@ const readItems = <T extends Item>(map: Y.Map<unknown>, schema: Schema<T>): T[] 
     const { [ORDER]: order, ...fields } = value.toJSON() as Record<string, unknown>;
     const parsed = schema.safeParse({ ...fields, id }); // the key is the id, whatever a field says
     if (!parsed.success) return; // a buggy or hostile peer: skip it, keep the rest
-    read.push({ item: parsed.data, order: typeof order === 'number' ? order : Infinity });
+    // NaN would make the sort differ between copies: anything not finite goes last.
+    const finite = typeof order === 'number' && Number.isFinite(order);
+    read.push({ item: parsed.data, order: finite ? order : Number.MAX_VALUE });
   });
   return read
     .sort((x, y) => x.order - y.order || (x.item.id < y.item.id ? -1 : 1))
@@ -82,6 +84,8 @@ const writeItems = (map: Y.Map<unknown>, before: readonly Item[], after: readonl
     const fields = Object.entries(item).filter(([key]) => key !== 'id');
     const existing = map.get(item.id);
     if (!(existing instanceof Y.Map)) {
+      // Known before but gone from the doc: someone else deleted it. Don't bring it back.
+      if (old.has(item.id)) continue;
       const created = new Y.Map<unknown>();
       map.set(item.id, created); // attached first: fields set after join the same transaction
       created.set(ORDER, next++);
