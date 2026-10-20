@@ -64,6 +64,18 @@ test('undo takes back only your own change', async ({ app, other }) => {
   await expect(other.board.node('Storage')).toBeVisible();
 });
 
+test('joining a room with a board shows the whole board (found by hand, M2)', async ({
+  app,
+  other,
+}) => {
+  for (const kind of ['Client', 'Load Balancer', 'API', 'Database', 'Cache', 'Queue'])
+    await app.board.addNode(kind);
+
+  await other.openRoom(app.roomLink()); // a fresh page, joining a room that has a board
+  for (const label of ['Client', 'Load Balancer', 'API', 'Database', 'Cache', 'Queue'])
+    await expect(other.board.node(label)).toBeInViewport();
+});
+
 test('each person sees the other’s cursor', async ({ app, other }) => {
   await app.board.hover();
   await expect(other.board.cursors()).toHaveCount(1);

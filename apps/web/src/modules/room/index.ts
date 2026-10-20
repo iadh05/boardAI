@@ -44,5 +44,8 @@ export const joinRoomFromUrl = () => {
   return room;
 };
 
+/** Whether the room's board has arrived (true after the first sync). */
+export const useRoomLoaded = () => useConnectionStore((s) => s.loaded);
+
 /** Shares where this person's pointer is on the board (null: off the board). */
 export const moveMyCursor = (position: Position | null) => presence?.setCursor(position);

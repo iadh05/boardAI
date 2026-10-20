@@ -7,6 +7,9 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true, // Nginx forwards to this exact port (infra/nginx/nginx.conf).
+    // IPv4 loopback: "localhost" can resolve to ::1 only, which Nginx in Docker can't reach
+    // (host.docker.internal is IPv4) — the app then answers 502 through http://localhost:8080.
+    host: '127.0.0.1',
     // No /api proxy here: in dev the app is opened through Nginx (http://localhost:8080), which
     // routes /api to the server, the same single origin as in production (architecture §14).
   },

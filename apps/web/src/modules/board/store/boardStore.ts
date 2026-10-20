@@ -145,10 +145,8 @@ export const createBoardStore = ({
       canUndo: history.undoStack.length > 0,
       canRedo: history.redoStack.length > 0,
     });
-    // An undo whose target someone else deleted changes nothing in the document, but still moves
-    // the stacks: keep the buttons in step with them.
-    history.on('stack-item-added', () => set(undoState()));
-    history.on('stack-item-popped', () => set(undoState()));
+    // The buttons follow the stacks: read back with every document change (refresh), and after
+    // each undo / redo (one whose target someone else deleted changes nothing in the document).
 
     /** A local change succeeded: its read-back also clears the last error, in the same update. */
     let clearError = false;
@@ -179,11 +177,17 @@ export const createBoardStore = ({
     };
     doc.on('update', refresh);
 
-    /** Commits a domain result: written to the document on success, an error on failure. */
-    const commit = (result: BoardResult): boolean => {
+    /**
+     * Commits a domain result: written to the document on success, an error on failure. Each
+     * action is its own undo step; only `continuous` ones (the steps of a drag or a resize) merge
+     * within the capture window. Without this, three boxes added in a second undid together.
+     */
+    const commit = (result: BoardResult, { continuous = false } = {}): boolean => {
       if (result.ok) {
         clearError = true;
+        if (!continuous) history.stopCapturing();
         writeBoard(doc, get().board, result.value, mine);
+        if (!continuous) history.stopCapturing();
         // Nothing changed (e.g. renamed to the same label): no read-back, clear it here.
         if (clearError) set({ lastError: null });
         clearError = false;
@@ -259,10 +263,10 @@ export const createBoardStore = ({
         commit(renameZone(get().board, id, label));
       },
       resizeZone: (id, size) => {
-        commit(resizeZone(get().board, id, size));
+        commit(resizeZone(get().board, id, size), { continuous: true });
       },
       moveZone: (id, position) => {
-        commit(moveZone(get().board, id, position));
+        commit(moveZone(get().board, id, position), { continuous: true });
       },
       startEditingZone: (id) => {
         if (get().board.zones?.some((z) => z.id === id)) set({ editingZoneId: id });
@@ -275,7 +279,7 @@ export const createBoardStore = ({
         commit(changeKind(get().board, id, kind));
       },
       moveNode: (id, position) => {
-        commit(moveNode(get().board, id, position));
+        commit(moveNode(get().board, id, position), { continuous: true });
       },
 
       setProposal: (proposal) =>
