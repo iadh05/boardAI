@@ -57,7 +57,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-25b | Local error tracking with GlitchTip (Sentry-compatible) | obs | S | done |
 | M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | done |
 | M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | done |
-| M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | todo |
+| M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | review |
 | M1-26e | God eye: overview dashboard (RED + USE), alerts, runtime metrics | obs | M | done |
 | M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | todo |
 | M1-27 | ADR-006…009, demo, retro | close | S | todo |
@@ -1209,12 +1209,14 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - Counters that first appear at 1 are invisible to `increase()`: the bug counter starts at 0.
 
 ### M1-26d — Logs to Loki
-**Status:** todo · **Size:** S · **Depends on:** M1-26b
+**Status:** review · **Size:** S · **Depends on:** M1-26b
 
 **Tasks**
-- [ ] Send log lines to Loki over OTLP (logs SDK), as well as stdout; each line already carries `traceId`.
-- [ ] Grafana: from a log line, jump to its trace in Tempo.
-- [ ] Careful: the SDK reports its own export failures through `diag` → our logger → the log exporter: don't loop (log those to stdout only).
+- [x] Send log lines to Loki over OTLP (logs SDK), as well as stdout; each line already carries `traceId`. The logger gets a `sink`; `toLogRecord` maps a line to an OTel record (severity, body, flat attributes).
+- [x] Grafana: from a log line, jump to its trace in Tempo. Nothing to configure: lines logged during a request are emitted in its context, so Loki stores `trace_id`, and the LGTM image's Loki datasource already links `trace_id` → Tempo.
+- [x] Careful: the SDK reports its own export failures through `diag` → our logger → the log exporter: don't loop. `index.ts` gives the SDK a stdout-only logger; the app's logger is the one with the sink.
+
+**Result (2026-10-21):** checked end to end with the fake model. One chat request gave 6 log lines in Loki (`{service_name="designroom-server"}`), each with `trace_id` equal to our `traceId`, and the same trace in Tempo: 13 spans, from `POST /api/chat` down to each tool call.
 
 ### M1-26c — Phoenix + feedback
 **Status:** todo · **Size:** M · **Depends on:** M1-26a, Docker
