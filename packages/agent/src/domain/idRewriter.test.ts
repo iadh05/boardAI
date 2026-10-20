@@ -45,6 +45,33 @@ describe('ids rewritten to labels (M1-29)', () => {
     );
   });
 
+  // Found in M1-29's measurement: "Kafka (`Event stream (Kafka) Event stream (Kafka)`)".
+  it('an id written right before its own name is dropped, not doubled', () => {
+    expect(rewrite('Kafka (`n13` Event stream (Kafka)) stays.')).toBe(
+      'Kafka (Event stream (Kafka)) stays.',
+    );
+    expect(rewrite('The board has `n13 Event stream (Kafka)` already.')).toBe(
+      'The board has `Event stream (Kafka)` already.',
+    );
+    expect(rewrite('Keep n13 "Event stream (Kafka)".')).toBe('Keep "Event stream (Kafka)".');
+  });
+
+  it('waits for the name after an id when it arrives in pieces', () => {
+    expect(rewrite('has `n13', ' Event str', 'eam (Kafka)` ok')).toBe(
+      'has `Event stream (Kafka)` ok',
+    );
+  });
+
+  // "Redis cache (Redis cache)": "(" was shown before the id arrived in the next chunk.
+  it('a "(" at the end of a chunk waits for a possible id', () => {
+    expect(rewrite('The Payment Service (', '`n10`) is down')).toBe('The Payment Service is down');
+  });
+
+  // "before `Push / SMS provider so": the opening backtick was shown, the closing one eaten.
+  it('a backtick at the end of a chunk waits for a possible id', () => {
+    expect(rewrite('before `', 'n11` so')).toBe('before Notifications so');
+  });
+
   it('flush releases what was held at the end', () => {
     expect(rewrite('ends with n1')).toBe('ends with n1'); // n1 unknown here: kept as is
     expect(rewrite('ends with n10')).toBe('ends with Payment Service');

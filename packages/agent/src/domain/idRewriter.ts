@@ -1,30 +1,72 @@
 // Ids out of the user's text (M1-29). The model works with short ids (n3) and writes them in its
 // answers in ~9 of 10 reviews, whatever the prompt says — but the user never sees ids, only names.
-// So the streamed text is rewritten: an id becomes its box's label, and an id in parentheses right
-// after the name ("the Payment Service (n10)") is dropped. Unknown ids are left alone.
+// So the streamed text is rewritten: an id becomes its box's label, and an id next to the name it
+// stands for ("the Payment Service (n10)", "`n10` Payment Service") is dropped. Unknown ids are
+// left alone.
 
 /** "Name (n3)" / "Name (`n3`)": the name is already there. */
 const IN_PARENS = /\s*\(\s*`?(n\d+)`?\s*\)/g;
-/** A bare id, with or without backticks — not part of a longer word (an10, n3x). */
-const BARE = /`?(?<![\w-])(n\d+)(?![\w-])`?/g;
-/** The end of a chunk that could still become an id with the next one: "n", "n1", "(`n1"… */
-const UNFINISHED = /(\s*\(\s*)?`?(?<![\w-])n\d*`?$/; // with the space before "(": it may go too
+/** An id, with its backticks and the spaces after it — not part of a longer word (an10, n3x). */
+const ID = /(`?)(?<![\w-])(n\d+)(?![\w-])(`?)(\s*)/g;
+/** The end of a chunk that could still become an id with the next one: "(", "`", "n", "(`n1"… */
+const UNFINISHED = /(\s*\(\s*)?`?((?<![\w-])n\d*`?)?$/; // with the space before "(": it may go too
+/** What may stand between an id and its name: quotes, backticks, bold. */
+const OPENERS = /^["“'`*]*/;
 
 export const createIdRewriter = (labelOf: (id: string) => string | undefined) => {
   let held = '';
 
+  /** The text right after an id begins with that id's name (case aside). */
+  const namedAfter = (rest: string, label: string) =>
+    rest.replace(OPENERS, '').toLowerCase().startsWith(label.toLowerCase());
+
   const rewrite = (text: string) =>
     text
       .replace(IN_PARENS, (whole, id: string) => (labelOf(id) ? '' : whole))
-      .replace(BARE, (whole, id: string) => labelOf(id) ?? whole);
+      .replace(
+        ID,
+        (
+          whole,
+          open: string,
+          id: string,
+          close: string,
+          space: string,
+          at: number,
+          all: string,
+        ) => {
+          const label = labelOf(id);
+          if (!label) return whole;
+          // A lone backtick belongs to the text around the id ("`n13 Kafka`"): keep it.
+          const [before, after] = open && close ? ['', ''] : [open, close];
+          if (namedAfter(all.slice(at + whole.length), label)) return before + after;
+          return `${before}${label}${after}${space}`;
+        },
+      );
+
+  /**
+   * Where the text stops being safe to show: an unfinished id at the end, or a known id whose name
+   * may still be arriving ("`n13 Event str" — rewrite too early and the name comes out twice).
+   */
+  const safeEnd = (text: string) => {
+    for (const m of text.matchAll(ID)) {
+      const label = labelOf(m[2] ?? '');
+      const rest = text
+        .slice(m.index + m[0].length)
+        .replace(OPENERS, '')
+        .toLowerCase();
+      if (label && rest.length < label.length && label.toLowerCase().startsWith(rest))
+        return m.index;
+    }
+    return UNFINISHED.exec(text)?.index ?? text.length;
+  };
 
   return {
-    /** The text safe to show now; a possible start of an id waits for the next chunk. */
+    /** The text safe to show now; a possible start of an id (or its name) waits for the next chunk. */
     feed: (delta: string): string => {
       const text = held + delta;
-      const tail = UNFINISHED.exec(text);
-      held = tail ? tail[0] : '';
-      return rewrite(tail ? text.slice(0, tail.index) : text);
+      const end = safeEnd(text);
+      held = text.slice(end);
+      return rewrite(text.slice(0, end));
     },
     /** Everything still held, at the end of the answer. */
     flush: (): string => {

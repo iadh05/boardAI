@@ -1111,8 +1111,26 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 # After M1 (planned 2026-10-19)
 
 - **Removal proposals** — `remove_node` / `remove_edge` as *proposals*: ghosts marked for removal, nothing removed without Accept. Changes the "no delete tool" rule (backend.md), so it starts with an ADR. Owner's decision: yes.
-- **Draw mode** — "draw me a design for X": a whole diagram proposed as ghosts, then Accept/Reject. Needs automatic layout for many new boxes and bigger proposal limits (today 1–3 boxes in the prompt, 20 ops in code).
+- **Draw mode** — first ticket after M1, see below.
 - **Fine-tuning** — see MILESTONES M6.
+
+## Draw mode — "design me X" drafts a whole first diagram
+**Status:** todo (first after M1) · **Size:** L · **Depends on:** M1-29 (duplicate guard, board text C)
+
+*Why (2026-10-20):* asked twice in one session, on an empty board, "design me an Uber Eats" got three generic boxes (Load Balancer → API Gateway → "Delivery Service") and "please accept so I can proceed", then the same three again. The agent is a reviewer: at most 3 new boxes per proposal (M1-24e cap) and one pending proposal, so a whole system takes 4–5 accept rounds, and with 3 boxes the model spends them on safe plumbing instead of what makes the system *this* system (for Uber Eats: customer / restaurant / courier apps, orders, menu and search, dispatch, courier location, payments, notifications).
+
+**Tasks**
+- [ ] Decide when it's a draft: an empty (or near-empty) board **and** a request to design something. Detected in code (like the scope guard), not left to the prompt.
+- [ ] A draft proposal may add up to ~15 boxes (the cap stays 3 for reviews); the 20-op limit raised for drafts only.
+- [ ] Automatic layout for many new boxes at once (today's placement puts a few boxes right of `near`): layers left to right (clients → edge → services → data → external), no overlaps, inside the viewport. Probably the libavoid/diagram package (ADR-004) or a simple layered layout.
+- [ ] Prompt section for drafts: start from the domain (who uses it, the core flows), state the assumptions (users, peaks), name boxes for what they do ("Courier location", not "Service").
+- [ ] One Accept/Reject for the whole draft; after it, normal review mode (3-box proposals).
+- [ ] Eval: 3–5 "design me X" prompts (Uber Eats, chat app, URL shortener…): domain boxes present, every box connected, no duplicates, layout without overlaps.
+- [ ] e2e: empty board → "design me a URL shortener" (fake LLM) → ghost draft → Accept → boxes on the board.
+
+**Acceptance criteria**
+- [ ] On an empty board, "design me an Uber Eats" gives one draft with the system's own components, connected, readable without moving boxes, accepted in one click.
+- [ ] Reviews on an existing board are unchanged (M1-29's bar still met).
 
 ---
 
