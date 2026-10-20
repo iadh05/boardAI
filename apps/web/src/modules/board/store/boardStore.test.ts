@@ -349,7 +349,7 @@ describe('boardStore — zones', () => {
 
     state().removeElements([], [], [zone]);
 
-    expect(state().board.zones).toEqual([]);
+    expect(state().board.zones ?? []).toEqual([]); // absent = none (BoardSchema)
     expect(state().board.nodes.map((n) => n.id)).toEqual([api]);
   });
 });

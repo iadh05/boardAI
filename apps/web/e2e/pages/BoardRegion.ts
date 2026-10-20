@@ -25,6 +25,29 @@ export class BoardRegion {
     return this.diagram.getByRole('group', { name: label, exact: true });
   }
 
+  /**
+   * Where a box sits on the board (diagram coordinates, the same in every tab whatever the zoom).
+   * No accessible handle carries it: read from the diagram's node wrapper.
+   */
+  async positionOf(label: string): Promise<{ x: number; y: number }> {
+    // The node's group is the diagram's node wrapper itself: its style carries the position.
+    const style = (await this.node(label).getAttribute('style')) ?? '';
+    const match = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(style);
+    return { x: Number(match?.[1]), y: Number(match?.[2]) };
+  }
+
+  /** Moves the pointer over the board (others see it as a live cursor). */
+  async hover(): Promise<void> {
+    const box = await this.diagram.boundingBox();
+    if (!box) throw new Error('the diagram is not on screen');
+    await this.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 5 });
+  }
+
+  /** Other people's cursors on the board, by the name they show ("Guest 42"). */
+  cursors(): Locator {
+    return this.diagram.getByText(/^Guest \d{2}$/);
+  }
+
   /** Types into the open label editor and saves with Enter. */
   async typeLabel(text: string): Promise<void> {
     await this.labelInput.fill(text);

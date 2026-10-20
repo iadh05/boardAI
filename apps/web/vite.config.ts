@@ -7,6 +7,9 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true, // Nginx forwards to this exact port (infra/nginx/nginx.conf).
+    // IPv4 loopback: "localhost" can resolve to ::1 only, which Nginx in Docker can't reach
+    // (host.docker.internal is IPv4) — the app then answers 502 through http://localhost:8080.
+    host: '127.0.0.1',
     // No /api proxy here: in dev the app is opened through Nginx (http://localhost:8080), which
     // routes /api to the server, the same single origin as in production (architecture §14).
   },
@@ -14,7 +17,12 @@ export default defineConfig({
     // The e2e runs serve the production build without Nginx: forward /api to the fake-model
     // server they start on :3100 (playwright.config.ts). That is also the default, so a preview
     // started by hand and reused by Playwright can never reach the real model on :3000.
-    proxy: { '/api': process.env.API_URL ?? 'http://localhost:3100' },
+    // /ws: the rooms' WebSocket (M2), same server. Vite keeps the Host header, so the server's
+    // same-origin check sees the page's own host.
+    proxy: {
+      '/api': process.env.API_URL ?? 'http://localhost:3100',
+      '/ws': { target: process.env.API_URL ?? 'http://localhost:3100', ws: true },
+    },
   },
   build: {
     rolldownOptions: {

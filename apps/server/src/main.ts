@@ -13,6 +13,7 @@ import {
 import { observeRequests } from './core/observability/telemetry.ts';
 import { requestContext } from './core/requestContext.ts';
 import { createChatModule, createReviewAgent } from './modules/chat/index.ts';
+import { createCollaborationModule } from './modules/collaboration/index.ts';
 import { createDebugModule } from './modules/debug/index.ts';
 import { createHealthModule } from './modules/health/index.ts';
 
@@ -59,3 +60,10 @@ export const createApp = (deps: AppDeps) => {
   app.onError(onError(deps.logger, reporter));
   return app;
 };
+
+/**
+ * The live part (M2): rooms over WebSocket. Separate from the Hono app because upgrades come from
+ * the Node server itself — index.ts hands them over with `server.on('upgrade', …)`.
+ */
+export const createRealtime = (deps: Pick<AppDeps, 'logger'>) =>
+  createCollaborationModule({ logger: deps.logger });

@@ -3,7 +3,7 @@ import { loadConfigFromProcess } from './core/config.ts';
 import { createLogger } from './core/logger.ts';
 import { createErrorReporter } from './core/observability/errorReporter.ts';
 import { startTelemetry } from './core/observability/telemetry.ts';
-import { createApp } from './main.ts';
+import { createApp, createRealtime } from './main.ts';
 
 // Starts the real server. Everything testable lives in createApp (main.ts).
 
@@ -14,6 +14,7 @@ const reporter = createErrorReporter(config.errorTracking);
 // Before the app is built: its spans need the SDK in place. Off without an OTLP endpoint.
 const flushTelemetry = startTelemetry(config.telemetry, logger);
 const app = createApp({ config, logger, reporter });
+const realtime = createRealtime({ logger });
 
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   logger.info('server listening', {
@@ -24,8 +25,12 @@ const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   });
 });
 
+// WebSocket upgrades (/ws/rooms/:id) go to the rooms, not to Hono.
+server.on('upgrade', realtime.handleUpgrade);
+
 const stop = (signal: string) => {
   logger.info('shutting down', { signal });
+  realtime.close(); // open WebSockets would keep server.close() waiting forever
   server.close();
   // Send the last batch of spans before the process exits.
   flushTelemetry().catch((error: unknown) => {
