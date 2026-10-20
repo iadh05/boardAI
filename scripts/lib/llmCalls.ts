@@ -8,9 +8,17 @@ export type { LlmCallRecord };
 /** The log's records grouped by request, in the order they happened. */
 export const readCalls = (file: string): Map<string, LlmCallRecord[]> => {
   const byRequest = new Map<string, LlmCallRecord[]>();
-  for (const line of readFileSync(file, 'utf8').split('\n')) {
+  const lines = readFileSync(file, 'utf8').split('\n');
+  for (const [i, line] of lines.entries()) {
     if (!line.trim()) continue;
-    const record = JSON.parse(line) as LlmCallRecord;
+    let record: LlmCallRecord;
+    try {
+      record = JSON.parse(line) as LlmCallRecord;
+    } catch (error) {
+      // The server may be writing the last line right now (the log is read while it runs).
+      if (i === lines.length - 1) continue;
+      throw new Error(`${file}: line ${i + 1} is not a record`, { cause: error });
+    }
     const key = record.requestId ?? '(no request)';
     byRequest.set(key, [...(byRequest.get(key) ?? []), record]);
   }

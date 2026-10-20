@@ -1,5 +1,6 @@
 // Divide and conquer for the agent (M1-28): sends ONE recorded model call — exactly the same
-// messages and tools — to the model again, N times, with no agent loop around it.
+// messages, and the tools by name — to the model again, N times, with no agent loop around it.
+// The tool definitions are today's: a call recorded before a tool changed is not replayed exactly.
 //   - The model answers badly here too → the problem is in the input (prompt, board text) or the
 //     model, not in our loop.
 //   - It answers well here, badly in the app → look at the loop (nudges, rounds, history).
@@ -33,7 +34,11 @@ const messages = systemFile
       m.role === 'system' ? { ...m, content: readFileSync(systemFile, 'utf8') } : m,
     )
   : call.messages;
+// The log keeps tool names only: their definitions are today's. Say so when they differ.
 const tools = AGENT_TOOLS.filter((t) => call.tools.includes(t.name));
+const missing = call.tools.filter((name) => !tools.some((t) => t.name === name));
+if (missing.length > 0)
+  out(`Note: tools no longer in the code, left out of the replay: ${missing.join(', ')}`);
 
 await assertOnGpu(model);
 const { llm } = connectRealModel(model);

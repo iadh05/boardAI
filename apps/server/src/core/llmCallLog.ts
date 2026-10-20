@@ -34,7 +34,7 @@ export type LlmCallLogDeps = {
 export const recordLlmCalls = (llm: AiGateway, deps: LlmCallLogDeps): AiGateway => ({
   async *chat(input) {
     const started = deps.now();
-    const requestId = deps.requestId(); // now, while the request's context is active
+    const requestId = deps.requestId(); // at the first read: the stream is read inside the request's context
     let text = '';
     const toolCalls: LlmToolCall[] = [];
     let usage: Usage | undefined;
