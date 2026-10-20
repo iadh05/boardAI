@@ -9,12 +9,19 @@ const fakeProvider = () => {
   const onStatus: ((event: { status: string }) => void)[] = [];
   const onSync: ((synced: boolean) => void)[] = [];
   let destroyed = false;
+  let connected = true;
   const provider: RoomProvider = {
     on: ((event: 'status' | 'sync', handler: never) => {
       if (event === 'status') onStatus.push(handler);
       else onSync.push(handler);
     }) as RoomProvider['on'],
     awareness: new Awareness(new Y.Doc()),
+    connect: () => {
+      connected = true;
+    },
+    disconnect: () => {
+      connected = false;
+    },
     destroy: () => {
       destroyed = true;
     },
@@ -25,7 +32,7 @@ const fakeProvider = () => {
   const sync = (synced: boolean) => {
     for (const h of onSync) h(synced);
   };
-  return { provider, emit, sync, isDestroyed: () => destroyed };
+  return { provider, emit, sync, isDestroyed: () => destroyed, isConnected: () => connected };
 };
 
 const setup = () => {
@@ -33,6 +40,8 @@ const setup = () => {
   const store = createConnectionStore();
   const calls: { url: string; room: string; doc: Y.Doc }[] = [];
   const doc = new Y.Doc();
+  let networkHandler: (online: boolean) => void = () => undefined;
+  let watching = false;
   const { leave } = connectRoom({
     doc,
     roomId: 'k3x9a2b7q1zm',
@@ -42,8 +51,18 @@ const setup = () => {
       calls.push({ url, room, doc: d });
       return fake.provider;
     },
+    network: {
+      onChange: (handler) => {
+        networkHandler = handler;
+        watching = true;
+        return () => {
+          watching = false;
+        };
+      },
+    },
   });
-  return { fake, store, calls, doc, leave };
+  const network = (online: boolean) => networkHandler(online);
+  return { fake, store, calls, doc, leave, network, isWatching: () => watching };
 };
 
 describe('connecting to a room (M2-05)', () => {
@@ -72,6 +91,24 @@ describe('connecting to a room (M2-05)', () => {
     expect(store.getState().loaded).toBe(false);
     fake.sync(true);
     expect(store.getState().loaded).toBe(true);
+  });
+
+  it('says Offline as soon as the browser loses the network, and reconnects when it’s back', () => {
+    const { fake, store, network } = setup();
+    fake.emit('connected');
+
+    network(false);
+    expect(store.getState().status).toBe('offline');
+    expect(fake.isConnected()).toBe(false);
+
+    network(true);
+    expect(fake.isConnected()).toBe(true);
+  });
+
+  it('leaving stops watching the network', () => {
+    const { leave, isWatching } = setup();
+    leave();
+    expect(isWatching()).toBe(false);
   });
 
   it('remembers the room id for the link', () => {
