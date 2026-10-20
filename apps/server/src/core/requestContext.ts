@@ -1,6 +1,15 @@
 import { isSpanContextValid, trace } from '@opentelemetry/api';
 import type { MiddlewareHandler } from 'hono';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Logger } from './logger.ts';
+
+const current = new AsyncLocalStorage<{ requestId: string }>();
+
+/**
+ * The id of the request being served, for code that has no request in hand (the model-call log,
+ * M1-28). Null outside a request.
+ */
+export const currentRequestId = (): string | null => current.getStore()?.requestId ?? null;
 
 /** Ids we accept from upstream (Nginx's $request_id): short and plain, nothing to inject. */
 const VALID_ID = /^[\w-]{8,128}$/;
@@ -28,7 +37,8 @@ export const requestContext =
     const traced = span && isSpanContextValid(span.spanContext());
     const ids = traced ? { requestId, traceId: span.spanContext().traceId } : { requestId };
     c.set('logger', logger.child(ids));
-    await next();
+    // Everything the request starts — including a stream that outlives this function — sees its id.
+    await current.run({ requestId }, next);
     // For a stream (the chat), this is when the headers went out, not when the stream ended.
     logger.info('request', {
       ...ids,
