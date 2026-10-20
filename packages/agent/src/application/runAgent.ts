@@ -7,14 +7,10 @@ import type {
   Usage,
 } from '@designroom/ai-gateway';
 import type { Board, ChatMessage, Proposal } from '@designroom/domain';
-import { boardToText } from '../domain/boardToText.ts';
+import { boardToText, inventoryText } from '../domain/boardToText.ts';
+import { createIdRewriter } from '../domain/idRewriter.ts';
 import { createLeakWatch } from '../domain/leakWatch.ts';
-import {
-  connectNudge,
-  PROPOSE_NUDGE,
-  recommendsChange,
-  unconnectedNewBoxes,
-} from '../domain/nudge.ts';
+import { connectNudge, PROPOSE_NUDGE, shouldNudge, unconnectedNewBoxes } from '../domain/nudge.ts';
 import { buildMessages, REFUSAL_WORDING, SYSTEM_PROMPT } from '../domain/prompt.ts';
 import { OUT_OF_SCOPE_REPLY, type Scope } from '../domain/scope.ts';
 import { summarize } from '../domain/summary.ts';
@@ -109,11 +105,11 @@ export const createAgent = (deps: AgentDeps) => {
       }
 
       const maxRounds = deps.maxRounds ?? DEFAULT_MAX_ROUNDS;
-      const conversation: LlmMessage[] = buildMessages(
-        boardToText(board, draft.aliases),
-        messages,
-        deps.canary,
-      );
+      // What exists by kind, then the listing — both inside the <board> block (M1-29).
+      const boardText = [inventoryText(board, draft.aliases), boardToText(board, draft.aliases)]
+        .filter(Boolean)
+        .join('\n\n');
+      const conversation: LlmMessage[] = buildMessages(boardText, messages, deps.canary);
       // Output guard: the answer is cut where it starts reciting the prompt (OWASP LLM07).
       const watch = createLeakWatch({
         prompt: SYSTEM_PROMPT,
@@ -151,6 +147,12 @@ export const createAgent = (deps: AgentDeps) => {
           const calls: LlmToolCall[] = [];
           let said = '';
           let usage: Usage | null = null;
+          // The user sees names, not ids (M1-29): "n10" → "Payment Service". The model's own text
+          // (`said`, sent back to it next round) keeps its ids.
+          const ids = createIdRewriter((alias) => {
+            const id = draft.aliases.nodeId(alias);
+            return id ? draft.board.nodes.find((n) => n.id === id)?.label : undefined;
+          });
           try {
             // A copy: the conversation grows after this call, the request must not change with it.
             const request = { messages: [...conversation], tools: AGENT_TOOLS, signal };
@@ -171,12 +173,17 @@ export const createAgent = (deps: AgentDeps) => {
                 // A new round's text starts a new paragraph, not glued to the last sentence.
                 if (said === '' && spoke) yield { type: 'text', delta: '\n\n' };
                 said += chunk.delta;
-                yield { type: 'text', delta: chunk.delta };
+                const shown = ids.feed(chunk.delta);
+                if (shown) yield { type: 'text', delta: shown };
               } else if (chunk.type === 'toolCall') calls.push(chunk.call);
               else usage = chunk.usage;
             }
+            const rest = ids.flush();
+            if (rest) yield { type: 'text', delta: rest };
           } catch (error) {
             if (!isGatewayError(error)) throw error; // a bug, not a model failure
+            const rest = ids.flush(); // what was held back was already said
+            if (rest) yield { type: 'text', delta: rest };
             if (error.code !== 'ABORTED') {
               markFailed(step.span, error.message);
               markFailed(agent.span, error.message);
@@ -219,7 +226,7 @@ export const createAgent = (deps: AgentDeps) => {
             !nudged &&
             round < maxRounds &&
             draft.ops.length === 0 &&
-            recommendsChange(said)
+            shouldNudge(said) // asks permission for a change, instead of proposing it (M1-29)
           ) {
             nudged = true;
             finished = false;
