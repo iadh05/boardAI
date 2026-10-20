@@ -132,26 +132,42 @@ export const createBoardStore = ({
       captureTimeout: UNDO_CAPTURE_MS,
     });
 
-    // A starting board is written as no one's change: there is nothing to undo before it.
-    if (initialBoard.nodes.length + initialBoard.edges.length + (initialBoard.zones?.length ?? 0))
-      writeBoard(doc, readBoard(doc), initialBoard);
+    // A starting board (tests) is written as no one's change, and only into an empty document:
+    // a room's board is never mixed with another.
+    const empty = (b: Board) => b.nodes.length + b.edges.length + (b.zones?.length ?? 0) === 0;
+    if (!empty(initialBoard) && empty(readBoard(doc))) writeBoard(doc, emptyBoard(), initialBoard);
+
+    /** Which boxes and zones exist: when another tab only moves things, ghosts stay put. */
+    const idsOf = (b: Board) =>
+      [...b.nodes.map((n) => n.id), '|', ...(b.zones ?? []).map((z) => z.id)].join(',');
+
+    const undoState = () => ({
+      canUndo: history.undoStack.length > 0,
+      canRedo: history.redoStack.length > 0,
+    });
+    // An undo whose target someone else deleted changes nothing in the document, but still moves
+    // the stacks: keep the buttons in step with them.
+    history.on('stack-item-added', () => set(undoState()));
+    history.on('stack-item-popped', () => set(undoState()));
 
     /** A local change succeeded: its read-back also clears the last error, in the same update. */
     let clearError = false;
 
     // Every change to the document — this tab's, another tab's, an undo — is read back here.
-    const refresh = () => {
+    const refresh = (_update: Uint8Array, origin: unknown) => {
       const board = readBoard(doc);
       const { editingNodeId, editingZoneId } = get();
       const cleared = clearError ? { lastError: null } : {};
       clearError = false;
+      // A waiting proposal is placed again when this tab changed the board, or boxes came or
+      // went: either may have taken one of its spots. Not on every step of someone else's drag,
+      // or the ghosts would jump around while you look at them.
+      const replace = origin === mine || idsOf(board) !== idsOf(get().board);
       set({
         board,
         ...cleared,
-        // A waiting proposal is placed again: the board change may have taken one of its spots.
-        placements: null,
-        canUndo: history.undoStack.length > 0,
-        canRedo: history.redoStack.length > 0,
+        ...(replace ? { placements: null } : {}),
+        ...undoState(),
         // Someone else deleted what this tab was editing.
         ...(editingNodeId && !board.nodes.some((n) => n.id === editingNodeId)
           ? { editingNodeId: null }
@@ -303,11 +319,14 @@ export const createBoardStore = ({
       },
       stopEditing: () => set({ editingNodeId: null }),
 
+      // Yjs drops a step whose target is gone without any event: read the stacks after each call.
       undo: () => {
         history.undo();
+        set(undoState());
       },
       redo: () => {
         history.redo();
+        set(undoState());
       },
       endUndoStep: () => history.stopCapturing(),
     };

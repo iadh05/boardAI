@@ -40,6 +40,19 @@ describe('board store on a shared document (M2-03)', () => {
     expect(a().editingNodeId).toBeNull();
   });
 
+  it('ghosts stay put while another tab only moves boxes; re-placed when boxes come or go', () => {
+    const { a, b } = linkedStores();
+    const id = a().addNode('api', { x: 0, y: 0 }) ?? '';
+    a().setProposal({ id: 'p1', summary: 'Add cache', ops: [] });
+    a().placeProposal({ n9: { x: 300, y: 0 } });
+
+    b().moveNode(id, { x: 50, y: 50 });
+    expect(a().placements).toEqual({ n9: { x: 300, y: 0 } });
+
+    b().addNode('database', { x: 600, y: 0 });
+    expect(a().placements).toBeNull();
+  });
+
   it('the AI proposal stays in the tab that asked for it', () => {
     const { a, b } = linkedStores();
     a().setProposal({ id: 'p1', summary: 'Add cache', ops: [] });
@@ -69,6 +82,7 @@ describe('undo / redo — your own changes only (M2-03)', () => {
     expect(b().board.nodes).toEqual([]);
     b().undo(); // B's own rename has nothing left to apply to: no error
     expect(a().board.nodes).toEqual([]);
+    expect(b().canUndo).toBe(false); // the button follows the stack, even when nothing changed
   });
 
   it('a drag (many moves in a row) is one undo step', () => {

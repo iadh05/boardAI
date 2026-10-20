@@ -85,11 +85,12 @@ export function Toolbar({ store }: ToolbarProps) {
             className="mx-1 w-px self-stretch bg-line"
           />
           <ToolButton icon={SquareDashed} caption="Zone" label="Add Zone" onClick={addZoneHere} />
-          <span
-            role="separator"
-            aria-orientation="vertical"
-            className="mx-1 w-px self-stretch bg-line"
-          />
+        </div>
+        <div
+          role="toolbar"
+          aria-label="History"
+          className="flex gap-1 rounded-lg border border-line bg-surface p-1 shadow-sm"
+        >
           <ToolButton
             icon={Undo2}
             caption="Undo"
