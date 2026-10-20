@@ -47,8 +47,12 @@ describe('add_node', () => {
   it(`refuses a box beyond ${MAX_NEW_BOXES} per proposal, saying to keep the most important`, () => {
     const deps = ids();
     let draft: Draft = createDraft(board);
-    for (const label of ['Redis', 'Queue', 'Replica']) {
-      draft = runToolCall(draft, call('add_node', { kind: 'cache', label }), deps).draft;
+    for (const [kind, label] of [
+      ['cache', 'Redis'],
+      ['queue', 'Queue'],
+      ['database', 'Replica'],
+    ]) {
+      draft = runToolCall(draft, call('add_node', { kind, label }), deps).draft;
     }
 
     const fourth = runToolCall(draft, call('add_node', { kind: 'cdn', label: 'CDN' }), deps);
@@ -63,6 +67,82 @@ describe('add_node', () => {
       deps,
     );
     expect(connected.ok).toBe(true);
+  });
+});
+
+// M1-29: on the Uber board, Qwen added a RabbitMQ queue next to Kafka (4/10 runs had a duplicate),
+// even right after writing "adding a second queue would over-engineer". The prompt says never;
+// the tool makes it hold, and tells the model what to do instead.
+describe('add_node: no second queue, cache, load balancer or CDN', () => {
+  const withKafka: Board = {
+    nodes: [
+      ...board.nodes,
+      { id: 'uuid-kafka', kind: 'queue', label: 'Event stream (Kafka)', position: { x: 0, y: 0 } },
+    ],
+    edges: board.edges,
+  };
+
+  it('refuses a box of a kind already on the board, naming the one to use', () => {
+    const { ok, reply, draft } = runToolCall(
+      createDraft(withKafka),
+      call('add_node', { kind: 'queue', label: 'RabbitMQ' }),
+      ids(),
+    );
+
+    expect(ok).toBe(false);
+    expect(reply).toContain('n3 [queue] "Event stream (Kafka)"');
+    expect(reply).toMatch(/connect to it/i);
+    expect(draft.ops).toEqual([]);
+  });
+
+  it('sees through the kind: a custom or service box named after one counts too', () => {
+    const custom = runToolCall(
+      createDraft(withKafka),
+      call('add_node', { kind: 'custom', label: 'RabbitMQ broker' }),
+      ids(),
+    );
+    const service = runToolCall(
+      createDraft(withKafka),
+      call('add_node', { kind: 'service', label: 'Notifications queue' }),
+      ids(),
+    );
+
+    expect(custom.ok).toBe(false);
+    expect(service.ok).toBe(false);
+  });
+
+  it('counts boxes added earlier in the same proposal', () => {
+    const deps = ids();
+    const first = runToolCall(
+      createDraft(board),
+      call('add_node', { kind: 'cache', label: 'Redis' }),
+      deps,
+    );
+    const second = runToolCall(
+      first.draft,
+      call('add_node', { kind: 'cache', label: 'Memcached' }),
+      deps,
+    );
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(false);
+    expect(second.reply).toContain('n3 [cache] "Redis"');
+  });
+
+  it('lets other kinds repeat: a second database or service is a normal fix', () => {
+    const replica = runToolCall(
+      createDraft(withKafka),
+      call('add_node', { kind: 'database', label: 'Postgres replica' }),
+      ids(),
+    );
+    const worker = runToolCall(
+      createDraft(withKafka),
+      call('add_node', { kind: 'service', label: 'Order worker' }),
+      ids(),
+    );
+
+    expect(replica.ok).toBe(true);
+    expect(worker.ok).toBe(true);
   });
 });
 

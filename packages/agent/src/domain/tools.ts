@@ -6,6 +6,7 @@ import {
   NodeKindSchema,
   type AgentOp,
   type Board,
+  type NodeKind,
 } from '@designroom/domain';
 import { z } from 'zod';
 import { createAliases, type Aliases } from './aliases.ts';
@@ -83,6 +84,24 @@ const TOOL_NAMES = AGENT_TOOLS.map((t) => t.name).join(', ');
 /** New boxes in one proposal: a review proposes the few fixes that matter (owner's call, M1-24e). */
 export const MAX_NEW_BOXES = 3;
 
+/**
+ * Kinds a design needs once: a second one is a duplicate (M1-29: a RabbitMQ queue next to Kafka).
+ * The words catch the same thing added as a custom or service box ("RabbitMQ broker").
+ */
+const ONE_OF_A_KIND: Partial<Record<NodeKind, RegExp>> = {
+  queue: /\b(queue|kafka|rabbit ?mq|broker|sqs|event (bus|stream)|pub ?\/? ?sub)\b/i,
+  cache: /\b(cache|redis|memcached)\b/i,
+  loadBalancer: /\b(load ?balancer)\b/i,
+  cdn: /\bcdn\b/i,
+};
+
+/** The box already doing the job of the one the model wants to add, if any. */
+const alreadyThere = (board: Board, kind: NodeKind, label: string) => {
+  const sameJob = (k: NodeKind) =>
+    k === kind || ((kind === 'custom' || kind === 'service') && ONE_OF_A_KIND[k]?.test(label));
+  return board.nodes.find((n) => n.kind in ONE_OF_A_KIND && sameJob(n.kind));
+};
+
 type Planned = { op: AgentOp; aliases: Aliases; describe: (board: Board) => string };
 type Plan = { ok: true; planned: Planned } | { ok: false; reply: string };
 
@@ -137,6 +156,13 @@ const plan = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
       if (added >= MAX_NEW_BOXES)
         return refuse(
           `A proposal has at most ${MAX_NEW_BOXES} new boxes, and this one has them. Keep the most important fixes: connect the boxes you added, then stop.`,
+        );
+      // The prompt says "never a second queue, cache or load balancer"; measured, the model did it
+      // anyway. In code, with what to do instead (M1-29).
+      const existing = alreadyThere(draft.board, args.data.kind, args.data.label);
+      if (existing)
+        return refuse(
+          `There is already a ${existing.kind}: ${nodeLine(draft.board, existing.id, draft.aliases)}. Do not add a second one: connect to it, or rename it with update_node to show it does more (e.g. "Redis (cluster, 3 nodes)").`,
         );
       const near = args.data.near === undefined ? undefined : resolve(args.data.near);
       if (args.data.near !== undefined && near === undefined) return unknown(args.data.near);
