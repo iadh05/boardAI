@@ -9,7 +9,12 @@ import type {
 import type { Board, ChatMessage, Proposal } from '@designroom/domain';
 import { boardToText } from '../domain/boardToText.ts';
 import { createLeakWatch } from '../domain/leakWatch.ts';
-import { PROPOSE_NUDGE, recommendsChange } from '../domain/nudge.ts';
+import {
+  connectNudge,
+  PROPOSE_NUDGE,
+  recommendsChange,
+  unconnectedNewBoxes,
+} from '../domain/nudge.ts';
 import { buildMessages, REFUSAL_WORDING, SYSTEM_PROMPT } from '../domain/prompt.ts';
 import { OUT_OF_SCOPE_REPLY, type Scope } from '../domain/scope.ts';
 import { summarize } from '../domain/summary.ts';
@@ -119,6 +124,7 @@ export const createAgent = (deps: AgentDeps) => {
       let spoke = false; // an earlier round wrote something
       let finished = false; // the model stopped calling tools by itself
       let nudged = false; // asked once to propose what it recommended in words (M1-24e)
+      let connectNudged = false; // asked once to connect the boxes it left floating (M1-24e)
 
       // Valid ops so far, as one proposal: also sent when a later round fails, because the text the
       // user already read may say "I've added a cache".
@@ -220,6 +226,19 @@ export const createAgent = (deps: AgentDeps) => {
             agent.span.setAttribute('designroom.agent.nudged', true);
             conversation.push({ role: 'assistant', content: said });
             conversation.push({ role: 'user', content: PROPOSE_NUDGE });
+          }
+          // New boxes left floating: ask once to connect them, by name (M1-24e).
+          const floating = unconnectedNewBoxes(draft.ops);
+          if (finished && !connectNudged && round < maxRounds && floating.length > 0) {
+            connectNudged = true;
+            finished = false;
+            agent.span.setAttribute('designroom.agent.connect_nudged', true);
+            const names = floating.map((id) => {
+              const label = draft.board.nodes.find((n) => n.id === id)?.label ?? '';
+              return `${draft.aliases.nodeAlias(id) ?? id} ${JSON.stringify(label)}`;
+            });
+            conversation.push({ role: 'assistant', content: said });
+            conversation.push({ role: 'user', content: connectNudge(names) });
           }
         } finally {
           step.span.end();

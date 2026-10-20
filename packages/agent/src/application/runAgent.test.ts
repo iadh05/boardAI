@@ -141,7 +141,11 @@ describe('runAgent', () => {
 
   it('separates the text of two rounds with a blank line', async () => {
     const { agent } = setup([
-      [text('Adding a cache.'), tool('c1', 'add_node', { kind: 'cache', label: 'Redis' })],
+      [
+        text('Adding a cache.'),
+        tool('c1', 'add_node', { kind: 'cache', label: 'Redis' }),
+        tool('c2', 'connect_nodes', { source: 'n1', target: 'n3' }),
+      ],
       [text('Done.')],
     ]);
     expect(textOf(await run(agent))).toBe('Adding a cache.\n\nDone.');
@@ -150,7 +154,10 @@ describe('runAgent', () => {
   it('returns an invalid call’s error to the model; the proposal keeps only valid ops', async () => {
     const { agent, fake } = setup([
       [tool('c1', 'connect_nodes', { source: 'n1', target: 'n9' })],
-      [tool('c2', 'add_node', { kind: 'cache', label: 'Redis' })],
+      [
+        tool('c2', 'add_node', { kind: 'cache', label: 'Redis' }),
+        tool('c3', 'connect_nodes', { source: 'n1', target: 'n3' }),
+      ],
       [text('Fixed.')],
     ]);
 
@@ -161,7 +168,10 @@ describe('runAgent', () => {
       toolCallId: 'c1',
       content: expect.stringMatching(/No node "n9"/) as unknown,
     });
-    expect(of(events, 'proposal')[0]?.proposal.ops.map((o) => o.op)).toEqual(['addNode']);
+    expect(of(events, 'proposal')[0]?.proposal.ops.map((o) => o.op)).toEqual([
+      'addNode',
+      'connect',
+    ]);
   });
 
   it('stops at max rounds and proposes what is valid so far', async () => {
@@ -200,6 +210,7 @@ describe('runAgent', () => {
       [
         tool('c1', 'add_node', { kind: 'cache', label: 'Redis' }),
         tool('c2', 'add_node', { kind: 'nope', label: 'x' }),
+        tool('c3', 'connect_nodes', { source: 'n1', target: 'n3' }),
       ],
       [
         text('ok'),
@@ -221,7 +232,7 @@ describe('runAgent', () => {
     expect(
       rounds.map((r) => ({ round: r.round, toolCalls: r.toolCalls, toolErrors: r.toolErrors })),
     ).toEqual([
-      { round: 1, toolCalls: 2, toolErrors: 1 },
+      { round: 1, toolCalls: 3, toolErrors: 1 },
       { round: 2, toolCalls: 0, toolErrors: 0 },
     ]);
     expect(rounds[1]?.usage).toMatchObject({ inputTokens: 200, outputTokens: 10 });
@@ -273,13 +284,44 @@ describe('proposal nudge (M1-24e)', () => {
     ]);
   });
 
-  it('already proposed → no nudge, no extra call', async () => {
+  it('already proposed, and connected → no nudge, no extra call', async () => {
     const { agent, fake } = setup([
       [text('Add a cache.'), tool('c1', 'add_node', { kind: 'cache', label: 'Redis' })],
+      [tool('c2', 'connect_nodes', { source: 'n1', target: 'n3' })],
       [text('A cache would also help later.')],
     ]);
     await run(agent);
-    expect(fake.calls).toHaveLength(2);
+    expect(fake.calls).toHaveLength(3);
+  });
+
+  it('a new box left without arrows → asked once to connect it, by name', async () => {
+    const { agent, fake } = setup([
+      [tool('c1', 'add_node', { kind: 'cache', label: 'Redis' })],
+      [text('I added a cache.')],
+      [tool('c2', 'connect_nodes', { source: 'n1', target: 'n3' })],
+      [text('Connected.')],
+    ]);
+
+    const events = await run(agent);
+
+    expect(fake.calls[2]?.messages.at(-1)).toMatchObject({
+      role: 'user',
+      content: expect.stringContaining('n3 "Redis"') as unknown,
+    });
+    expect(of(events, 'proposal')[0]?.proposal.ops.map((o) => o.op)).toEqual([
+      'addNode',
+      'connect',
+    ]);
+  });
+
+  it('asked to connect once only: still floating after that → the answer stands', async () => {
+    const { agent, fake } = setup([
+      [tool('c1', 'add_node', { kind: 'cache', label: 'Redis' })],
+      [text('I added a cache.')],
+      [text('Done.')],
+    ]);
+    await run(agent);
+    expect(fake.calls).toHaveLength(3);
   });
 
   it('an answer that recommends nothing (a question, an explanation) → no nudge', async () => {
@@ -471,6 +513,7 @@ describe('tracing', () => {
       [tool('c1', 'add_node', { kind: 'cache', label: 'Redis', near: 'n1' })],
       [tool('c2', 'connect_nodes', { source: 'n1', target: 'n9' })], // n9 doesn't exist
       [text('Done.')],
+      [text('Left as is.')], // the answer to "connect the box you added" (M1-24e)
     ]);
 
     await run(agent);
@@ -479,11 +522,13 @@ describe('tracing', () => {
     const rounds = named('agent round');
     expect(root?.attributes).toMatchObject({
       'openinference.span.kind': 'AGENT',
-      'designroom.agent.rounds': 3,
+      'designroom.agent.rounds': 4,
       'designroom.agent.ops': 1,
+      'designroom.agent.connect_nudged': true,
     });
     expect(named('scope check')[0]?.parentSpanContext?.spanId).toBe(idOf(root));
     expect(rounds.map((r) => r.parentSpanContext?.spanId)).toEqual([
+      idOf(root),
       idOf(root),
       idOf(root),
       idOf(root),
@@ -573,6 +618,7 @@ describe('metrics', () => {
       [tool('c1', 'add_node', { kind: 'cache', label: 'Redis', near: 'n1' })],
       [tool('c2', 'connect_nodes', { source: 'n1', target: 'n9' })], // n9 doesn't exist
       [text('Done.')],
+      [text('Left as is.')], // the answer to "connect the box you added" (M1-24e)
     ]);
 
     await run(agent);
@@ -582,7 +628,7 @@ describe('metrics', () => {
       { attributes: { tool: 'connect_nodes', outcome: 'error' }, value: 1 },
     ]);
     expect(await points('agent_rounds')).toEqual([
-      { attributes: {}, value: expect.objectContaining({ count: 1, sum: 3 }) as unknown },
+      { attributes: {}, value: expect.objectContaining({ count: 1, sum: 4 }) as unknown },
     ]);
   });
 

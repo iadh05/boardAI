@@ -3,6 +3,21 @@
 // answer", but measured, the model ignores it most of the time — so the loop enforces it: when an
 // answer recommends a change and proposes nothing, the model is asked once to propose it.
 
+import type { AgentOp } from '@designroom/domain';
+
+/**
+ * New boxes no arrow touches yet. Measured with the 3-box cap, the model often added a load
+ * balancer and stopped: a floating box fixes nothing, so the loop asks once to connect it.
+ */
+export const unconnectedNewBoxes = (ops: readonly AgentOp[]): string[] => {
+  const linked = new Set(ops.flatMap((op) => (op.op === 'connect' ? [op.source, op.target] : [])));
+  return ops.flatMap((op) => (op.op === 'addNode' && !linked.has(op.nodeId) ? [op.nodeId] : []));
+};
+
+/** Said to the model, as the user, naming the boxes it left unconnected (`n5 "Orders LB"`). */
+export const connectNudge = (boxes: readonly string[]): string =>
+  `Connect the boxes you added to the boxes they work with, with connect_nodes: ${boxes.join(', ')}. Do not add new boxes.`;
+
 /** Said to the model, as the user, after an answer that recommended a change in words only. */
 export const PROPOSE_NUDGE =
   'Propose the changes you just recommended now, with the tools, so I can accept them. Do not repeat your explanation.';
