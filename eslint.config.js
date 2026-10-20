@@ -97,6 +97,7 @@ const webBusiness = '{web-pod,web-module}';
 const WEB_MODULE_DEPENDENCIES = {
   board: [],
   chat: ['board'],
+  room: ['board'], // M2: connects the board's shared document to a room
 };
 
 /** Glob for "any of these names" — braces need 2+ names, so a single name stays plain. */
