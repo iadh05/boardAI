@@ -87,3 +87,17 @@ The two misses in the full run were noise: on 5 runs per case the candidate stop
 - **Slower:** p50 went from ~3.5 s to ~13 s, because the model now proposes (each tool call is a round) and the nudge adds a call when it recommends in words. The baseline was fast because it mostly _didn't_ propose.
 - **Over-proposing:** proposals often add a queue or replica on top of the right fix (no-cache → cache **and** queue). Only 1 run per board crossed 3 boxes; a code cap on new boxes per proposal would make that a guarantee.
 - **single-db** stays weak (4/10): the model proposes a queue more often than a replica. A prompt or few-shot change for M5.
+
+## Final version (owner's decisions, 2026-10-20)
+
+The owner chose to ship, with **at most 3 new boxes per proposal** enforced in the tools. The cap alone dropped no-lb to 4/10: the model added a load balancer and stopped without connecting it. So a second nudge was added in code: when new boxes have no arrow, the model is asked **once** to connect them, by name. Bar for merging, set before this run: no-cache ≥ 9/10 and no-lb ≥ 8/10.
+
+| Board | `main` | v3 + nudge | + cap | + cap + connect nudge (**shipped**) |
+|---|---|---|---|---|
+| no-cache (demo) | 1/10 | 10/10 | 9/10 | **9/10** |
+| no-lb | 1/10 | 9/10 | 4/10 | **9/10** |
+| single-db | 2/10 | 4/10 | 3/10 | 2/10 |
+| injection | 9/10 | 10/10 | 10/10 | 10/10 |
+| > 3 new boxes | 0 | 1 per board | 0 | 0 |
+
+Data: [final](data/M1-24e-final.json). Still open: ids written to the user (5–10/10), single-db weak (proposes a queue instead of a replica) — both for M5.
