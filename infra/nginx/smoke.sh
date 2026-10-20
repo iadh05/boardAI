@@ -66,11 +66,16 @@ for _ in $(seq 1 15); do
 done
 ((limited >= 10)) && pass "$limited of 15 rapid POST /api/chat -> 429" || fail "only $limited of 15 got 429"
 
-# 5. Rate limit on opening rooms: 30/min with a burst of 10, so most of 40 rapid opens get 429.
-limited=0
+# 5. Rate limit on opening rooms: 30/min with a burst of 10, so most of 40 opens at once get 429.
+# In parallel: an accepted upgrade keeps its connection open until curl's timeout, so 40 opens
+# one after the other would take minutes and stay under the rate.
+codes=$(mktemp)
 for _ in $(seq 1 40); do
-  [[ $(upgrade /ws/rooms/k3x9a2b7q1zm "$EDGE") == 429 ]] && limited=$((limited + 1))
+  upgrade /ws/rooms/k3x9a2b7q1zm "$EDGE" >>"$codes" &
 done
+wait
+limited=$(grep -o 429 "$codes" | wc -l)
+rm -f "$codes"
 ((limited >= 20)) && pass "$limited of 40 rapid room opens -> 429" || fail "only $limited of 40 room opens got 429"
 
 ((failures == 0)) && echo "edge proxy: all checks passed" || exit 1
