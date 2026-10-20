@@ -161,6 +161,8 @@ describe('openAiCompatible provider — the request', () => {
       stream_options: { include_usage: true },
       // The only switch that turns Qwen3.5's thinking off on this endpoint (M1-15 spike).
       reasoning_effort: 'none',
+      // A cap on one answer (M1-31): a model stuck in a loop wrote 209k characters for 21 minutes.
+      max_tokens: 2048,
       messages: [
         { role: 'system', content: 'You review designs.' },
         { role: 'user', content: 'Review it' },
@@ -205,6 +207,24 @@ describe('openAiCompatible provider — the request', () => {
     expect(body).not.toHaveProperty('reasoning_effort');
     expect(body).not.toHaveProperty('tools');
     expect(body).not.toHaveProperty('temperature'); // the model's own default (Modelfile)
+  });
+
+  it('caps one answer at the configured number of tokens', async () => {
+    const fetchFn = replying('data: [DONE]\n\n');
+    const provider = createOpenAiCompatibleProvider({
+      baseUrl: 'http://localhost:11434/v1',
+      model: 'm',
+      maxOutputTokens: 500,
+      fetch: fetchFn,
+    });
+    await drain(
+      provider.stream({
+        messages: [{ role: 'user', content: 'hi' }],
+        signal: new AbortController().signal,
+      }),
+    );
+    const [, init] = fetchFn.mock.calls[0] ?? [];
+    expect(JSON.parse(init?.body as string)).toMatchObject({ max_tokens: 500 });
   });
 
   it('sends the temperature a call asks for: 0 for a classifier that must answer the same', async () => {

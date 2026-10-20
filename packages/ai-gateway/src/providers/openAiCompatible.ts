@@ -20,6 +20,11 @@ export type OpenAiCompatibleOptions = {
   apiKey?: string;
   /** Send `reasoning_effort: "none"` (default true): thinking models answer straight away. */
   disableThinking?: boolean;
+  /**
+   * Most tokens one answer may write (default 2048, ~8,000 characters: a long review fits). A
+   * model stuck in a loop wrote 209k characters for 21 minutes without it (M1-31).
+   */
+  maxOutputTokens?: number;
   /** Injected so tests replay recorded streams without a network. */
   fetch?: typeof fetch;
 };
@@ -122,6 +127,8 @@ const createToolCallCollector = () => {
   };
 };
 
+const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
+
 export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions): LlmProvider => {
   const fetchFn = options.fetch ?? fetch;
   // A loop, not /\/+$/: that regex is slow on long runs of "/" (CodeQL js/polynomial-redos).
@@ -136,6 +143,7 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
         stream: true,
         stream_options: { include_usage: true },
         ...(options.disableThinking === false ? {} : { reasoning_effort: 'none' }),
+        max_tokens: options.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
         ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
         messages: input.messages.map(toWireMessage),
         ...(input.tools?.length ? { tools: input.tools.map(toWireTool) } : {}),
