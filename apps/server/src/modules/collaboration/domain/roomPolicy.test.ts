@@ -1,18 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { isRoomId, roomToDrop } from './roomPolicy.ts';
+import { roomToDrop } from './roomPolicy.ts';
 
-describe('room ids (M2-04)', () => {
-  it.each(['k3x9a2b7q1zm', '000000000000'])('accepts %s', (id) => {
-    expect(isRoomId(id)).toBe(true);
-  });
-
-  it.each(['', 'short', 'K3X9A2B7Q1ZM', 'k3x9a2b7q1zm0', '../etc/passwd', 'k3x9a2b7q1z-'])(
-    'refuses %j',
-    (id) => {
-      expect(isRoomId(id)).toBe(false);
-    },
-  );
-});
+// Room ids are tested where they're defined: @designroom/domain (contracts/room.test.ts).
 
 describe('which room to drop when the server is full (M2-04)', () => {
   it('the empty room left the longest ago', () => {

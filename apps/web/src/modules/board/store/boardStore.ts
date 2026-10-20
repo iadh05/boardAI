@@ -332,5 +332,8 @@ export const createBoardStore = ({
     };
   });
 
+/** The app's shared board document: the room module connects it to the server (M2-05). */
+export const boardDocument = new Y.Doc();
+
 /** The app's board store. */
-export const useBoardStore = createBoardStore({ newId: createId });
+export const useBoardStore = createBoardStore({ newId: createId, doc: boardDocument });

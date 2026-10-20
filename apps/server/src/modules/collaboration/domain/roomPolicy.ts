@@ -1,9 +1,7 @@
-// Rules for rooms (M2 spec §3). Pure: no sockets, no clock.
+// Rules for rooms (M2 spec §3). Pure: no sockets, no clock. What a room id looks like is shared
+// with the web app: `isRoomId` in @designroom/domain.
 
-/** 12 lowercase letters or digits (~62 bits): the link is the access until auth (A5). */
-const ROOM_ID = /^[a-z0-9]{12}$/;
-
-export const isRoomId = (id: string): boolean => ROOM_ID.test(id);
+export { isRoomId } from '@designroom/domain';
 
 /** The server keeps rooms in memory (M3 saves them): limits keep it from being filled up. */
 export const ROOM_LIMITS = {
