@@ -60,6 +60,17 @@ const reversed = (run: Run, board: Board) =>
       op.op === 'connect' &&
       board.edges.some((e) => e.source === op.target && e.target === op.source),
   ).length;
+/**
+ * Existing boxes turned into something else (M1-29: a run "passed" by adding the cache and turning
+ * the load balancer into a CDN). Renames keep the kind and stay allowed: the prompt asks for them.
+ */
+const rekinded = (run: Run, board: Board) =>
+  run.ops.filter(
+    (op) =>
+      op.op === 'updateNode' &&
+      op.kind !== undefined &&
+      board.nodes.some((n) => n.id === op.nodeId && n.kind !== op.kind),
+  ).length;
 
 /** The fix is there: a box of that kind, connected to something (a floating box fixes nothing). */
 const adds = (kind: NodeKind) => (run: Run) =>
@@ -321,7 +332,8 @@ for (const sample of SAMPLES) {
   out(`## ${sample.name} — ${sample.flaw}`);
   for (let r = 1; r <= RUNS; r++) {
     const run = await review(sample);
-    const ok = !run.error && sample.pass(run, sample.board);
+    // Turning an existing box into another kind fails any sample (M1-29).
+    const ok = !run.error && sample.pass(run, sample.board) && rekinded(run, sample.board) === 0;
     runs.push({ run, ok });
     if (run.error) broken++;
     const verdict = run.error ? 'ERROR' : ok ? 'PASS' : 'fail';
@@ -329,6 +341,7 @@ for (const sample of SAMPLES) {
       leaksIds(run) && 'ids',
       duplicates(run, sample.board) > 0 && 'duplicate',
       reversed(run, sample.board) > 0 && 'reversed arrow',
+      rekinded(run, sample.board) > 0 && 'changed a kind',
       askedOnly(run) && 'asked',
       overProposes(run) && '>3 boxes',
     ]
@@ -356,15 +369,15 @@ for (const sample of SAMPLES) {
   // pass^3: the chance that three demos in a row all pass (τ-bench's pass^k), from this rate.
   const pass3 = Math.round((passes / RUNS) ** 3 * 100);
   rows.push(
-    `| ${sample.name} | ${passes}/${RUNS} | ${wilson(passes, RUNS)} | ${pass3} % | ${count((r) => r.ops.length > 0)}/${RUNS} | ${count(askedOnly)} | ${count(overProposes)} | ${count(leaksIds)} | ${count((r) => duplicates(r, sample.board) > 0)} | ${count((r) => reversed(r, sample.board) > 0)} | ${seconds(percentile(ms, 0.5))} / ${seconds(percentile(ms, 0.95))} |`,
+    `| ${sample.name} | ${passes}/${RUNS} | ${wilson(passes, RUNS)} | ${pass3} % | ${count((r) => r.ops.length > 0)}/${RUNS} | ${count(askedOnly)} | ${count(overProposes)} | ${count(leaksIds)} | ${count((r) => duplicates(r, sample.board) > 0)} | ${count((r) => reversed(r, sample.board) > 0)} | ${count((r) => rekinded(r, sample.board) > 0)} | ${seconds(percentile(ms, 0.5))} / ${seconds(percentile(ms, 0.95))} |`,
   );
   out();
 }
 
 out(
-  '| Sample | Passed | 95 % range | pass^3 | Proposed | Asked only | >3 boxes | Ids leaked | Duplicates | Reversed arrows | Time p50 / p95 |',
+  '| Sample | Passed | 95 % range | pass^3 | Proposed | Asked only | >3 boxes | Ids leaked | Duplicates | Reversed arrows | Kind changed | Time p50 / p95 |',
 );
-out('|---|---|---|---|---|---|---|---|---|---|---|');
+out('|---|---|---|---|---|---|---|---|---|---|---|---|');
 for (const row of rows) out(row);
 out(`\nSamples passed: ${passedSamples}/${SAMPLES.length}`);
 const SAVE = flag('--save', '');
