@@ -103,3 +103,35 @@ test(
     expect((await app.board.node('Database').boundingBox())?.y).toBe(dbBefore?.y);
   },
 );
+
+// Found by hand (noted 2026-10-20): the fit-view button used React Flow's plain fit, which ignores
+// the toolbar floating over the canvas — on a narrow screen the top box landed under it.
+test('the fit-view button keeps the board clear of the toolbar', async ({ app }) => {
+  const chain = ['Client', 'API', 'Database'];
+  for (const kind of chain) await app.board.addNode(kind);
+  // A tall, narrow board — a chain drawn top to bottom — on the narrowest desktop layout, where
+  // the toolbar wraps onto several rows.
+  await app.board.zoomOut();
+  const api = await app.board.positionOf('API');
+  const client = await app.board.positionOf('Client');
+  const database = await app.board.positionOf('Database');
+  await app.board.move('Client', (api.x - client.x) / 2, -200);
+  await app.board.move('Database', (api.x - database.x) / 2, 200);
+  await app.resize(800, 860);
+
+  await app.board.fitView();
+
+  const panel = await app.board.toolbarPanel().boundingBox();
+  if (!panel) throw new Error('the toolbar is not on screen');
+  for (const label of chain) {
+    await expect(app.board.node(label)).toBeInViewport();
+    const box = await app.board.node(label).boundingBox();
+    const overlaps =
+      !!box &&
+      box.x < panel.x + panel.width &&
+      box.x + box.width > panel.x &&
+      box.y < panel.y + panel.height &&
+      box.y + box.height > panel.y;
+    expect(overlaps, `${label} is under the toolbar`).toBe(false);
+  }
+});

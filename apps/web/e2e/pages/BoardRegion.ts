@@ -49,6 +49,11 @@ export class BoardRegion {
     await this.diagram.getByRole('button', { name: 'Zoom Out' }).click();
   }
 
+  /** The diagram's "fit the whole board on screen" button. */
+  async fitView(): Promise<void> {
+    await this.diagram.getByRole('button', { name: 'Fit View' }).click();
+  }
+
   /** Moves the pointer over the board (others see it as a live cursor). */
   async hover(): Promise<void> {
     const box = await this.diagram.boundingBox();
