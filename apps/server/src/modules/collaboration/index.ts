@@ -13,6 +13,9 @@ export type CollaborationModuleDeps = {
   now?: () => number;
   limits?: { maxRooms: number; maxPeoplePerRoom: number; maxMessageBytes: number };
   heartbeatMs?: number;
+  /** Per room; see createYjsRoom. Small in tests. */
+  maxDocBytes?: number;
+  measureEvery?: number;
 };
 
 export const createCollaborationModule = ({
@@ -20,6 +23,8 @@ export const createCollaborationModule = ({
   now = Date.now,
   limits = ROOM_LIMITS,
   heartbeatMs,
+  maxDocBytes,
+  measureEvery,
 }: CollaborationModuleDeps) => {
   // Instruments made here, not at import: the metrics API has no proxy (M1-26b).
   const meter = metrics.getMeter('@designroom/server');
@@ -27,7 +32,12 @@ export const createCollaborationModule = ({
     description: 'Collaboration protocol messages received (sync and presence)',
   });
   const registry = createRoomRegistry({
-    newRoom: () => createYjsRoom({ onMessage: () => messages.add(1) }),
+    newRoom: () =>
+      createYjsRoom({
+        onMessage: () => messages.add(1),
+        ...(maxDocBytes === undefined ? {} : { maxDocBytes }),
+        ...(measureEvery === undefined ? {} : { measureEvery }),
+      }),
     now,
     limits,
   });

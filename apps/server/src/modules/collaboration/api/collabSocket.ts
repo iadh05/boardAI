@@ -16,6 +16,17 @@ const REFUSAL_CLOSE: Record<JoinRefusal, number> = {
   SERVER_FULL: 1013,
 };
 
+/** The page that opened the socket is served from the same host (Nginx and Vite keep Host). */
+const sameOrigin = (req: IncomingMessage): boolean => {
+  const origin = req.headers.origin;
+  if (origin === undefined) return true;
+  try {
+    return new URL(origin).host === req.headers.host;
+  } catch {
+    return false; // "null" (a sandboxed page) or garbage
+  }
+};
+
 const toBytes = (data: RawData): Uint8Array =>
   Array.isArray(data)
     ? new Uint8Array(Buffer.concat(data))
@@ -56,6 +67,9 @@ export const createCollabSocket = ({
   const connect = (ws: WebSocket, roomId: string) => {
     // The id is the room's only key: logs get a prefix, enough to follow one room, not to join it.
     const room = `${roomId.slice(0, 4)}…`;
+    // First thing: an 'error' event with no listener crashes Node. A client resetting the
+    // connection (refused, or just gone) must cost one socket, not the server.
+    ws.on('error', (error) => logger.debug('collab socket error', { room, error: error.message }));
     alive.set(ws, true);
     ws.on('pong', () => alive.set(ws, true));
 
@@ -78,15 +92,27 @@ export const createCollabSocket = ({
   return {
     /** For the HTTP server's 'upgrade' event. Anything but /ws/rooms/:id gets a 404. */
     handleUpgrade: (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+      // Same reason, before the upgrade: the raw socket can be reset while we answer it.
+      socket.on('error', () => socket.destroy());
       const path = new URL(req.url ?? '/', 'http://localhost').pathname;
       const match = ROOM_PATH.exec(path);
       if (!match?.[1]) {
         socket.end('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
         return;
       }
+      // Browsers don't apply CORS to WebSockets: without this, any site the user visits could
+      // open a room on their behalf (cross-site WebSocket hijacking). Browsers always send
+      // Origin; tools that send none (tests, scripts) are not a browser being tricked.
+      if (!sameOrigin(req)) {
+        logger.warn('collab refused', { reason: 'FOREIGN_ORIGIN', origin: req.headers.origin });
+        socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+        return;
+      }
       const roomId = match[1];
       wss.handleUpgrade(req, socket, head, (ws) => connect(ws, roomId));
     },
+    /** Rooms and people right now (metrics, tests). */
+    stats: () => registry.stats(),
     /** Closes every connection (shutdown, tests). */
     close: () => {
       clearInterval(heartbeat);

@@ -16,17 +16,33 @@ const MESSAGE_AWARENESS = 1;
 
 type PeerState = {
   peer: Peer;
-  /** The awareness client ids this person controls, removed when they leave. */
+  /** The presence entries (awareness client ids) this connection set, removed when it leaves. */
   clients: Set<number>;
 };
 
 export type YjsRoomDeps = {
   /** One protocol message handled (for the collab_messages_total metric). */
   onMessage?: () => void;
+  /**
+   * Largest document the room keeps growing (memory is the limit until M3 saves rooms). Past it
+   * the room is read-only: edits are refused, the board can still be read.
+   */
+  maxDocBytes?: number;
+  /** How often (in messages) the document's size is measured: encoding it isn't free. */
+  measureEvery?: number;
 };
 
-export const createYjsRoom = ({ onMessage }: YjsRoomDeps = {}): SyncRoom & { doc: Y.Doc } => {
+/** A board of a few hundred boxes is tens of kB: 10 MB is far beyond honest use. */
+const MAX_DOC_BYTES = 10 * 1024 * 1024;
+
+export const createYjsRoom = ({
+  onMessage,
+  maxDocBytes = MAX_DOC_BYTES,
+  measureEvery = 100,
+}: YjsRoomDeps = {}): SyncRoom & { doc: Y.Doc } => {
   const doc = new Y.Doc();
+  let messagesSinceMeasure = 0;
+  let readOnly = false;
   const awareness = new awarenessProtocol.Awareness(doc);
   awareness.setLocalState(null); // the server itself is not a person in the room
   const peers = new Set<PeerState>();
@@ -38,17 +54,17 @@ export const createYjsRoom = ({ onMessage }: YjsRoomDeps = {}): SyncRoom & { doc
       state.peer.close(1011, 'send failed'); // a broken socket: it will leave on close
     }
   };
-  const broadcast = (message: Uint8Array) => {
-    for (const state of peers) sendTo(state, message);
+  const broadcast = (message: Uint8Array, except?: unknown) => {
+    for (const state of peers) if (state !== except) sendTo(state, message);
   };
 
-  // Every change to the document, whoever made it, goes to everyone (the sender already has it,
-  // and Yjs ignores updates it already applied).
-  const onUpdate = (update: Uint8Array) => {
+  // Every change to the document goes to everyone but its sender, who already has it (the
+  // transaction's origin is the sender's PeerState, set when its message is read).
+  const onUpdate = (update: Uint8Array, origin: unknown) => {
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, MESSAGE_SYNC);
     syncProtocol.writeUpdate(encoder, update);
-    broadcast(encoding.toUint8Array(encoder));
+    broadcast(encoding.toUint8Array(encoder), origin);
   };
   doc.on('update', onUpdate);
 
@@ -57,13 +73,13 @@ export const createYjsRoom = ({ onMessage }: YjsRoomDeps = {}): SyncRoom & { doc
     origin: unknown,
   ) => {
     const changed = [...change.added, ...change.updated, ...change.removed];
-    // Remember which presence entries belong to which person, to remove them when they leave.
-    // "updated" counts too: a closing client sends "removed" and then one last update of its own
-    // entry, which would otherwise stay on everyone's screen after it left.
-    for (const state of peers) {
-      if (state !== origin) continue;
-      for (const id of [...change.added, ...change.updated]) state.clients.add(id);
-      for (const id of change.removed) state.clients.delete(id);
+    // Remember which entries this connection set, to remove them when it closes. A connection
+    // can hold more than one person's entry: tabs of one browser share theirs over a
+    // BroadcastChannel and the first tab to connect sends them all.
+    const from = [...peers].find((state) => state === origin);
+    if (from) {
+      for (const id of [...change.added, ...change.updated]) from.clients.add(id);
+      for (const id of change.removed) from.clients.delete(id);
     }
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, MESSAGE_AWARENESS);
@@ -105,11 +121,20 @@ export const createYjsRoom = ({ onMessage }: YjsRoomDeps = {}): SyncRoom & { doc
             const decoder = decoding.createDecoder(data);
             const type = decoding.readVarUint(decoder);
             if (type === MESSAGE_SYNC) {
+              const writes = decoding.peekVarUint(decoder) !== syncProtocol.messageYjsSyncStep1;
+              if (readOnly && writes) {
+                state.peer.close(1009, 'room is full');
+                return;
+              }
               const reply = encoding.createEncoder();
               encoding.writeVarUint(reply, MESSAGE_SYNC);
               // Step 1 from them → we answer with step 2; step 2 or an update → applied to doc.
               syncProtocol.readSyncMessage(decoder, reply, doc, state);
               if (encoding.length(reply) > 1) sendTo(state, encoding.toUint8Array(reply));
+              if (writes && ++messagesSinceMeasure >= measureEvery) {
+                messagesSinceMeasure = 0;
+                readOnly = Y.encodeStateAsUpdate(doc).byteLength > maxDocBytes;
+              }
             } else if (type === MESSAGE_AWARENESS) {
               awarenessProtocol.applyAwarenessUpdate(
                 awareness,
