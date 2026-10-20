@@ -80,6 +80,9 @@ export const AGENT_TOOLS: ToolDefinition[] = [
 
 const TOOL_NAMES = AGENT_TOOLS.map((t) => t.name).join(', ');
 
+/** New boxes in one proposal: a review proposes the few fixes that matter (owner's call, M1-24e). */
+export const MAX_NEW_BOXES = 3;
+
 type Planned = { op: AgentOp; aliases: Aliases; describe: (board: Board) => string };
 type Plan = { ok: true; planned: Planned } | { ok: false; reply: string };
 
@@ -128,6 +131,13 @@ const plan = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
     case 'add_node': {
       const args = AddNodeArgs.safeParse(call.arguments);
       if (!args.success) return refuse(argsError(call.name, args.error));
+      // The prompt asks for "one to three fixes"; measured, the model sometimes added 9. In code,
+      // so it holds: the model is told why, and can still connect what it added.
+      const added = draft.ops.filter((op) => op.op === 'addNode').length;
+      if (added >= MAX_NEW_BOXES)
+        return refuse(
+          `A proposal has at most ${MAX_NEW_BOXES} new boxes, and this one has them. Keep the most important fixes: connect the boxes you added, then stop.`,
+        );
       const near = args.data.near === undefined ? undefined : resolve(args.data.near);
       if (args.data.near !== undefined && near === undefined) return unknown(args.data.near);
       const nodeId = deps.newId();
