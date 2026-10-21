@@ -157,6 +157,34 @@ describe('Groq', () => {
     ]);
   });
 
+  // Measured: the history then held a call whose arguments were text, sent as a JSON string, and
+  // Groq refused the next request ("cannot unmarshal string into map").
+  it('sends a call whose arguments were not an object back as an object, so the history stays valid', async () => {
+    const fetchFn = replying('data: [DONE]\n\n');
+
+    await run(fetchFn, {
+      ...input,
+      messages: [
+        { role: 'user', content: 'Add a cache' },
+        {
+          role: 'assistant',
+          content: '',
+          toolCalls: [{ id: 'refused_0', name: 'add_node', arguments: '<tool_call>add_node{' }],
+        },
+        {
+          role: 'tool',
+          toolCallId: 'refused_0',
+          content: 'add_node: arguments must be a JSON object',
+        },
+      ],
+    });
+
+    const call = sentBody(fetchFn).messages[1]?.tool_calls?.[0] as {
+      function: { arguments: string };
+    };
+    expect(JSON.parse(call.function.arguments)).toEqual({ _raw: '<tool_call>add_node{' });
+  });
+
   it('other error events stay errors', async () => {
     const error = await failure(replying('data: {"error":{"message":"over capacity"}}\n\n'));
     expect(error).toMatchObject({ code: 'UNAVAILABLE' });
@@ -182,6 +210,14 @@ describe('429: rate limited', () => {
     expect(
       await failure(limited({}, 'Please try again in 454.285714ms. Need more tokens?')),
     ).toMatchObject({ retryAfterMs: 455 });
+  });
+
+  it("reads Gemini's 429 (recorded): an array, its message, and RetryInfo's delay", async () => {
+    const body = readFileSync(new URL('./fixtures/gemini-429.json', import.meta.url), 'utf8');
+    const error = await failure(replying(body, { status: 429 }));
+
+    expect(error).toMatchObject({ code: 'UNAVAILABLE', retryAfterMs: 31_000 });
+    expect((error as LlmError).message).toMatch(/limit: 15, model: gemini-3\.5-flash-lite/);
   });
 
   it('no hint, no wait: the gateway uses its own backoff', async () => {
