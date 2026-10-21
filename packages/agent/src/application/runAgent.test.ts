@@ -316,6 +316,34 @@ describe('ending an answer (M1-32)', () => {
     expect(textOf(await run(agent))).toBe('Postgres already handles this load.');
   });
 
+  // Review of M1-32: "spoke" in an earlier round hid the summary of a silent final round.
+  it('talks, looks, then acts silently: the summary of the last round is still read', async () => {
+    const { agent } = setup([
+      [text('Let me run the checks.'), tool('k', 'check_design', {})],
+      [
+        tool('c1', 'add_node', { kind: 'cache', label: 'Redis' }),
+        tool('c2', 'connect_nodes', { source: 'n1', target: 'n3' }),
+        finish('Added n3 in front of n2.'),
+      ],
+    ]);
+
+    expect(textOf(await run(agent))).toBe(
+      'Let me run the checks.\n\nAdded Redis in front of Postgres.',
+    );
+  });
+
+  it('a new box still floating when the answer ends is left out of the proposal', async () => {
+    const { agent } = setup([
+      [tool('c1', 'add_node', { kind: 'cache', label: 'Redis' })],
+      [text('I added a cache.')],
+      [text('Done.')],
+    ]);
+
+    const events = await run(agent);
+
+    expect(of(events, 'proposal')).toEqual([]); // a box with no arrow fixes nothing
+  });
+
   it('finish refused while a new box floats: the model reads why, connects, finishes', async () => {
     const { agent, fake } = setup([
       [tool('c1', 'add_node', { kind: 'cache', label: 'Redis' }), finish('Added a cache.')],
@@ -390,6 +418,22 @@ describe('ending an answer (M1-32)', () => {
     expect(fake.calls).toHaveLength(2);
     expect(of(events, 'proposal')).toEqual([]);
     expect(events.at(-1)).toEqual({ type: 'done' });
+    // The user never saw the format error: a reply to it ("Sure, …") would make no sense to them.
+    expect(textOf(events)).toBe('You need a load balancer.');
+  });
+
+  it('after the format error, the text comes with the tool calls it explains', async () => {
+    const { agent } = setup([
+      [text('You need a load balancer.')],
+      [
+        text('Proposing it now.'),
+        tool('c1', 'add_node', { kind: 'loadBalancer', label: 'LB' }),
+        tool('c2', 'connect_nodes', { source: 'n3', target: 'n1' }),
+        finish(),
+      ],
+    ]);
+
+    expect(textOf(await run(agent))).toBe('You need a load balancer.\n\nProposing it now.');
   });
 
   it('needs a round left: at the limit, the answer stands as it is', async () => {
