@@ -19,7 +19,7 @@ The build plan of [architecture-v2.md](../docs/agents/architecture-v2.md#build-p
 | AV2-07 | S2 | Planner and Main agent: flows F1, F2, F6, the clarify loop | L | in review — #86 (Planner local 26/30) |
 | AV2-08 | S5 | Critic: code checks, then an LLM on another model | M | in review — #87 (off by default) |
 | AV2-09 | wiring | V2 behind `AGENT_MODE=v2`: server, progress events, e2e | M | in review — #88 (no V2 e2e: see its PR) |
-| AV2-10 | eval | V1 vs V2 on every sample board; keep or not | S | doing |
+| AV2-10 | eval | V1 vs V2 on every sample board; keep or not | S | in review — #89 (V2 = V1 on these boards: keep v1) |
 
 What was built, drawn: [docs/agents/v2/built-2026-10-22.json](../docs/agents/v2/built-2026-10-22.json) (`node scripts/board-snapshot.mjs load docs/agents/v2/built-2026-10-22.json`).
 
@@ -171,3 +171,5 @@ Kept as the night goes (times are local).
 - AV2-04: a model per role; review found a silent hosted model never fell back — fixed with a first-chunk deadline. PR #83.
 - AV2-05 … AV2-09: orchestrator, rule specialists, Planner + Main + Architect, Critic, wiring behind `AGENT_MODE=v2`. PRs #84 … #88. Planner on local Qwen 24/30 → 26/30.
 - **Night decisions** (all in the night notes and the PRs): specialists are rules (AV2-06); the Architect is AV2-01's agent fed with the findings (AV2-07); the D2 clarify limit counts assistant turns (stateless server); the Critic holds the answer and is off by default (AV2-08); no V2 e2e journey yet (AV2-09).
+- Review of AV2-05 … AV2-09 (AI, read-only): blocking — Stop or a model error inside V2 was thrown as a server bug; fixed (V2 ends with an error event, then done, like V1). Also fixed: a task ignoring its signal could hang the queue; labels could close the Critic's blocks; the Critic kept going after Stop; a stale progress line.
+- AV2-10 (5 runs × 5 boards, local Qwen, 0 errors): **V1 23/25 · V2 local 22/25 · V2 with a Groq thinking Planner 23/25 · V2 + Critic 22/25.** V2 as good as V1 on these boards, not better, a little slower — they only test what `check_design` already finds. Recommendation: keep `AGENT_MODE=v1`; add Security and deep-dive eval boards first. PR #89. All PRs #79–#89 green in CI.
