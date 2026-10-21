@@ -95,6 +95,9 @@ All drawn on the V2 board. Each is a starting value, changed by measurement.
 | D14 | **Smart Critic** | After the code checks (D9), an LLM Critic on Groq, from **another model family** (gpt-oss-120b, to measure against Qwen3.8 27B), thinking on. Reads requirements + findings + proposal; returns `{ verdict: pass \| revise, issues: [{ boxIds, problem, why }] }`; `revise` goes back to the Architect once. Kept only if Accept/Reject feedback shows fewer rejections | Another model doesn't share the specialists' blind spots; code can't see a broken requirement |
 | D15 | **Knowledge in the UI** | A *Room knowledge* panel (Requirements · Decisions · Sources · Global) and citations in every answer. Agents never edit knowledge: they propose ("Save as decision…?") and you Accept, like ghost boxes | A wrong memory you can't see steers every answer |
 | D16 | **LLM cache** | Four caches keyed by the context each agent actually used — see § Cache | Speed and quota without stale answers |
+| D17 | **Ad-hoc expert** | When no specialist fits ("Is this GDPR compliant?"), the Planner fills **one** expert slot from a tested template — `{ role, focus, boxIds }`, never a whole prompt — counted in the 6-task budget, read-only, findings marked *ad-hoc* and checked harder by the Critic. Its definition and decisions are kept in **room** memory and reused; usage and accept rate go to a **global candidate list** (statistics only). Promotion to a real specialist is a reviewed PR with its own evals — see § Specialists | The closest specialist answers off-target (Security answers GDPR with TLS); free prompt writing is untested and injectable |
+| D18 | **Feedback** | Accept / Reject **per change**, an optional reason (*wrong · too much · already there · not now · other*), 👍 / 👎 on answers with no proposal, "forget" in the knowledge panel counted as feedback. Every change carries the finding and agent it came from, so feedback lands on the right agent. Used for: room memory (a rejected idea isn't proposed again), accept rate per agent and prompt version, D17's candidate list, new eval boards, later fine-tuning (M6). **Never changes a prompt automatically** — prompt changes stay PRs checked by evals | One verdict for a whole proposal can't tell which of six agents was wrong |
+| D19 | **Sessions and compaction** | Several chat **threads** per room ("Review v1", "GDPR check"); each has its own history and summary, all share the room memory. Past a token budget (~4k tokens of history), the Main agent keeps the last ~6 turns word for word and summarises the rest; decisions are already in room memory; the original turns stay searchable (D12). The Planner may *suggest* a new thread when the topic changes; you decide | A long chat overflows every agent's context and slows every request |
 
 ### The owner's answers so far (2026-10-21)
 
@@ -106,6 +109,7 @@ All drawn on the V2 board. Each is a starting value, changed by measurement.
 | D10 | ✅ Sub-tasks in the same queue |
 | D2, D11 | To decide on the complete board: [v2/full.json](v2/full.json) (clarify loop and Critic checks drawn as boxes) |
 | D12–D16 | ✅ Agreed in the brainstorm: Planner = prompt engineer with thinking, smart Critic, knowledge visible in the UI, layered memory (not naive RAG), cache by context |
+| D17–D19 | ✅ Agreed: hybrid ad-hoc expert kept in room memory (the owner's idea), richer feedback, threads with compaction |
 | D1, D4, D6, D7, D8 | Not discussed yet |
 
 ## Models — measured, not assumed (2026-10-21)
@@ -157,7 +161,8 @@ Memory changes the answer; it's the project's history, never thrown away.
 | Scope | Contains | Lives | Written by |
 |---|---|---|---|
 | **Request** | Briefs, findings, the blackboard | One request | The agents |
-| **Room** | Requirements card, decisions + why, rejected proposals, chat history | With the board (saved from M3) | **Only the Scribe**, after Accept / Reject |
+| **Session** (chat thread, D19) | The thread's turns and its running summary | As long as the thread | The Main agent (summary) |
+| **Room** | Requirements card, decisions + why, rejected proposals, ad-hoc experts (D17), all threads' history | With the board (saved from M3) | **Only the Scribe**, after Accept / Reject |
 | **Global** | Reference architectures, cloud catalogue and prices, curated docs | Always, shared, read-only | Us, in reviewed PRs — never agents |
 | Web cache | Pages the Researcher read, `trusted: no` | A few days | The Researcher |
 
@@ -185,6 +190,33 @@ A cache never changes the answer, only its speed; delete it and everything still
 - **No semantic cache** ("similar question → same answer") except for general questions with no board, from global knowledge only.
 - Never shared between rooms (except global); `cache_hits_total` per cache in Grafana; a "Re-run fresh" button skips it.
 
+## Specialists, sub-specialists and the ad-hoc expert (D10, D17)
+
+| Specialist | Sub-specialists (briefs, not separate agents) | Tools (code) |
+|---|---|---|
+| Data | Data model · Storage choice · Consistency | `check_data` |
+| Stack & Cloud | Stack (which technology) · Cloud (which service, which cloud) | catalogue, prices |
+| Security | — | `check_security` |
+| Traffic | — | simulator |
+| Chaos | — | simulator (`fail`) |
+| Cost | — | prices (`estimate_cost`) |
+| DevOps | — | `check_ops` |
+| Researcher | — | web search |
+| **Ad-hoc expert** (D17) | Filled by the Planner per request: role, focus, boxes | none (read-only) |
+
+- A sub-specialist is the same agent with a narrower brief; the Planner picks only the sub-briefs the request needs, so a review uses 4–6 tasks, not 13.
+- Whatever can be a rule stays a tool in code. Split a specialist further (Security → auth, network, data protection) only when an eval shows it misses those cases.
+- Ad-hoc expert lifecycle: no specialist fits → Planner fills the template (request) → you Accept → the Scribe keeps its definition and decisions (room, reused next time) → often used and accepted → global candidate list → we build it as a real specialist with evals (a PR).
+
+## What improves the answers, in order
+
+1. **Evals** — the only proof a change helped.
+2. **Context** (D12) — a 9B with the right 1,500 tokens beats a 27B with the wrong 10,000.
+3. **Planner briefs** (D13).
+4. **Critic** (D14).
+5. **Feedback** (D18) — finds *where* answers fail and feeds new eval boards; it doesn't fix anything alone.
+6. **Fine-tuning** (M6) — last, once feedback data is large and clean.
+
 ## Build plan (each step measured before the next)
 
 | Step | What | Done when |
@@ -196,7 +228,7 @@ A cache never changes the answer, only its speed; delete it and everything still
 | **UX/UI pass** | After the agents work end to end: progress view (D6), the Room knowledge panel and citations (D15), Critic result shown, then the whole app's UX and UI | Milestone UX pass: every journey on laptop, phone and keyboard |
 | **S3 — First specialists** | Data and Security (rules first, then the agent explains), then Cost and Stack & Cloud (catalogue + prices in code) | Each with its eval boards; no regression on F2 |
 | **S4 — More flows** | F4 (change), F5 (deep dive), F3 (draft, with the Planner and Draw mode) | Each flow has its e2e journey (fake LLM) and its eval |
-| **S5 — Critic, Scribe, memory** | Code checks + LLM Critic (D9, D14); Scribe with the decision log and ADR export; room memory (D12: structured lookups first, hybrid search for chat); F7, F8 | Fewer rejections in Phoenix feedback; a retrieval eval (the right decision fetched for a question) |
+| **S5 — Critic, Scribe, memory** | Code checks + LLM Critic (D9, D14); Scribe with the decision log and ADR export; room memory (D12: structured lookups first, hybrid search for chat); feedback per change with reasons (D18); threads and compaction (D19); the ad-hoc expert (D17); F7, F8 | Fewer rejections in Phoenix feedback; a retrieval eval (the right decision fetched for a question) |
 | **S6 — The rest** | Chaos and Traffic (with the A1 simulator), DevOps, Researcher (Groq browser search or SearXNG) writing to the web cache | Per specialist, measured |
 
 Each step is its own ticket (or a few), written when we get there.
