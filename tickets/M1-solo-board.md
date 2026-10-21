@@ -1260,7 +1260,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 ## Epic — Specialist lenses (after M1-32)
 **Status:** todo (to shape with the owner) · **Depends on:** M1-32 (the tools loop every lens reuses)
 
-*Why (owner, 2026-10-21):* one generalist reviewer misses whole areas of a design. A **lead agent** reads the room and the question, calls only the lenses that apply, and merges their findings into **one** proposal. Each lens = a short focused prompt + its own tools (≤ 8). **Rules and numbers come from code; the model explains, challenges and proposes.**
+*Why (owner, 2026-10-21):* one generalist reviewer misses whole areas of a design. An **Architect (lead agent)** owns the design as a whole: it reads the room and the question, calls only the lenses that apply, **arbitrates their conflicts** (Cost says drop the replica, Chaos says keep it) against the user's requirements, and merges everything into **one** proposal — the user decides, the Scribe records it. Each lens = a short focused prompt + its own tools (≤ 8). **Rules and numbers come from code; the model explains, challenges and proposes.**
 
 | Lens | Job | Tools (code first) | Links |
 |---|---|---|---|
@@ -1272,9 +1272,10 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 | **Cost** (the financier) | €/month per box and total; cheaper options | `estimate_cost(region)` from a price table — **never prices from the model's memory** | G5, A4 |
 | **DevOps** | How it's built, deployed and run: CI/CD, environments, rollback, IaC, monitoring | `check_ops()` rules: no monitoring box, no deploy path; export to Bicep/Terraform | A4 |
 | **Researcher** | "Are we following best practice?" — web search with citations | `search_web`, `fetch_page`: a self-hosted SearXNG; only questions leave the machine, never the board; results are untrusted data (red-team case) | A3 |
+| **Stack & Cloud** | Picks the concrete technology and cloud service per box, with the trade-off: Redis or Memcached; ElastiCache / Azure Cache for Redis / Memorystore; Kafka / Event Hubs / Pub/Sub… | `service_catalog(kind, cloud)` — a catalogue kept in the repo (AWS, Azure, GCP); prices shared with Cost; the user's constraints (cloud, team skills, managed or not, data region) from the Interviewer | A4 (diagram → Bicep/Terraform) needs this mapping; needs a `technology` / `service` field per box (A1 node properties) |
 | **Scribe** *(kept, owner 2026-10-21: keep track of the brainstorm)* | Keeps the session's minutes: each decision, why, what was rejected; exports ADRs | `record_decision`, `export_adrs` | A7 |
 
-**Order (each its own ticket):** M1-32 → Interviewer → Data and Security as code rules (tools of the single agent first) → Cost → lead agent + lenses (multi-agent, once a single agent can't juggle them — measured) → Chaos and Traffic with the simulator → DevOps → Researcher (SearXNG) → Scribe.
+**Order (each its own ticket):** M1-32 → Interviewer → Data and Security as code rules (tools of the single agent first) → Cost → Stack & Cloud → Architect + lenses (multi-agent, once a single agent can't juggle them — measured) → Chaos and Traffic with the simulator → DevOps → Researcher (SearXNG) → Scribe.
 
 **Every lens:** its own eval boards with known flaws (M5), measured before it ships.
 
