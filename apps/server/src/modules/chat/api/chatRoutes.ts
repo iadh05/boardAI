@@ -1,4 +1,4 @@
-import { ChatRequestSchema } from '@designroom/domain';
+import { ChatRequestSchema, ProposalFeedbackSchema } from '@designroom/domain';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { streamSSE } from 'hono/streaming';
@@ -6,12 +6,14 @@ import type { z } from 'zod';
 import { AppError } from '../../../core/errors.ts';
 import type { Logger } from '../../../core/logger.ts';
 import type { RequestVariables } from '../../../core/requestContext.ts';
+import type { createRecordFeedback } from '../application/recordFeedback.ts';
 import type { createReviewBoard } from '../application/reviewBoard.ts';
 
 // POST /api/chat (architecture §4.4): validate the request, then stream the review as
 // server-sent events, one JSON ChatEvent per event. No rules here — they live in the use case.
 
 type ReviewBoard = ReturnType<typeof createReviewBoard>;
+type RecordFeedback = ReturnType<typeof createRecordFeedback>;
 
 const details = (error: z.ZodError) =>
   error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message }));
@@ -30,36 +32,55 @@ const tooLarge = bodyLimit({
   },
 });
 
-export const createChatRoutes = (reviewBoard: ReviewBoard, moduleLogger: Logger) =>
-  new Hono<{ Variables: RequestVariables }>().post('/', tooLarge, async (c) => {
-    // The request's logger carries its id (requestContext); the module's is the fallback.
-    const logger = c.get('logger') ?? moduleLogger;
-    const json: unknown = await c.req.json().catch(() => {
-      throw new AppError('VALIDATION_FAILED', 'The request body must be JSON.');
-    });
-    const parsed = ChatRequestSchema.safeParse(json);
-    if (!parsed.success) {
-      if (isBoardTooLarge(parsed.error))
-        throw new AppError('BOARD_TOO_LARGE', parsed.error.issues[0]?.message ?? 'Board too large');
-      throw new AppError(
-        'VALIDATION_FAILED',
-        'The chat request is invalid.',
-        details(parsed.error),
-      );
-    }
+export const createChatRoutes = (
+  reviewBoard: ReviewBoard,
+  recordFeedback: RecordFeedback,
+  moduleLogger: Logger,
+) =>
+  new Hono<{ Variables: RequestVariables }>()
+    .post('/', tooLarge, async (c) => {
+      // The request's logger carries its id (requestContext); the module's is the fallback.
+      const logger = c.get('logger') ?? moduleLogger;
+      const json: unknown = await c.req.json().catch(() => {
+        throw new AppError('VALIDATION_FAILED', 'The request body must be JSON.');
+      });
+      const parsed = ChatRequestSchema.safeParse(json);
+      if (!parsed.success) {
+        if (isBoardTooLarge(parsed.error))
+          throw new AppError(
+            'BOARD_TOO_LARGE',
+            parsed.error.issues[0]?.message ?? 'Board too large',
+          );
+        throw new AppError(
+          'VALIDATION_FAILED',
+          'The chat request is invalid.',
+          details(parsed.error),
+        );
+      }
 
-    // The browser closing the tab aborts this signal: the agent and the model call stop with it.
-    const started = reviewBoard(parsed.data, {
-      logger,
-      signal: c.req.raw.signal,
-      requestId: c.res.headers.get('X-Request-Id'), // set by requestContext
-    });
-    if (!started.ok) throw new AppError('BOARD_TOO_LARGE', started.error.message);
+      // The browser closing the tab aborts this signal: the agent and the model call stop with it.
+      const started = reviewBoard(parsed.data, {
+        logger,
+        signal: c.req.raw.signal,
+        requestId: c.res.headers.get('X-Request-Id'), // set by requestContext
+      });
+      if (!started.ok) throw new AppError('BOARD_TOO_LARGE', started.error.message);
 
-    // Nginx buffers responses unless told not to; the chat must arrive token by token (§14).
-    c.header('X-Accel-Buffering', 'no');
-    return streamSSE(c, async (stream) => {
-      for await (const event of started.value)
-        await stream.writeSSE({ data: JSON.stringify(event) });
+      // Nginx buffers responses unless told not to; the chat must arrive token by token (§14).
+      c.header('X-Accel-Buffering', 'no');
+      return streamSSE(c, async (stream) => {
+        for await (const event of started.value)
+          await stream.writeSSE({ data: JSON.stringify(event) });
+      });
+    })
+    // Accept/Reject on a proposal, as feedback on the review's trace (M1-26c).
+    .post('/feedback', async (c) => {
+      const json: unknown = await c.req.json().catch(() => {
+        throw new AppError('VALIDATION_FAILED', 'The request body must be JSON.');
+      });
+      const parsed = ProposalFeedbackSchema.safeParse(json);
+      if (!parsed.success)
+        throw new AppError('VALIDATION_FAILED', 'The feedback is invalid.', details(parsed.error));
+      await recordFeedback(parsed.data);
+      return c.body(null, 204);
     });
-  });

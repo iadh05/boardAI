@@ -133,3 +133,56 @@ describe('POST /api/chat', () => {
     expect(await res.json()).toMatchObject({ error: { code: 'BOARD_TOO_LARGE' } });
   });
 });
+
+// M1-26c: Accept/Reject on a proposal comes back as feedback on the review's trace.
+describe('POST /api/chat/feedback', () => {
+  const feedback = {
+    traceId: '2adb8e295d202a612dc768b48ac1d3f4',
+    spanId: '67f6740bbe1ddc3f',
+    verdict: 'accepted',
+  };
+  const appWithSink = () => {
+    const recorded: unknown[] = [];
+    const agent: ReviewAgent = { run: async function* () {} };
+    const app = new Hono().route(
+      '/api/chat',
+      createChatModule({
+        agent,
+        logger,
+        contextTokens: 16_384,
+        feedback: {
+          record: (f) => {
+            recorded.push(f);
+            return Promise.resolve();
+          },
+        },
+      }).routes,
+    );
+    app.onError(onError(logger));
+    return { app, recorded };
+  };
+  const send = (app: Hono, payload: unknown) =>
+    app.request('/api/chat/feedback', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+  it('records the verdict on the trace and answers 204', async () => {
+    const { app, recorded } = appWithSink();
+
+    const res = await send(app, feedback);
+
+    expect(res.status).toBe(204);
+    expect(recorded).toEqual([feedback]);
+  });
+
+  it('refuses ids that are not OpenTelemetry ids: 400, nothing recorded', async () => {
+    const { app, recorded } = appWithSink();
+
+    const res = await send(app, { ...feedback, spanId: '../admin' });
+
+    expect(res.status).toBe(400);
+    expect(recorded).toEqual([]);
+  });
+});

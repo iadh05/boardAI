@@ -75,6 +75,11 @@ export const ProposalSchema = z.object({
   ops: z.array(AgentOpSchema).min(1).max(MAX_OPS_PER_PROPOSAL),
   /** Links Accept/Reject feedback to the agent's trace (M1-26). */
   traceId: z.string().min(1).max(128).optional(),
+  /** The agent's span in that trace: what Phoenix annotates with the feedback (M1-26c). */
+  spanId: z
+    .string()
+    .regex(/^[0-9a-f]{16}$/)
+    .optional(),
 });
 export type Proposal = z.infer<typeof ProposalSchema>;
 

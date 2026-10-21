@@ -13,7 +13,11 @@ import {
 import { observeRequests } from './core/observability/telemetry.ts';
 import { appendToFile, recordLlmCalls } from './core/llmCallLog.ts';
 import { currentRequestId, requestContext } from './core/requestContext.ts';
-import { createChatModule, createReviewAgent } from './modules/chat/index.ts';
+import {
+  createChatModule,
+  createPhoenixFeedback,
+  createReviewAgent,
+} from './modules/chat/index.ts';
 import { createCollaborationModule } from './modules/collaboration/index.ts';
 import { createDebugModule } from './modules/debug/index.ts';
 import { createHealthModule } from './modules/health/index.ts';
@@ -66,6 +70,15 @@ export const createApp = (deps: AppDeps) => {
       logger: deps.logger,
       contextTokens: deps.config.llm.contextTokens,
       reporter,
+      // Accept/Reject as annotations on the agent's span, when Phoenix is set (M1-26c).
+      ...(deps.config.telemetry?.phoenixEndpoint
+        ? {
+            feedback: createPhoenixFeedback({
+              endpoint: deps.config.telemetry.phoenixEndpoint,
+              logger: deps.logger,
+            }),
+          }
+        : {}),
     }).routes,
   );
 

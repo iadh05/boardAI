@@ -657,6 +657,23 @@ describe('tracing', () => {
     expect(failed?.status.message).toMatch(/n9/);
   });
 
+  // M1-26c: Accept/Reject is recorded on the review's trace, so the proposal says which one.
+  it("stamps the proposal with the agent span's trace and span ids", async () => {
+    const { agent } = traced([
+      [tool('c1', 'add_node', { kind: 'cache', label: 'Redis', near: 'n1' })],
+      [tool('c2', 'connect_nodes', { source: 'n1', target: 'n3' })],
+      [text('Done.')],
+    ]);
+
+    const events = await run(agent);
+
+    const root = named('agent')[0]?.spanContext();
+    expect(of(events, 'proposal')[0]?.proposal).toMatchObject({
+      traceId: root?.traceId,
+      spanId: root?.spanId,
+    });
+  });
+
   it('records the scope verdict; an off-topic question has no rounds', async () => {
     const { agent } = traced([], 'out');
 
