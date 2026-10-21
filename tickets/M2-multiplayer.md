@@ -14,6 +14,7 @@ Spec: [docs/specs/M2-multiplayer.md](../docs/specs/M2-multiplayer.md) · Archite
 | M2-06 | Live cursors with names and colours | web + diagram | M | done |
 | M2-07 | Two-tab Playwright journeys (live edit, same-box drag, offline, undo) | e2e | M | done |
 | M2-08 | Checkpoint, decisions, retro | close | S | doing |
+| M2-09 | Copy, paste, duplicate (boxes, arrows, zones; between rooms) | domain + web + e2e | M | todo |
 
 ---
 
@@ -110,3 +111,20 @@ Spec: [docs/specs/M2-multiplayer.md](../docs/specs/M2-multiplayer.md) · Archite
 
 - [ ] `docs/checkpoints/M2.md`: demo steps, numbers (update size, message rate while dragging), what's left for M3.
 - [ ] Tick M2 in MILESTONES; update PROGRESS.
+
+## M2-09 — Copy, paste, duplicate
+**Status:** todo · **Size:** M · **Depends on:** M2-03 (board store on the document, undo)
+
+*Why (owner, 2026-10-21):* reusing part of a design (a "service + its cache + its queue" group, a whole region) means redrawing it box by box today.
+
+**Tasks**
+- [ ] Domain op `pasteBoard(board, clip, { offset, newId })`, TDD: new ids for every box, arrow and zone; only the arrows whose two ends are copied; labels, kinds, modes kept.
+- [ ] Ctrl/Cmd+C copies the selection (boxes, the arrows between them, zones); Ctrl/Cmd+V pastes it, shifted (or at the pointer) and selected; Ctrl/Cmd+D duplicates in place, shifted.
+- [ ] The system clipboard holds the copy as JSON, so it works between tabs and **between rooms**. On paste it is checked with the domain schema: it's data from outside, like a board from the network.
+- [ ] One undo step per paste; the paste syncs to everyone in the room (Yjs), like any edit.
+- [ ] Not while a label is being edited: the text field keeps its normal copy / paste.
+- [ ] Keyboard and screen reader: the shortcuts are announced in the toolbar's help; works without a mouse.
+- [ ] e2e: copy two connected boxes, paste → 4 boxes and 2 arrows; paste the same copy into a second room; undo removes the whole paste.
+
+**Acceptance criteria**
+- [ ] Copying a group with its arrows and pasting it in the same or another room gives an identical, independent copy, in one undo step, seen live by others.

@@ -61,6 +61,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-26e | God eye: overview dashboard (RED + USE), alerts, runtime metrics | obs | M | done |
 | M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | todo |
 | M1-27 | ADR-006…009, demo, retro | close | S | todo |
+| M1-32 | Agent v2: tools to check, ask and finish; round budget per task | M1b | L | todo |
 
 *(The table is a summary — the **Status** line inside each ticket is the source of truth.)*
 
@@ -1231,6 +1232,30 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - [ ] Accepting a proposal shows up as positive feedback on its trace; rejecting as negative.
 
 ---
+
+## M1-32 — Agent v2: tools to check, ask and finish
+**Status:** todo · **Size:** L · **Depends on:** M1-30 (the rules), M1-31 (#72)
+
+*Why (owner, 2026-10-21):* drawn on a DesignRoom board, today's agent is naive. One loop does everything (find flaws, judge, propose, explain); it can change the board but can't **look**, **check**, **ask** or **finish**; and the decision to propose is pushed by a reminder sent as a fake user message. The owner's direction: **add tools first, then agents**. That matches the industry: one ReAct loop with good tools before multi-agent; and small models pick the wrong tool more often past ~8 tools.
+
+**Tasks**
+- [ ] Draw the v2 loop on a DesignRoom board next to today's agent; agree it with the owner before coding.
+- [ ] `check_design()`: runs M1-30's rules and returns the findings, naming the boxes ("Orders API → Postgres: no cache in front").
+- [ ] `ask_user(question)`: a clarifying question shown as a card; ends the answer.
+- [ ] `finish(summary)` replaces `no_change`, the ReAct "done". It refuses while a new box has no arrow, and says so as a tool result (an observation, not a message). `nudge.ts` and the fake user messages are deleted; a turn with no tool call gets one format-error observation.
+- [ ] A round budget per task, capped in code (e.g. review 6, question 2, draft 10), instead of a fixed 5; prompt and tool descriptions encourage several calls per round (add + connect).
+- [ ] At most 8 tools offered at once.
+- [ ] Measure against M1-31 (#72): sample boards and the Uber case 10 runs, red team. Keep only if equal or better.
+
+**Later, each its own ticket**
+- `set_requirements(users, peak, budget…)` and a requirements card the agent reads on every request (the "situation card" idea).
+- A **Critic** agent that reviews a proposal before the user sees it: only if the numbers show wrong proposals code can't catch (e.g. the LB turned into a CDN).
+- A **Planner** for "design me X": Draw mode.
+- `search_patterns` (reference architectures, A3), `simulate` (A1/A3), `annotate` (M4), `propose_removal` (ADR first).
+
+**Acceptance criteria**
+- [ ] The demo board reaches ≥ 9/10 with no fake user message in the loop.
+- [ ] Every rule the agent must follow is either in a tool's description or checked in a tool's code.
 
 ## M1-27 — ADR-006…009, demo, retro
 **Status:** todo · **Size:** S · **Depends on:** all M1 tickets
