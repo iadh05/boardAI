@@ -1,5 +1,8 @@
 import { createFakeProvider } from '@designroom/ai-gateway';
-import { describe, expect, it } from 'vitest';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
 import { createLogger } from './core/logger.ts';
 import { createApp } from './main.ts';
 
@@ -10,6 +13,7 @@ const config = {
   errorTracking: null,
   telemetry: null,
   debugRoutes: false,
+  llmCallLog: null,
 } as const;
 const logger = createLogger({ level: 'error', write: () => {} });
 const app = createApp({ config, logger });
@@ -95,5 +99,43 @@ describe('createApp', () => {
       .map((l) => JSON.parse(l) as { msg: string; requestId?: string })
       .find((l) => l.msg === 'agent round');
     expect(round?.requestId).toBe(requestId);
+  });
+
+  it('with LLM_CALL_LOG, records each model call of a review under its request id (M1-28)', async () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'designroom-')), 'calls.jsonl');
+    const loggingApp = createApp({
+      config: { ...config, llmCallLog: file },
+      logger,
+      llmProvider: createFakeProvider([
+        [{ type: 'text', delta: 'DESIGN' }],
+        [{ type: 'text', delta: 'Looks fine.' }],
+      ]),
+    });
+
+    const res = await loggingApp.request('/api/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        board: { nodes: [], edges: [] },
+        messages: [{ role: 'user', content: 'Review it' }],
+      }),
+    });
+    await res.text();
+
+    // Written after each call ends, without blocking the answer: wait for both lines.
+    const read = () =>
+      existsSync(file)
+        ? readFileSync(file, 'utf8')
+            .trim()
+            .split('\n')
+            .map((l) => JSON.parse(l) as { requestId: string; output: { text: string } })
+        : [];
+    await vi.waitFor(() => expect(read()).toHaveLength(2));
+    const [scope, review] = read();
+    expect(scope?.output.text).toBe('DESIGN'); // the scope guard's call is recorded too
+    expect(review?.output.text).toBe('Looks fine.');
+    expect(new Set(read().map((r) => r.requestId))).toEqual(
+      new Set([res.headers.get('X-Request-Id')]),
+    );
   });
 });

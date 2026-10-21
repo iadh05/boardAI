@@ -18,6 +18,7 @@ describe('loadConfig', () => {
       errorTracking: null, // off unless SENTRY_DSN is set
       telemetry: null, // off unless OTEL_EXPORTER_OTLP_ENDPOINT is set
       debugRoutes: false, // ENABLE_DEBUG_ROUTES=true turns /api/debug/* on
+      llmCallLog: null, // off unless LLM_CALL_LOG is set: it records boards and chats
     });
   });
 

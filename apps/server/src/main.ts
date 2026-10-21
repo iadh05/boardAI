@@ -11,7 +11,8 @@ import {
   type ErrorReporter,
 } from './core/observability/errorReporter.ts';
 import { observeRequests } from './core/observability/telemetry.ts';
-import { requestContext } from './core/requestContext.ts';
+import { appendToFile, recordLlmCalls } from './core/llmCallLog.ts';
+import { currentRequestId, requestContext } from './core/requestContext.ts';
 import { createChatModule, createReviewAgent } from './modules/chat/index.ts';
 import { createCollaborationModule } from './modules/collaboration/index.ts';
 import { createDebugModule } from './modules/debug/index.ts';
@@ -32,13 +33,24 @@ export type AppDeps = {
 export const createApp = (deps: AppDeps) => {
   // Every bug is counted (overview dashboard, alert), then reported (GlitchTip, when a DSN is set).
   const reporter = countErrors(deps.reporter ?? noErrorReporter);
-  const llm = createGateway({
+  const gateway = createGateway({
     provider:
       deps.llmProvider ?? createLlmProvider(deps.config.llm, (path) => readFileSync(path, 'utf8')),
     model: deps.config.llm.model, // names the LLM spans
     timeoutMs: deps.config.llm.timeoutMs,
     retries: 1,
   });
+  // Opt-in (LLM_CALL_LOG): every model call, exactly as sent and answered, for diagnosing the agent.
+  const callLog = deps.config.llmCallLog;
+  const llm = callLog
+    ? recordLlmCalls(gateway, {
+        write: appendToFile(callLog, (error) =>
+          deps.logger.warn('could not record a model call', { error: String(error) }),
+        ),
+        now: Date.now,
+        requestId: currentRequestId,
+      })
+    : gateway;
 
   const app = new Hono();
   app.use(observeRequests()); // first: the request's span is the parent of everything after
