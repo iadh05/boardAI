@@ -16,10 +16,12 @@ The build plan of [architecture-v2.md](../docs/agents/architecture-v2.md#build-p
 | AV2-04 | gateway | A model per role, with the local fallback (D13) | S | in review — #83 |
 | AV2-05 | S1 | The orchestrator: typed state, task queue, findings, merge | L | in review — #84 |
 | AV2-06 | S3 | First specialists: Data and Security | M | in review — #85 (rules first: see its PR) |
-| AV2-07 | S2 | Planner and Main agent: flows F1, F2, F6, the clarify loop | L | doing |
-| AV2-08 | S5 | Critic: code checks, then an LLM on another model | M | todo |
-| AV2-09 | wiring | V2 behind `AGENT_MODE=v2`: server, progress events, e2e | M | todo |
-| AV2-10 | eval | V1 vs V2 on every sample board; keep or not | S | todo |
+| AV2-07 | S2 | Planner and Main agent: flows F1, F2, F6, the clarify loop | L | in review — #86 (Planner local 26/30) |
+| AV2-08 | S5 | Critic: code checks, then an LLM on another model | M | in review — #87 (off by default) |
+| AV2-09 | wiring | V2 behind `AGENT_MODE=v2`: server, progress events, e2e | M | in review — #88 (no V2 e2e: see its PR) |
+| AV2-10 | eval | V1 vs V2 on every sample board; keep or not | S | doing |
+
+What was built, drawn: [docs/agents/v2/built-2026-10-22.json](../docs/agents/v2/built-2026-10-22.json) (`node scripts/board-snapshot.mjs load docs/agents/v2/built-2026-10-22.json`).
 
 Later (not tonight): M1-32b round budget, M1-32c question card (folded into AV2-09's progress events if it fits), the knowledge store and Scribe (D12, D15), caches (D16), threads (D19), the ad-hoc expert (D17), Cost / Stack & Cloud / Chaos / Traffic / DevOps / Researcher specialists, the UX pass.
 
@@ -163,3 +165,9 @@ Later (not tonight): M1-32b round budget, M1-32c question card (folded into AV2-
 Kept as the night goes (times are local).
 
 - 2026-10-21 evening: tickets written. AV2-01's rules and tools done (uncommitted at that point, worktree `C:/Users/Benab/wt/dr-m1-32`). Hosted probes: Groq, Gemini, Claude keys work; findings in AV2-02 and AV2-03.
+- AV2-01: Qwen 9B 19/25 (main, tonight) → 47/50, then 45/50 after the review fixes; demo board 9/10. PR #81.
+- AV2-02: free-tier limits measured — Groq Qwen3.8 7,000 input tokens/min, Gemini 3.5 Flash-Lite 15 requests/min; hosted eval 0 gateway errors (was 12). PR #80.
+- AV2-03: Claude via the SDK, Haiku 9/10 and Sonnet 8/10 runs on V1's agent; review found a per-role budget, uncounted early stops, temperature 400s, dropped thinking blocks — fixed. PR #82.
+- AV2-04: a model per role; review found a silent hosted model never fell back — fixed with a first-chunk deadline. PR #83.
+- AV2-05 … AV2-09: orchestrator, rule specialists, Planner + Main + Architect, Critic, wiring behind `AGENT_MODE=v2`. PRs #84 … #88. Planner on local Qwen 24/30 → 26/30.
+- **Night decisions** (all in the night notes and the PRs): specialists are rules (AV2-06); the Architect is AV2-01's agent fed with the findings (AV2-07); the D2 clarify limit counts assistant turns (stateless server); the Critic holds the answer and is off by default (AV2-08); no V2 e2e journey yet (AV2-09).

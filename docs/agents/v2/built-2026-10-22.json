@@ -1,0 +1,307 @@
+{
+  "nodes": [
+    {
+      "id": "a9be664d-4144-49d6-9ecd-579e4cfb8ec6",
+      "kind": "client",
+      "label": "You (chat + board)",
+      "position": {
+        "x": 0,
+        "y": 300
+      }
+    },
+    {
+      "id": "11b37c45-180c-4783-9b3f-339f812e331f",
+      "kind": "service",
+      "label": "Main agent: scope guard, trivial turns (AV2-07)",
+      "position": {
+        "x": 320,
+        "y": 300
+      }
+    },
+    {
+      "id": "61b0b5ee-9685-4944-9aef-2aa91052d8d8",
+      "kind": "service",
+      "label": "Planner: make_plan, flow + specialists + ≤3 questions (AV2-07)",
+      "position": {
+        "x": 640,
+        "y": 300
+      }
+    },
+    {
+      "id": "84573d67-5f92-4028-9815-389ef1e3bec4",
+      "kind": "queue",
+      "label": "Task queue: 1 at a time, ≤6, 60 s, Stop (AV2-05)",
+      "position": {
+        "x": 960,
+        "y": 300
+      }
+    },
+    {
+      "id": "7ef8bf7a-7aaa-4ea5-8821-e3ea98bd79ca",
+      "kind": "service",
+      "label": "Data specialist: rules (AV2-06)",
+      "position": {
+        "x": 1280,
+        "y": 160
+      }
+    },
+    {
+      "id": "610ae856-3e07-452c-b9b2-49f4b1a404a1",
+      "kind": "service",
+      "label": "Security specialist: rules (AV2-06)",
+      "position": {
+        "x": 1280,
+        "y": 440
+      }
+    },
+    {
+      "id": "9607b4b0-1ee6-4924-b46f-71857293d7c7",
+      "kind": "storage",
+      "label": "Findings: typed, merged in code, conflicts (AV2-05)",
+      "position": {
+        "x": 1600,
+        "y": 300
+      }
+    },
+    {
+      "id": "bf9ebb67-38d4-4250-8348-946a2ae0871d",
+      "kind": "api",
+      "label": "Architect = AV2-01 agent: check_design, add/update/connect, ask_user, finish",
+      "position": {
+        "x": 1920,
+        "y": 300
+      }
+    },
+    {
+      "id": "80abe983-f3a8-440a-a9d3-5533c6d1f751",
+      "kind": "service",
+      "label": "Critic: code checks + LLM, one revision (AV2-08, off)",
+      "position": {
+        "x": 2240,
+        "y": 300
+      }
+    },
+    {
+      "id": "f03592b2-0ed8-415e-999b-4a4c90b1b280",
+      "kind": "custom",
+      "label": "Proposal: ghost boxes, Accept / Reject",
+      "position": {
+        "x": 2560,
+        "y": 300
+      }
+    },
+    {
+      "id": "c55eff29-bce4-4b3d-8ad1-0a2155fbe1a7",
+      "kind": "loadBalancer",
+      "label": "AI gateway: a model per role, local fallback (AV2-04)",
+      "position": {
+        "x": 960,
+        "y": 760
+      }
+    },
+    {
+      "id": "a7578f9c-c991-4f27-9f0c-60840e17597e",
+      "kind": "custom",
+      "label": "Local Qwen 3.5 9B (Ollama, GPU)",
+      "position": {
+        "x": 640,
+        "y": 1000
+      }
+    },
+    {
+      "id": "7414e0bb-c325-4b9c-a344-598dd2895bfe",
+      "kind": "custom",
+      "label": "Groq: Qwen3.8 27B, gpt-oss (AV2-02)",
+      "position": {
+        "x": 960,
+        "y": 1000
+      }
+    },
+    {
+      "id": "9c87421c-603a-4d08-bc08-4dd0451d7b40",
+      "kind": "custom",
+      "label": "Gemini 3.5 Flash-Lite (AV2-02)",
+      "position": {
+        "x": 1280,
+        "y": 1000
+      }
+    },
+    {
+      "id": "e3fbd257-0fae-46e8-b267-9478bfe2b846",
+      "kind": "custom",
+      "label": "Claude Haiku / Sonnet via SDK, $ cap (AV2-03)",
+      "position": {
+        "x": 1600,
+        "y": 1000
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "fa4348b1-9b82-4815-b36c-8dda802bb5e9",
+      "source": "a9be664d-4144-49d6-9ecd-579e4cfb8ec6",
+      "target": "11b37c45-180c-4783-9b3f-339f812e331f",
+      "label": "message"
+    },
+    {
+      "id": "91717e91-7c48-4629-902d-d1e31752c504",
+      "source": "11b37c45-180c-4783-9b3f-339f812e331f",
+      "target": "61b0b5ee-9685-4944-9aef-2aa91052d8d8",
+      "label": "not trivial"
+    },
+    {
+      "id": "cf589685-9c4a-40f4-88dd-4776f30df6ba",
+      "source": "11b37c45-180c-4783-9b3f-339f812e331f",
+      "target": "a9be664d-4144-49d6-9ecd-579e4cfb8ec6",
+      "label": "trivial reply"
+    },
+    {
+      "id": "e8e64553-a30d-4412-88a3-6d6ef44e3836",
+      "source": "61b0b5ee-9685-4944-9aef-2aa91052d8d8",
+      "target": "a9be664d-4144-49d6-9ecd-579e4cfb8ec6",
+      "label": "questions (D2)"
+    },
+    {
+      "id": "91541160-fc96-41ca-8da0-e6c8c604802a",
+      "source": "61b0b5ee-9685-4944-9aef-2aa91052d8d8",
+      "target": "84573d67-5f92-4028-9815-389ef1e3bec4",
+      "label": "task cards (D4)"
+    },
+    {
+      "id": "c082f343-9f2d-4bc8-b354-30a493620b31",
+      "source": "84573d67-5f92-4028-9815-389ef1e3bec4",
+      "target": "7ef8bf7a-7aaa-4ea5-8821-e3ea98bd79ca",
+      "label": "task"
+    },
+    {
+      "id": "627f9d78-e23a-4247-8c0b-e4bac03c6fba",
+      "source": "84573d67-5f92-4028-9815-389ef1e3bec4",
+      "target": "610ae856-3e07-452c-b9b2-49f4b1a404a1",
+      "label": "task"
+    },
+    {
+      "id": "69222f50-152e-42ef-bbae-ee3f6cbd70b9",
+      "source": "7ef8bf7a-7aaa-4ea5-8821-e3ea98bd79ca",
+      "target": "9607b4b0-1ee6-4924-b46f-71857293d7c7",
+      "label": "findings (D7)"
+    },
+    {
+      "id": "eeaaedcf-0e10-4c27-8969-196e1d96710f",
+      "source": "610ae856-3e07-452c-b9b2-49f4b1a404a1",
+      "target": "9607b4b0-1ee6-4924-b46f-71857293d7c7",
+      "label": "findings (D7)"
+    },
+    {
+      "id": "46a8dda9-b446-4f3e-981e-6fc784d1215c",
+      "source": "84573d67-5f92-4028-9815-389ef1e3bec4",
+      "target": "a9be664d-4144-49d6-9ecd-579e4cfb8ec6",
+      "label": "progress (D6)",
+      "mode": "async"
+    },
+    {
+      "id": "fca88d88-d3b5-4ee8-807e-94800865f1b0",
+      "source": "9607b4b0-1ee6-4924-b46f-71857293d7c7",
+      "target": "bf9ebb67-38d4-4250-8348-946a2ae0871d",
+      "label": "<findings>"
+    },
+    {
+      "id": "c1d3030c-df18-46ad-b717-07ba2342b695",
+      "source": "bf9ebb67-38d4-4250-8348-946a2ae0871d",
+      "target": "80abe983-f3a8-440a-a9d3-5533c6d1f751",
+      "label": "proposal"
+    },
+    {
+      "id": "17a96dae-81aa-4b35-970b-72d8b1219213",
+      "source": "80abe983-f3a8-440a-a9d3-5533c6d1f751",
+      "target": "bf9ebb67-38d4-4250-8348-946a2ae0871d",
+      "label": "revise once",
+      "mode": "async"
+    },
+    {
+      "id": "eea76e20-591f-4bb0-a0ea-d3d912a1fa0b",
+      "source": "80abe983-f3a8-440a-a9d3-5533c6d1f751",
+      "target": "f03592b2-0ed8-415e-999b-4a4c90b1b280",
+      "label": "pass"
+    },
+    {
+      "id": "1b6b3925-6e6c-4710-b9f9-84857bf1bd6e",
+      "source": "f03592b2-0ed8-415e-999b-4a4c90b1b280",
+      "target": "a9be664d-4144-49d6-9ecd-579e4cfb8ec6",
+      "label": "Accept / Reject"
+    },
+    {
+      "id": "517e5c71-39ff-4cff-8b90-fa4d73bafeae",
+      "source": "11b37c45-180c-4783-9b3f-339f812e331f",
+      "target": "c55eff29-bce4-4b3d-8ad1-0a2155fbe1a7",
+      "label": "role main"
+    },
+    {
+      "id": "fec407e4-6312-4773-805f-171be2f17aa9",
+      "source": "61b0b5ee-9685-4944-9aef-2aa91052d8d8",
+      "target": "c55eff29-bce4-4b3d-8ad1-0a2155fbe1a7",
+      "label": "role planner"
+    },
+    {
+      "id": "aed34131-f40c-4c85-ad25-ac71dad1d688",
+      "source": "bf9ebb67-38d4-4250-8348-946a2ae0871d",
+      "target": "c55eff29-bce4-4b3d-8ad1-0a2155fbe1a7",
+      "label": "role specialist"
+    },
+    {
+      "id": "b80a48a1-d52e-429e-9537-a7c248be7502",
+      "source": "80abe983-f3a8-440a-a9d3-5533c6d1f751",
+      "target": "c55eff29-bce4-4b3d-8ad1-0a2155fbe1a7",
+      "label": "role critic"
+    },
+    {
+      "id": "0312c59f-3328-4399-bbe2-428e38670a92",
+      "source": "c55eff29-bce4-4b3d-8ad1-0a2155fbe1a7",
+      "target": "a7578f9c-c991-4f27-9f0c-60840e17597e",
+      "label": "local / fallback"
+    },
+    {
+      "id": "be08664f-c3fd-422e-9a60-ec1ff154dc7a",
+      "source": "c55eff29-bce4-4b3d-8ad1-0a2155fbe1a7",
+      "target": "7414e0bb-c325-4b9c-a344-598dd2895bfe",
+      "label": "hosted"
+    },
+    {
+      "id": "592b6c00-6a61-4a3f-8561-1d28afb83d79",
+      "source": "c55eff29-bce4-4b3d-8ad1-0a2155fbe1a7",
+      "target": "9c87421c-603a-4d08-bc08-4dd0451d7b40",
+      "label": "hosted"
+    },
+    {
+      "id": "1cd3a868-4e26-460b-9823-f86eb6261bde",
+      "source": "c55eff29-bce4-4b3d-8ad1-0a2155fbe1a7",
+      "target": "e3fbd257-0fae-46e8-b267-9478bfe2b846",
+      "label": "hosted"
+    }
+  ],
+  "zones": [
+    {
+      "id": "44b07f0c-b882-4ba8-a15d-41cbddfc0595",
+      "label": "Agent V2 chain (AGENT_MODE=v2)",
+      "position": {
+        "x": -40,
+        "y": 100
+      },
+      "size": {
+        "width": 2880,
+        "height": 560
+      }
+    },
+    {
+      "id": "2469741d-9695-4f29-8f5b-137d5a868045",
+      "label": "Models",
+      "position": {
+        "x": 600,
+        "y": 940
+      },
+      "size": {
+        "width": 1320,
+        "height": 200
+      }
+    }
+  ]
+}
