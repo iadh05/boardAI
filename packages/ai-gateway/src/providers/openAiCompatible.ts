@@ -21,6 +21,12 @@ export type OpenAiCompatibleOptions = {
   /** Send `reasoning_effort: "none"` (default true): thinking models answer straight away. */
   disableThinking?: boolean;
   /**
+   * The `reasoning_effort` this model takes, when "none" doesn't fit it (AV2-02): gpt-oss can't
+   * turn thinking off ("low"), some Gemini models refuse "none" (null: left out). Wins over
+   * `disableThinking`.
+   */
+  reasoningEffort?: string | null;
+  /**
    * Most tokens one answer may write (default 2048, ~8,000 characters: a long review fits). A
    * model stuck in a loop wrote 209k characters for 21 minutes without it (M1-31).
    */
@@ -30,14 +36,60 @@ export type OpenAiCompatibleOptions = {
 };
 
 // Only what we read. Unknown fields (Ollama's `reasoning` and `timings`, ids…) pass through.
+// `index` says which call a piece belongs to when arguments arrive in pieces (OpenAI, Groq); Gemini
+// sends each call whole and leaves it out. `extra_content` is Gemini's: kept, and sent back.
 const ToolCallDeltaSchema = z.object({
-  index: z.number().int().min(0),
+  index: z.number().int().min(0).optional(),
   id: z.string().optional(),
   function: z.object({ name: z.string().optional(), arguments: z.string().optional() }).optional(),
+  extra_content: z.record(z.string(), z.unknown()).optional(),
 });
 
 // Servers report a failure mid-stream as an event of its own (Ollama: the model runner stopped).
-const StreamErrorSchema = z.object({ error: z.object({ message: z.string() }) });
+// Groq also ends the stream this way when it refuses a tool call's arguments (tool_use_failed).
+const StreamErrorSchema = z.object({
+  error: z.object({
+    message: z.string(),
+    code: z.string().nullish(),
+    failed_generation: z.string().nullish(),
+  }),
+});
+
+/**
+ * The calls Groq refused (AV2-02), as the model made them: our own check then answers the model,
+ * which can fix the call next round, instead of the whole answer failing. When the generation
+ * can't be read, the tool's name from the message and the raw text: still rejected with a reason.
+ */
+const refusedCalls = (error: z.infer<typeof StreamErrorSchema>['error']): LlmToolCall[] => {
+  const raw = error.failed_generation ?? '';
+  const named = /parameters for tool (\w+)/.exec(error.message)?.[1] ?? 'unknown';
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = undefined;
+  }
+  const list = Array.isArray(parsed) ? parsed : parsed === undefined ? [] : [parsed];
+  const calls = list.flatMap((item: unknown) => {
+    const call = z.object({ name: z.string(), arguments: z.unknown() }).safeParse(item);
+    return call.success ? [call.data] : [];
+  });
+  const found = calls.length > 0 ? calls : [{ name: named, arguments: raw }];
+  return found.map((call, i) => ({
+    id: `refused_${i}`,
+    name: call.name,
+    arguments: typeof call.arguments === 'string' ? parseArguments(call.arguments) : call.arguments,
+  }));
+};
+
+/** The wait a 429 asks for: the retry-after header (seconds), or Groq's "try again in 4.38s". */
+const retryAfterOf = (response: Response, message: string): number | undefined => {
+  const header = Number(response.headers.get('retry-after'));
+  if (header > 0) return header * 1000;
+  const said = /try again in ([\d.]+)\s*(ms|s)\b/i.exec(message);
+  if (!said?.[1]) return undefined;
+  return Math.ceil(Number(said[1]) * (said[2] === 'ms' ? 1 : 1000));
+};
 
 const StreamChunkSchema = z.object({
   choices: z.array(
@@ -68,6 +120,7 @@ const toWireMessage = (message: LlmMessage) => {
                 id: call.id,
                 type: 'function',
                 function: { name: call.name, arguments: JSON.stringify(call.arguments) },
+                ...call.providerData, // back as it came (Gemini's thought signature)
               })),
             }
           : {}),
@@ -102,16 +155,22 @@ const providerMessage = async (response: Response) => {
   }
 };
 
-/** Tool calls arrive as pieces keyed by `index` (OpenAI) or whole (Ollama): collect, then emit. */
+/**
+ * Tool calls arrive as pieces keyed by `index` (OpenAI, Groq) or whole (Ollama, Gemini — which
+ * sends no index: each such piece is a call of its own): collect, then emit.
+ */
 const createToolCallCollector = () => {
-  const pending = new Map<number, { id: string; name: string; args: string }>();
+  type Pending = { id: string; name: string; args: string; data?: Record<string, unknown> };
+  const pending = new Map<number, Pending>();
   return {
     add(delta: z.infer<typeof ToolCallDeltaSchema>) {
-      const call = pending.get(delta.index) ?? { id: '', name: '', args: '' };
+      const index = delta.index ?? pending.size;
+      const call = pending.get(index) ?? { id: '', name: '', args: '' };
       call.id ||= delta.id ?? '';
       call.name += delta.function?.name ?? '';
       call.args += delta.function?.arguments ?? '';
-      pending.set(delta.index, call);
+      if (delta.extra_content) call.data = { extra_content: delta.extra_content };
+      pending.set(index, call);
     },
     flush(): ProviderChunk[] {
       const calls = [...pending.entries()]
@@ -120,6 +179,7 @@ const createToolCallCollector = () => {
           id: c.id || `call_${index}`, // the reply to the call must refer to an id
           name: c.name,
           arguments: parseArguments(c.args),
+          ...(c.data ? { providerData: c.data } : {}),
         }));
       pending.clear();
       return calls.map((call) => ({ type: 'toolCall', call }));
@@ -135,6 +195,13 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
   let base = options.baseUrl;
   while (base.endsWith('/')) base = base.slice(0, -1);
   const url = `${base}/chat/completions`;
+  const effort =
+    options.reasoningEffort !== undefined
+      ? options.reasoningEffort
+      : options.disableThinking === false
+        ? null
+        : 'none';
+  const reasoning = effort === null ? {} : { reasoning_effort: effort };
 
   return {
     async *stream(input) {
@@ -142,7 +209,7 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
         model: input.model ?? options.model,
         stream: true,
         stream_options: { include_usage: true },
-        ...(options.disableThinking === false ? {} : { reasoning_effort: 'none' }),
+        ...reasoning,
         max_tokens: options.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
         ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
         messages: input.messages.map(toWireMessage),
@@ -174,9 +241,11 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
       if (!response.ok || !response.body) {
         const message = await providerMessage(response);
         const transient = response.status === 429 || response.status >= 500;
+        const retryAfterMs = response.status === 429 ? retryAfterOf(response, message) : undefined;
         throw new LlmError(
           transient ? 'UNAVAILABLE' : 'BAD_REQUEST',
           `The model answered ${response.status}: ${message}`,
+          retryAfterMs === undefined ? undefined : { retryAfterMs },
         );
       }
 
@@ -193,6 +262,10 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
             });
           }
           const failed = StreamErrorSchema.safeParse(json);
+          if (failed.success && failed.data.error.code === 'tool_use_failed') {
+            for (const call of refusedCalls(failed.data.error)) yield { type: 'toolCall', call };
+            break; // the stream ends here; the model hears why from our check next round
+          }
           if (failed.success)
             throw new LlmError('UNAVAILABLE', `The model failed: ${failed.data.error.message}`);
           const parsed = StreamChunkSchema.safeParse(json);

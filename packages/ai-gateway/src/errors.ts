@@ -13,10 +13,17 @@ const TRANSIENT: ReadonlySet<LlmErrorCode> = new Set(['UNAVAILABLE']);
 export class LlmError extends Error {
   override readonly name = 'LlmError';
   readonly code: LlmErrorCode;
+  /** How long the provider asked us to wait before trying again (a 429's retry-after). */
+  readonly retryAfterMs?: number;
 
-  constructor(code: LlmErrorCode, message: string, options?: { cause?: unknown }) {
+  constructor(
+    code: LlmErrorCode,
+    message: string,
+    options?: { cause?: unknown; retryAfterMs?: number },
+  ) {
     super(message, options);
     this.code = code;
+    if (options?.retryAfterMs !== undefined) this.retryAfterMs = options.retryAfterMs;
   }
 
   /** Worth retrying: the same request may work a moment later. */
