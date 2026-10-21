@@ -5,6 +5,7 @@ import { createAliases } from '../domain/aliases.ts';
 import { OUT_OF_SCOPE_REPLY, type Scope } from '../domain/scope.ts';
 import { MAX_TASKS, TASK_TIMEOUT_MS, type TaskCard } from '../domain/tasks.ts';
 import { checkScope, type ScopeQuestion } from './checkScope.ts';
+import { reviewProposal } from './critic.ts';
 import { createOrchestrator, type Specialist } from './orchestrator.ts';
 import { makePlan } from './planner.ts';
 import type { AgentEvent, AgentInput, createAgent } from './runAgent.ts';
@@ -30,6 +31,36 @@ export type ReviewerV2Deps = {
   /** The scope guard; by default one short call to `main`. Injected in tests. */
   checkScope?: (question: ScopeQuestion) => Promise<Scope>;
   timer?: Timer;
+  /**
+   * The Critic (AV2-08), off when absent (AGENT_CRITIC=on). Code checks always; the LLM Critic too
+   * when `llm` is given (D14: another model family). On, the answer is held until it passes.
+   */
+  critic?: { llm?: AiGateway };
+};
+
+const collect = async <T>(events: AsyncIterable<T>) => {
+  const all: T[] = [];
+  for await (const event of events) all.push(event);
+  return all;
+};
+
+/** The Critic's verdict on what the Architect said: nothing proposed, nothing to check. */
+const critique = async (
+  events: readonly AgentEvent[],
+  question: string,
+  board: AgentInput['board'],
+  critic: NonNullable<ReviewerV2Deps['critic']>,
+  signal?: AbortSignal,
+) => {
+  const proposal = events.find((e) => e.type === 'proposal');
+  if (proposal?.type !== 'proposal') return { verdict: 'pass' as const, issues: [] };
+  return reviewProposal({
+    board,
+    ops: proposal.proposal.ops,
+    question,
+    ...(critic.llm ? { llm: critic.llm } : {}),
+    ...(signal ? { signal } : {}),
+  });
 };
 
 /** "thanks", "ok", "great!" — nothing for the Planner (D3). */
@@ -130,10 +161,39 @@ export const createReviewerV2 = (deps: ReviewerV2Deps) => {
           else if (event.type === 'merged') findings = event.findings;
         }
       }
-      const answer = context.with(root.inside, () =>
-        deps.architect.run({ ...input, findings, scoped: true }),
-      );
-      yield* answer;
+      const architect = (critique?: string[]) =>
+        context.with(root.inside, () =>
+          deps.architect.run({
+            ...input,
+            findings,
+            scoped: true,
+            ...(critique ? { critique } : {}),
+          }),
+        );
+      if (!deps.critic) {
+        yield* architect();
+        return;
+      }
+
+      // The Critic (AV2-08): the answer is held until its proposal passes; sent back once.
+      const first = await collect(architect());
+      const firstVerdict = await critique(first, question, board, deps.critic, signal);
+      if (firstVerdict.verdict === 'pass') {
+        yield* first;
+        return;
+      }
+      root.span.setAttribute('designroom.v2.critic_revised', true);
+      const second = await collect(architect(firstVerdict.issues));
+      const secondVerdict = await critique(second, question, board, deps.critic, signal);
+      if (secondVerdict.verdict === 'pass') {
+        yield* second;
+        return;
+      }
+      // Still failing after its one revision: shown, with what the Critic still sees (D9).
+      const done = second.at(-1)?.type === 'done' ? second.pop() : undefined;
+      yield* second;
+      yield { type: 'text', delta: `\n\n(Checked: ${secondVerdict.issues.join(' ')})` };
+      if (done) yield done;
     } catch (error) {
       markFailed(root.span, error instanceof Error ? error.message : String(error));
       throw error;

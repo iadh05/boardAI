@@ -78,6 +78,8 @@ export type AgentInput = {
   findings?: readonly MergedFinding[];
   /** The caller already ran the scope guard (agent V2's Main): not asked twice. */
   scoped?: boolean;
+  /** The Critic's issues with a first proposal (AV2-08): the agent proposes again without them. */
+  critique?: readonly string[];
 };
 
 /** Findings as the model reads them: `- [critical] n2 "Postgres" (data): problem. Fix: fix.` */
@@ -119,7 +121,7 @@ export const createAgent = (deps: AgentDeps) => {
   const metered = createAgentMetrics();
 
   async function* review(
-    { board, messages, signal, findings, scoped }: AgentInput,
+    { board, messages, signal, findings, scoped, critique }: AgentInput,
     parent: Context,
   ): AsyncIterable<AgentEvent> {
     const agent = startSpan('agent', 'AGENT', parent);
@@ -163,6 +165,7 @@ export const createAgent = (deps: AgentDeps) => {
         messages,
         deps.canary,
         findings?.length ? findingsText(findings, draft) : undefined,
+        critique?.length ? critique.map((issue) => `- ${issue}`).join('\n') : undefined,
       );
       // Output guard: the answer is cut where it starts reciting the prompt (OWASP LLM07).
       const watch = createLeakWatch({
