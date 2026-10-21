@@ -122,7 +122,12 @@ describe('createReviewerV2', () => {
 
     expect(
       events.filter((e) => e.type === 'progress').map((e) => e.type === 'progress' && e.text),
-    ).toEqual(['Data running · 1 left', 'Data ✓ · Security running', 'Data ✓ · Security ✓']);
+    ).toEqual([
+      'Data running · 1 left',
+      'Data ✓ · Security running',
+      'Data ✓ · Security ✓',
+      'Writing the answer…',
+    ]);
     expect(architect.calls[0]?.messages.at(-1)?.content).toMatch(
       /<findings>\n- \[critical\] n2 "Postgres" \(data\)/,
     );
@@ -221,6 +226,33 @@ describe('createReviewerV2 with the Critic (AV2-08)', () => {
 
     expect(architect.calls).toHaveLength(1);
     expect(textOf(events)).toBe('Postgres needs a copy.');
+    // Review of AV2-05..09: the progress line said "Data ✓" for the whole Architect and Critic run.
+    expect(events.flatMap((e) => (e.type === 'progress' ? [e.text] : [])).slice(-2)).toEqual([
+      'Writing the answer…',
+      'Checking the proposal…',
+    ]);
+  });
+
+  it('Stop during the first answer: nothing more is checked or asked', async () => {
+    const stop = new AbortController();
+    const { reviewer, architect } = setup({
+      planner: [plan({ flow: 'review', specialists: ['data'] })],
+      architect: [firstTry, secondTry],
+      critic: {},
+    });
+
+    const events: ReviewerV2Event[] = [];
+    for await (const event of reviewer.run({
+      board,
+      messages: [{ role: 'user', content: 'Review my design' }],
+      signal: stop.signal,
+    })) {
+      events.push(event);
+      if (event.type === 'progress' && event.text === 'Writing the answer…') stop.abort();
+    }
+
+    expect(architect.calls).toHaveLength(1); // no second try on a stopped request
+    expect(events.at(-1)).toEqual({ type: 'done' });
   });
 
   it('still failing after its one revision: shown, with what the Critic still sees', async () => {
