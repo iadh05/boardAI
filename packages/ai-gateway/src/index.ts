@@ -18,6 +18,11 @@ export {
   createOpenAiCompatibleProvider,
   type OpenAiCompatibleOptions,
 } from './providers/openAiCompatible.ts';
+export {
+  CLAUDE_MODELS,
+  createAnthropicProvider,
+  type AnthropicOptions,
+} from './providers/anthropic.ts';
 export { createFakeProvider, type FakeProvider, type FakeStep } from './providers/fake.ts';
 export {
   createScenarioProvider,

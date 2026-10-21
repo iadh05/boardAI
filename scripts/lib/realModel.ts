@@ -4,6 +4,7 @@
 import { randomUUID } from 'node:crypto';
 import { createAgent } from '../../packages/agent/src/index.ts';
 import {
+  createAnthropicProvider,
   createGateway,
   createOpenAiCompatibleProvider,
 } from '../../packages/ai-gateway/src/index.ts';
@@ -44,6 +45,8 @@ export const PROVIDERS = {
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     key: 'GEMINI_API_KEY',
   },
+  // Claude through its own SDK (AV2-03): Haiku and Sonnet only, a daily $ cap in the provider.
+  claude: { baseUrl: 'https://api.anthropic.com', key: 'CLAUDE_API_KEY' },
 } as const;
 export type ProviderName = keyof typeof PROVIDERS;
 
@@ -57,12 +60,15 @@ export const connectRealModel = (model: string, provider: ProviderName = 'ollama
   const apiKey = where.key ? process.env[where.key] : undefined;
   if (where.key && !apiKey) throw new Error(`${where.key} is not set (use --env-file).`);
   const llm = createGateway({
-    provider: createOpenAiCompatibleProvider({
-      baseUrl: where.baseUrl,
-      model,
-      reasoningEffort: reasoningEffortOf(provider, model),
-      ...(apiKey ? { apiKey } : {}),
-    }),
+    provider:
+      provider === 'claude' && apiKey
+        ? createAnthropicProvider({ apiKey, model })
+        : createOpenAiCompatibleProvider({
+            baseUrl: where.baseUrl,
+            model,
+            reasoningEffort: reasoningEffortOf(provider, model),
+            ...(apiKey ? { apiKey } : {}),
+          }),
     timeoutMs: 60_000,
     // Hosted free tiers answer 429 with a wait (Groq up to ~25 s, Gemini ~31 s, measured): an eval
     // can wait a whole minute for one; the server doesn't (the gateway's 20 s default).
