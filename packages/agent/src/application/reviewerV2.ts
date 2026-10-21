@@ -1,4 +1,4 @@
-import type { AiGateway } from '@designroom/ai-gateway';
+import type { AiGateway, LlmErrorCode } from '@designroom/ai-gateway';
 import { context } from '@opentelemetry/api';
 import { boardToText, inventoryText } from '../domain/boardToText.ts';
 import { createAliases } from '../domain/aliases.ts';
@@ -62,6 +62,14 @@ const critique = async (
     ...(signal ? { signal } : {}),
   });
 };
+
+type GatewayError = Error & { code: LlmErrorCode };
+
+/** The gateway throws LlmError; the agent may only import its types, so it checks the shape. */
+const isGatewayError = (error: unknown): error is GatewayError =>
+  error instanceof Error &&
+  error.name === 'LlmError' &&
+  typeof (error as GatewayError).code === 'string';
 
 /** "thanks", "ok", "great!" — nothing for the Planner (D3). */
 const TRIVIAL = /^(thanks?( you)?|thx|ok(ay)?|cool|great|nice|perfect|got it|merci|👍)[\s.!]*$/i;
@@ -145,7 +153,8 @@ export const createReviewerV2 = (deps: ReviewerV2Deps) => {
 
       // Architect: the specialists through the queue, then the agent explains and proposes.
       let findings: AgentInput['findings'] = [];
-      if (plan.flow !== 'question' && plan.specialists.length > 0) {
+      const specialistsRun = plan.flow !== 'question' && plan.specialists.length > 0;
+      if (specialistsRun) {
         const cards: TaskCard[] = plan.specialists.slice(0, MAX_TASKS).map((specialist) => ({
           id: `task-${specialist}`,
           specialist,
@@ -170,6 +179,9 @@ export const createReviewerV2 = (deps: ReviewerV2Deps) => {
             ...(critique ? { critique } : {}),
           }),
         );
+      // What happens next, until the answer's first word: "Data ✓" said nothing about the Architect
+      // or the Critic at work (review of AV2-05..09).
+      if (specialistsRun) yield { type: 'progress', text: 'Writing the answer…' };
       if (!deps.critic) {
         yield* architect();
         return;
@@ -177,13 +189,24 @@ export const createReviewerV2 = (deps: ReviewerV2Deps) => {
 
       // The Critic (AV2-08): the answer is held until its proposal passes; sent back once.
       const first = await collect(architect());
+      // Stopped: nothing more to check or ask — the first answer ends as it ended.
+      if (signal?.aborted) {
+        yield* first;
+        return;
+      }
+      yield { type: 'progress', text: 'Checking the proposal…' };
       const firstVerdict = await critique(first, question, board, deps.critic, signal);
       if (firstVerdict.verdict === 'pass') {
         yield* first;
         return;
       }
       root.span.setAttribute('designroom.v2.critic_revised', true);
+      yield { type: 'progress', text: 'Revising the proposal…' };
       const second = await collect(architect(firstVerdict.issues));
+      if (signal?.aborted) {
+        yield* second;
+        return;
+      }
       const secondVerdict = await critique(second, question, board, deps.critic, signal);
       if (secondVerdict.verdict === 'pass') {
         yield* second;
@@ -195,8 +218,15 @@ export const createReviewerV2 = (deps: ReviewerV2Deps) => {
       yield { type: 'text', delta: `\n\n(Checked: ${secondVerdict.issues.join(' ')})` };
       if (done) yield done;
     } catch (error) {
-      markFailed(root.span, error instanceof Error ? error.message : String(error));
-      throw error;
+      // A model failing, or the user's Stop, ends the answer the way V1's does: an error event the
+      // user can act on, then done (review of AV2-05..09). Anything else is a bug: thrown.
+      if (!isGatewayError(error)) {
+        markFailed(root.span, error instanceof Error ? error.message : String(error));
+        throw error;
+      }
+      if (error.code !== 'ABORTED') markFailed(root.span, error.message);
+      yield { type: 'error', code: error.code, message: error.message };
+      yield { type: 'done' };
     } finally {
       root.span.end();
     }

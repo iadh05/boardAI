@@ -56,8 +56,11 @@ describe('makePlan', () => {
     expect((await ask(llm, 'Review my design', false)).questions).toEqual([]);
   });
 
-  it('drops a specialist that does not exist', async () => {
-    const { llm } = plannerAnswering({ flow: 'deep-dive', specialists: ['data', 'astrology'] });
+  it('drops a specialist that does not exist, and one named twice', async () => {
+    const { llm } = plannerAnswering({
+      flow: 'deep-dive',
+      specialists: ['data', 'astrology', 'data'],
+    });
     expect((await ask(llm, 'Will the database survive?')).specialists).toEqual(['data']);
   });
 

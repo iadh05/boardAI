@@ -40,6 +40,12 @@ export type ProposalToReview = {
   signal?: AbortSignal;
 };
 
+/**
+ * Text for a delimited block: its angle brackets turned into look-alikes, so the request or a label
+ * in the summary can't close the block (review of AV2-05..09). The model still reads it fine.
+ */
+const asData = (text: string) => text.replaceAll('<', '‹').replaceAll('>', '›');
+
 export const reviewProposal = async ({
   board,
   ops,
@@ -60,7 +66,7 @@ export const reviewProposal = async ({
         { role: 'system', content: CRITIC_PROMPT },
         {
           role: 'user',
-          content: `<board>\n${boardToText(board, createAliases(board))}\n</board>\n\n<request>\n${question}\n</request>\n\n<proposal>\n${applied}\n</proposal>`,
+          content: `<board>\n${boardToText(board, createAliases(board))}\n</board>\n\n<request>\n${asData(question)}\n</request>\n\n<proposal>\n${asData(applied)}\n</proposal>`,
         },
       ],
       tools: [VERDICT],

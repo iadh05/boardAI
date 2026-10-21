@@ -122,7 +122,12 @@ describe('createReviewerV2', () => {
 
     expect(
       events.filter((e) => e.type === 'progress').map((e) => e.type === 'progress' && e.text),
-    ).toEqual(['Data running · 1 left', 'Data ✓ · Security running', 'Data ✓ · Security ✓']);
+    ).toEqual([
+      'Data running · 1 left',
+      'Data ✓ · Security running',
+      'Data ✓ · Security ✓',
+      'Writing the answer…',
+    ]);
     expect(architect.calls[0]?.messages.at(-1)?.content).toMatch(
       /<findings>\n- \[critical\] n2 "Postgres" \(data\)/,
     );
@@ -221,6 +226,33 @@ describe('createReviewerV2 with the Critic (AV2-08)', () => {
 
     expect(architect.calls).toHaveLength(1);
     expect(textOf(events)).toBe('Postgres needs a copy.');
+    // Review of AV2-05..09: the progress line said "Data ✓" for the whole Architect and Critic run.
+    expect(events.flatMap((e) => (e.type === 'progress' ? [e.text] : [])).slice(-2)).toEqual([
+      'Writing the answer…',
+      'Checking the proposal…',
+    ]);
+  });
+
+  it('Stop during the first answer: nothing more is checked or asked', async () => {
+    const stop = new AbortController();
+    const { reviewer, architect } = setup({
+      planner: [plan({ flow: 'review', specialists: ['data'] })],
+      architect: [firstTry, secondTry],
+      critic: {},
+    });
+
+    const events: ReviewerV2Event[] = [];
+    for await (const event of reviewer.run({
+      board,
+      messages: [{ role: 'user', content: 'Review my design' }],
+      signal: stop.signal,
+    })) {
+      events.push(event);
+      if (event.type === 'progress' && event.text === 'Writing the answer…') stop.abort();
+    }
+
+    expect(architect.calls).toHaveLength(1); // no second try on a stopped request
+    expect(events.at(-1)).toEqual({ type: 'done' });
   });
 
   it('still failing after its one revision: shown, with what the Critic still sees', async () => {
@@ -235,5 +267,66 @@ describe('createReviewerV2 with the Critic (AV2-08)', () => {
     expect(textOf(events)).toMatch(
       /^The load balancer should be a CDN\.\n\n\(Checked: .*into a cdn/,
     );
+  });
+});
+
+// Review of AV2-05..09: a model failing (or Stop) inside V2 was thrown as a bug — "Something went
+// wrong" and an error report — where V1 ends with an error event the user can act on, then done.
+describe('createReviewerV2 when a model fails or the user stops', () => {
+  const llmError = (code: string, message: string) =>
+    Object.assign(new Error(message), { name: 'LlmError', code });
+
+  const reviewerWith = (deps: { main?: AiGateway; planner?: AiGateway }) =>
+    createReviewerV2({
+      main: deps.main ?? scripted([]).llm,
+      planner: deps.planner ?? scripted([]).llm,
+      architect: createAgent({ llm: scripted([]).llm, newId: () => 'id' }),
+      specialists: {},
+      checkScope: () => Promise.resolve('in'),
+    });
+
+  it('Stop while the Planner works: an ABORTED error event, then done — not a bug', async () => {
+    const stop = new AbortController();
+    const planner: AiGateway = {
+      // eslint-disable-next-line require-yield -- waits until the user stops it
+      async *chat(input) {
+        await new Promise((_, reject) => {
+          input.signal?.addEventListener('abort', () =>
+            reject(llmError('ABORTED', 'The request was cancelled.')),
+          );
+          stop.abort();
+        });
+      },
+    };
+
+    const events: ReviewerV2Event[] = [];
+    for await (const event of reviewerWith({ planner }).run({
+      board,
+      messages: [{ role: 'user', content: 'Review my design' }],
+      signal: stop.signal,
+    }))
+      events.push(event);
+
+    expect(events.slice(-2)).toEqual([
+      { type: 'error', code: 'ABORTED', message: 'The request was cancelled.' },
+      { type: 'done' },
+    ]);
+  });
+
+  it('the model down on a trivial turn: the error the user can act on, then done', async () => {
+    const main: AiGateway = {
+      // eslint-disable-next-line require-yield -- fails before answering
+      async *chat() {
+        await Promise.resolve();
+        throw llmError('UNAVAILABLE', 'connection refused');
+      },
+    };
+
+    const events = await run(reviewerWith({ main }), 'thanks');
+
+    expect(events).toEqual([
+      { type: 'error', code: 'UNAVAILABLE', message: 'connection refused' },
+      { type: 'done' },
+    ]);
   });
 });
