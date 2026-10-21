@@ -20,6 +20,61 @@ describe('loadConfig', () => {
       traceContent: false, // prompts and boards stay out of traces unless TRACE_CONTENT=true
       debugRoutes: false, // ENABLE_DEBUG_ROUTES=true turns /api/debug/* on
       llmCallLog: null, // off unless LLM_CALL_LOG is set: it records boards and chats
+      // Every agent role on the local model unless LLM_ROLE_<ROLE> says otherwise (AV2-04).
+      roles: { main: null, planner: null, specialist: null, critic: null },
+    });
+  });
+
+  describe('a model per role (AV2-04)', () => {
+    it('reads provider:model, with +think for thinking on, and the provider key', () => {
+      const config = loadConfig({
+        ...valid,
+        LLM_ROLE_PLANNER: 'groq:qwen/qwen3.8-27b+think',
+        LLM_ROLE_CRITIC: 'claude:claude-haiku-5-5',
+        GROQ_API_KEY: 'gk',
+        CLAUDE_API_KEY: 'ck',
+      });
+      expect(config.roles).toEqual({
+        main: null,
+        planner: { provider: 'groq', model: 'qwen/qwen3.8-27b', thinking: true, apiKey: 'gk' },
+        specialist: null,
+        critic: { provider: 'claude', model: 'claude-haiku-5-5', thinking: false, apiKey: 'ck' },
+      });
+    });
+
+    it('a hosted role needs its provider’s key, named in the error', () => {
+      expect(() => loadConfig({ ...valid, LLM_ROLE_PLANNER: 'gemini:gemini-3.5-flash' })).toThrow(
+        /GEMINI_API_KEY/,
+      );
+    });
+
+    it('refuses a role it cannot read, and Claude models other than Haiku and Sonnet', () => {
+      expect(() => loadConfig({ ...valid, LLM_ROLE_MAIN: 'openai:gpt-9' })).toThrow(
+        /LLM_ROLE_MAIN/,
+      );
+      expect(() =>
+        loadConfig({ ...valid, LLM_ROLE_MAIN: 'claude:claude-opus-5-5', CLAUDE_API_KEY: 'k' }),
+      ).toThrow(/claude-haiku-5-5/);
+    });
+
+    it('LLM_HOSTED=off puts every role back on the local model (nothing leaves the PC)', () => {
+      const config = loadConfig({
+        ...valid,
+        LLM_ROLE_PLANNER: 'groq:qwen/qwen3.8-27b',
+        GROQ_API_KEY: 'gk',
+        LLM_HOSTED: 'off',
+      });
+      expect(config.roles.planner).toBeNull();
+    });
+
+    // Review of AV2-04: switched off, the keys may be gone: the server must still start.
+    it('LLM_HOSTED=off needs no keys', () => {
+      const config = loadConfig({
+        ...valid,
+        LLM_ROLE_PLANNER: 'claude:claude-opus-5-5',
+        LLM_HOSTED: 'off',
+      });
+      expect(config.roles.planner).toBeNull();
     });
   });
 

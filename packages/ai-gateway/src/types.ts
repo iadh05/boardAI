@@ -4,7 +4,16 @@
 
 /** A call the model asked for. `arguments` is the parsed JSON, or the raw text if it wasn't
  * valid JSON — the caller validates it with its own schema and can tell the model what's wrong. */
-export type LlmToolCall = { id: string; name: string; arguments: unknown };
+export type LlmToolCall = {
+  id: string;
+  name: string;
+  arguments: unknown;
+  /**
+   * What the provider attached to the call and needs back with it next round, untouched (Gemini's
+   * thought signature, AV2-02). Opaque: only the provider that made it reads it.
+   */
+  providerData?: Record<string, unknown>;
+};
 
 export type LlmMessage =
   | { role: 'system' | 'user'; content: string }

@@ -24,6 +24,11 @@ export type GatewayOptions = {
   retries: number;
   /** First wait before retrying; doubles each time. Default 500 ms. */
   backoffMs?: number;
+  /**
+   * Longest wait a rate limit may ask for (its retry-after) before a retry, default 20 s. Asked
+   * for longer, the call fails at once: the user shouldn't wait a minute for a maybe.
+   */
+  maxRetryWaitMs?: number;
   /** Injected for tests: no test reads the system clock (docs/rules/general.md). */
   now?: () => number;
   /** Waits `ms`, or ends early when `signal` aborts. */
@@ -77,12 +82,14 @@ export const createGateway = (options: GatewayOptions): AiGateway => {
   const now = options.now ?? (() => performance.now());
   const sleep = options.sleep ?? sleepUnlessAborted;
   const backoffMs = options.backoffMs ?? 500;
+  const maxRetryWaitMs = options.maxRetryWaitMs ?? 20_000;
   const metered = createLlmMetrics();
 
   /** The call itself: retries, timeout, cancellation, usage. */
   async function* call(input: ChatInput): AsyncIterable<LlmChunk> {
     const started = now();
     let firstTokenAt: number | null = null;
+    let waitMs: number | undefined; // before the next attempt: the backoff, or a rate limit's wait
 
     for (let attempt = 1; ; attempt++) {
       if (input.signal?.aborted) throw cancelledError();
@@ -121,11 +128,13 @@ export const createGateway = (options: GatewayOptions): AiGateway => {
         const retry =
           error instanceof LlmError && error.transient && !answered && attempt <= options.retries;
         if (!retry) throw error;
+        waitMs = Math.max(backoffMs * 2 ** (attempt - 1), error.retryAfterMs ?? 0);
+        if (waitMs > maxRetryWaitMs) throw error;
       } finally {
         call.abort(); // stopped early, failed or done: the model has nothing left to do
         input.signal?.removeEventListener('abort', forward);
       }
-      await sleep(backoffMs * 2 ** (attempt - 1), input.signal);
+      await sleep(waitMs ?? backoffMs, input.signal);
     }
   }
 

@@ -138,6 +138,29 @@ describe('gateway — retries', () => {
     expect(sleeps).toHaveLength(2);
   });
 
+  // AV2-02: Groq's free tier answers 429 with "try again in 4.38s"; the backoff (500 ms) was too
+  // short, so the retry failed too and the review ended.
+  it('waits as long as a rate limit asks, when that is longer than the backoff', async () => {
+    const limited = new LlmError('UNAVAILABLE', '429', { retryAfterMs: 4_380 });
+    const { gateway, sleeps } = setup(
+      createFakeProvider([[{ type: 'error', error: limited }], [text('ok')]]),
+    );
+
+    await drain(gateway.chat(input));
+
+    expect(sleeps).toEqual([4_380]);
+  });
+
+  it('does not wait longer than its cap: a wait that long fails now, with the reason', async () => {
+    const limited = new LlmError('UNAVAILABLE', '429', { retryAfterMs: 90_000 });
+    const fake = createFakeProvider([[{ type: 'error', error: limited }], [text('ok')]]);
+    const { gateway, sleeps } = setup(fake, { maxRetryWaitMs: 20_000 });
+
+    await expect(drain(gateway.chat(input))).rejects.toBe(limited);
+    expect(sleeps).toEqual([]);
+    expect(fake.calls).toHaveLength(1);
+  });
+
   it('does not retry an error that will not go away', async () => {
     const fake = createFakeProvider([
       [{ type: 'error', error: new LlmError('BAD_REQUEST', 'no such model') }],

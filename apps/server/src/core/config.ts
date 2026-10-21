@@ -1,8 +1,39 @@
 import { z } from 'zod';
+import { CLAUDE_MODELS } from '@designroom/ai-gateway';
 import { LOG_LEVELS, type LogLevel } from './logger.ts';
 
 // The only file that reads the environment (docs/rules/backend.md). Validated at startup: a bad
 // setting stops the server with a clear message, instead of failing later on some request.
+
+/** The agent roles that may each run on their own model (architecture-v2 § Three levels). */
+export const ROLES = ['main', 'planner', 'specialist', 'critic'] as const;
+export type Role = (typeof ROLES)[number];
+const roleVar = (role: Role) => `LLM_ROLE_${role.toUpperCase()}`;
+
+type HostedProvider = 'groq' | 'gemini' | 'claude';
+const KEY_VARS = {
+  groq: 'GROQ_API_KEY',
+  gemini: 'GEMINI_API_KEY',
+  claude: 'CLAUDE_API_KEY',
+} as const satisfies Record<HostedProvider, string>;
+
+/** "groq:qwen/qwen3.8-27b+think" → provider, model, thinking. Split on the first ":" only. */
+const RoleSpecSchema = z
+  .string()
+  .regex(/^(groq|gemini|claude):[^\s+]+(\+think)?$/, 'expected provider:model[+think]')
+  .transform((spec) => {
+    const at = spec.indexOf(':');
+    const rest = spec.slice(at + 1);
+    return {
+      provider: spec.slice(0, at) as HostedProvider,
+      model: rest.replace(/\+think$/, ''),
+      thinking: rest.endsWith('+think'),
+    };
+  });
+type RoleSpec = z.infer<typeof RoleSpecSchema>;
+
+/** A hosted model for one role, with the key its provider needs. Null: the local model. */
+export type RoleModel = RoleSpec & { apiKey: string };
 
 const EnvSchema = z
   .object({
@@ -36,8 +67,33 @@ const EnvSchema = z
     // Every model call, exactly as sent and answered, appended to this local file (JSON Lines):
     // for diagnosing the agent (M1-28). Holds boards and conversations: off unless set; dev only.
     LLM_CALL_LOG: z.string().min(1).optional(),
+    // A model per agent role (AV2-04, D13): "provider:model", "+think" for thinking on, e.g.
+    // LLM_ROLE_PLANNER=groq:qwen/qwen3.8-27b+think. Unset: the role runs on the local model.
+    ...Object.fromEntries(ROLES.map((role) => [roleVar(role), RoleSpecSchema.optional()])),
+    // "off": every role back on the local model, nothing leaves the PC (architecture-v2 § Privacy).
+    LLM_HOSTED: z.enum(['on', 'off']).default('on'),
+    GROQ_API_KEY: z.string().min(1).optional(),
+    GEMINI_API_KEY: z.string().min(1).optional(),
+    CLAUDE_API_KEY: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
+    for (const role of env.LLM_HOSTED === 'off' ? [] : ROLES) {
+      const spec = (env as Record<string, unknown>)[roleVar(role)] as RoleSpec | undefined;
+      if (!spec) continue;
+      const keyVar = KEY_VARS[spec.provider];
+      if (!env[keyVar])
+        ctx.addIssue({
+          code: 'custom',
+          path: [keyVar],
+          message: `is required by ${roleVar(role)} (${spec.provider})`,
+        });
+      if (spec.provider === 'claude' && !CLAUDE_MODELS.includes(spec.model as never))
+        ctx.addIssue({
+          code: 'custom',
+          path: [roleVar(role)],
+          message: `Claude models allowed: ${CLAUDE_MODELS.join(', ')} (the $100 budget)`,
+        });
+    }
     if (env.PHOENIX_COLLECTOR_ENDPOINT && !env.OTEL_EXPORTER_OTLP_ENDPOINT) {
       ctx.addIssue({
         code: 'custom',
@@ -84,6 +140,8 @@ export type Config = {
   debugRoutes: boolean;
   /** Where to record every model call (M1-28); null: not recorded. */
   llmCallLog: string | null;
+  /** The model each agent role runs on (AV2-04); null: the local model (`llm`). */
+  roles: Record<Role, RoleModel | null>;
 };
 
 /** Parses an environment: process.env in production, a plain object in tests. */
@@ -128,6 +186,13 @@ export const loadConfig = (env: Record<string, string | undefined>): Config => {
     traceContent: e.TRACE_CONTENT === 'true',
     debugRoutes: e.ENABLE_DEBUG_ROUTES === 'true',
     llmCallLog: e.LLM_CALL_LOG ?? null,
+    roles: Object.fromEntries(
+      ROLES.map((role) => {
+        const spec = e[roleVar(role) as keyof typeof e] as RoleSpec | undefined;
+        const apiKey = spec ? e[KEY_VARS[spec.provider]] : undefined;
+        return [role, spec && apiKey && e.LLM_HOSTED === 'on' ? { ...spec, apiKey } : null];
+      }),
+    ) as Record<Role, RoleModel | null>,
   };
 };
 

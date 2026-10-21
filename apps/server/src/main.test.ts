@@ -15,6 +15,7 @@ const config = {
   traceContent: false,
   debugRoutes: false,
   llmCallLog: null,
+  roles: { main: null, planner: null, specialist: null, critic: null },
 } as const;
 const logger = createLogger({ level: 'error', write: () => {} });
 const app = createApp({ config, logger });

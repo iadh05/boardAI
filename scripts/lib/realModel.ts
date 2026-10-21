@@ -4,6 +4,7 @@
 import { randomUUID } from 'node:crypto';
 import { createAgent } from '../../packages/agent/src/index.ts';
 import {
+  createAnthropicProvider,
   createGateway,
   createOpenAiCompatibleProvider,
 } from '../../packages/ai-gateway/src/index.ts';
@@ -33,12 +34,46 @@ export const boardOf = (
   return { board: { nodes, edges }, idOf };
 };
 
+/**
+ * Where a model runs (AV2-02). Hosted keys come from the environment, e.g.
+ * `node --env-file=apps/server/.env scripts/review-samples.ts --provider groq --model qwen/qwen3.8-27b`.
+ */
+export const PROVIDERS = {
+  ollama: { baseUrl: `${OLLAMA}/v1`, key: undefined },
+  groq: { baseUrl: 'https://api.groq.com/openai/v1', key: 'GROQ_API_KEY' },
+  gemini: {
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    key: 'GEMINI_API_KEY',
+  },
+  // Claude through its own SDK (AV2-03): Haiku and Sonnet only, a daily $ cap in the provider.
+  claude: { baseUrl: 'https://api.anthropic.com', key: 'CLAUDE_API_KEY' },
+} as const;
+export type ProviderName = keyof typeof PROVIDERS;
+
+/** Thinking off, as each model takes it: gpt-oss can't turn it off; Gemini refuses "none". */
+const reasoningEffortOf = (provider: ProviderName, model: string): string | null =>
+  provider === 'gemini' ? null : model.startsWith('openai/gpt-oss') ? 'low' : 'none';
+
 /** The model, through the same gateway and agent the server uses. */
-export const connectRealModel = (model: string) => {
+export const connectRealModel = (model: string, provider: ProviderName = 'ollama') => {
+  const where = PROVIDERS[provider];
+  const apiKey = where.key ? process.env[where.key] : undefined;
+  if (where.key && !apiKey) throw new Error(`${where.key} is not set (use --env-file).`);
   const llm = createGateway({
-    provider: createOpenAiCompatibleProvider({ baseUrl: `${OLLAMA}/v1`, model }),
+    provider:
+      provider === 'claude' && apiKey
+        ? createAnthropicProvider({ apiKey, model })
+        : createOpenAiCompatibleProvider({
+            baseUrl: where.baseUrl,
+            model,
+            reasoningEffort: reasoningEffortOf(provider, model),
+            ...(apiKey ? { apiKey } : {}),
+          }),
     timeoutMs: 60_000,
-    retries: 1,
+    // Hosted free tiers answer 429 with a wait (Groq up to ~25 s, Gemini ~31 s, measured): an eval
+    // can wait a whole minute for one; the server doesn't (the gateway's 20 s default).
+    retries: provider === 'ollama' ? 1 : 4,
+    ...(provider === 'ollama' ? {} : { maxRetryWaitMs: 65_000 }),
   });
   // A canary, like the server's: the measured agent is the one users get.
   const canary = `dr-${randomUUID().slice(0, 8)}`;
