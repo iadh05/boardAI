@@ -84,4 +84,60 @@ describe('createFallbackProvider', () => {
     );
     expect(chunks).toEqual([{ type: 'text', delta: 'local' }]);
   });
+
+  // Review of AV2-04: the gateway's idle timeout aborts the call, which looked like a cancel, so a
+  // hosted model that never answered never fell back. The fallback keeps its own first-chunk clock.
+  it('a hosted model silent past the first-chunk deadline is cut off, and the local one answers', async () => {
+    let fire = () => undefined as void;
+    const silent: LlmProvider = {
+      async *stream({ signal }) {
+        await new Promise((_, reject) => {
+          signal.addEventListener('abort', () => reject(new LlmError('ABORTED', 'cancelled')));
+          fire(); // the deadline passes while it says nothing
+        });
+        yield { type: 'text', delta: 'never' };
+      },
+    };
+    const onFallback = vi.fn();
+
+    const chunks = await drain(
+      createFallbackProvider(silent, local, {
+        firstChunkMs: 15_000,
+        timer: (_ms, f) => {
+          fire = f;
+          return () => undefined;
+        },
+        onFallback,
+      }),
+    );
+
+    expect(chunks).toEqual([{ type: 'text', delta: 'local' }]);
+    expect(onFallback).toHaveBeenCalledWith(expect.objectContaining({ code: 'TIMEOUT' }));
+  });
+
+  it('the caller cancelling is still a cancel, deadline or not', async () => {
+    const stop = new AbortController();
+    const fallback = {
+      stream: vi.fn((input: Parameters<LlmProvider['stream']>[0]) => local.stream(input)),
+    };
+    const waiting: LlmProvider = {
+      async *stream({ signal }) {
+        await new Promise((_, reject) => {
+          signal.addEventListener('abort', () => reject(new LlmError('ABORTED', 'cancelled')));
+          stop.abort();
+        });
+        yield { type: 'text', delta: 'never' };
+      },
+    };
+    const provider = createFallbackProvider(waiting, fallback, {
+      firstChunkMs: 15_000,
+      timer: () => () => undefined,
+    });
+
+    const chunks: ProviderChunk[] = [];
+    await expect(async () => {
+      for await (const c of provider.stream({ ...input, signal: stop.signal })) chunks.push(c);
+    }).rejects.toMatchObject({ code: 'ABORTED' });
+    expect(fallback.stream).not.toHaveBeenCalled();
+  });
 });

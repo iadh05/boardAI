@@ -66,6 +66,16 @@ describe('loadConfig', () => {
       });
       expect(config.roles.planner).toBeNull();
     });
+
+    // Review of AV2-04: switched off, the keys may be gone: the server must still start.
+    it('LLM_HOSTED=off needs no keys', () => {
+      const config = loadConfig({
+        ...valid,
+        LLM_ROLE_PLANNER: 'claude:claude-opus-5-5',
+        LLM_HOSTED: 'off',
+      });
+      expect(config.roles.planner).toBeNull();
+    });
   });
 
   // M1-26c: Phoenix gets the same traces; content (prompts, boards) only when asked for.
