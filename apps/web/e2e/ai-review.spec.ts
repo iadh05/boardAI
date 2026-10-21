@@ -86,6 +86,20 @@ test('Stop ends an answer that is taking too long, without an error', async ({ a
   await expect(app.chat.conversation.getByRole('alert')).toHaveCount(0);
 });
 
+test('a review that depends on numbers asks the user for them (M1-32)', async ({ app }) => {
+  await app.open();
+  await app.board.drawChain(DEMO);
+
+  await app.chat.sendMessage('Is this ready for launch day?');
+
+  // The model ended its answer with ask_user: its question is the last thing the user reads.
+  await expect(app.chat.conversation).toContainText(
+    'How many users do you expect at peak on launch day?',
+  );
+  await expect(app.chat.proposal).toHaveCount(0);
+  await expect(app.chat.sendButton).toBeVisible(); // ready for the answer
+});
+
 test('a question about something else gets the fixed reply, not an answer', async ({ app }) => {
   await app.open();
 
