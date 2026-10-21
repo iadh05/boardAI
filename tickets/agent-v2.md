@@ -10,13 +10,13 @@ The build plan of [architecture-v2.md](../docs/agents/architecture-v2.md#build-p
 
 | ID | Step | Title | Size | Status |
 |---|---|---|---|---|
-| AV2-01 | S0 | Single agent with tools: `check_design`, `ask_user`, `finish` (= M1-30 + M1-32a) | M | doing |
-| AV2-02 | gateway | The gateway speaks Groq and Gemini | S | todo |
-| AV2-03 | gateway | Claude through the official SDK, with a spend guard | M | todo |
-| AV2-04 | gateway | A model per role, with the local fallback (D13) | S | todo |
-| AV2-05 | S1 | The orchestrator: typed state, task queue, findings, merge | L | todo |
-| AV2-06 | S3 | First specialists: Data and Security | M | todo |
-| AV2-07 | S2 | Planner and Main agent: flows F1, F2, F6, the clarify loop | L | todo |
+| AV2-01 | S0 | Single agent with tools: `check_design`, `ask_user`, `finish` (= M1-30 + M1-32a) | M | in review — #81 (Qwen 45/50, demo 9/10) |
+| AV2-02 | gateway | The gateway speaks Groq and Gemini | S | in review — #80 |
+| AV2-03 | gateway | Claude through the official SDK, with a spend guard | M | in review — #82 |
+| AV2-04 | gateway | A model per role, with the local fallback (D13) | S | in review — #83 |
+| AV2-05 | S1 | The orchestrator: typed state, task queue, findings, merge | L | in review — #84 |
+| AV2-06 | S3 | First specialists: Data and Security | M | in review — #85 (rules first: see its PR) |
+| AV2-07 | S2 | Planner and Main agent: flows F1, F2, F6, the clarify loop | L | doing |
 | AV2-08 | S5 | Critic: code checks, then an LLM on another model | M | todo |
 | AV2-09 | wiring | V2 behind `AGENT_MODE=v2`: server, progress events, e2e | M | todo |
 | AV2-10 | eval | V1 vs V2 on every sample board; keep or not | S | todo |
