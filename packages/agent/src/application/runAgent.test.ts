@@ -257,13 +257,40 @@ describe('runAgent', () => {
   });
 });
 
+describe('ids out of the text (M1-29)', () => {
+  it('the user reads names, not ids — also for a box added this answer, and split chunks', async () => {
+    const { agent, fake } = setup([
+      [
+        text('Postgres (n'),
+        text('2) is a single point of failure.'),
+        tool('c1', 'add_node', { kind: 'cache', label: 'Redis' }),
+        tool('c2', 'connect_nodes', { source: 'n1', target: 'n3' }),
+      ],
+      [text('Added n3 in front of n2.')],
+    ]);
+
+    const events = await run(agent);
+
+    expect(textOf(events)).toBe(
+      'Postgres is a single point of failure.\n\nAdded Redis in front of Postgres.',
+    );
+    // The model's own history keeps its ids: it works with them.
+    expect(fake.calls[1]?.messages).toContainEqual(
+      expect.objectContaining({
+        role: 'assistant',
+        content: 'Postgres (n2) is a single point of failure.',
+      }),
+    );
+  });
+});
+
 describe('proposal nudge (M1-24e)', () => {
   // A small model often recommends a fix in words and calls no tool: nothing the user can accept.
   // The loop asks it once to propose what it recommended — enforced in code, not left to the prompt.
 
   it('recommends a change in words, no tool call → asked once, and the proposal arrives', async () => {
     const { agent, fake } = setup([
-      [text('Every read hits Postgres: add a Redis cache.')],
+      [text('Every read hits Postgres. Would you like me to add a Redis cache?')],
       [tool('c1', 'add_node', { kind: 'cache', label: 'Redis', near: 'n1' })],
       [tool('c2', 'connect_nodes', { source: 'n1', target: 'n3' })],
       [text('Proposed.')],
@@ -275,7 +302,7 @@ describe('proposal nudge (M1-24e)', () => {
     const nudge = fake.calls[1]?.messages.slice(-2);
     expect(nudge?.[0]).toEqual({
       role: 'assistant',
-      content: 'Every read hits Postgres: add a Redis cache.',
+      content: 'Every read hits Postgres. Would you like me to add a Redis cache?',
     });
     expect(nudge?.[1]).toMatchObject({ role: 'user', content: PROPOSE_NUDGE });
     expect(of(events, 'proposal')[0]?.proposal.ops.map((o) => o.op)).toEqual([
@@ -332,7 +359,7 @@ describe('proposal nudge (M1-24e)', () => {
 
   it('still no tool call after the nudge → stops after one try, no loop', async () => {
     const { agent, fake } = setup([
-      [text('You need a load balancer.')],
+      [text('You need a load balancer. Shall I add one?')],
       [text('Sure, a load balancer would help.')],
     ]);
 
@@ -345,7 +372,7 @@ describe('proposal nudge (M1-24e)', () => {
 
   it('the user cancels during the nudge → stops quietly', async () => {
     const controller = new AbortController();
-    const { agent } = setup([[text('Add a cache.')], [{ type: 'hang' }]]);
+    const { agent } = setup([[text('Want me to add a cache?')], [{ type: 'hang' }]]);
 
     const events: AgentEvent[] = [];
     for await (const event of agent.run({
@@ -469,7 +496,10 @@ describe('what the model is sent', () => {
     expect(sent.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
     expect(sent[0]?.content).not.toContain('Postgres'); // the board is never in the system prompt
     const last = sent.at(-1)?.content ?? '';
-    expect(last).toContain('<board>\nn1 [api] "API" -> n2\nn2 [database] "Postgres"\n</board>');
+    // What exists by kind, then the listing: both inside the board block — labels stay data.
+    expect(last).toContain(
+      '<board>\nAlready on the board, by kind:\n- api: n1 "API"\n- database: n2 "Postgres"\n\nBoxes:\nn1 [api] "API"\nn2 [database] "Postgres"\n\nArrows:\nn1 -> n2\n</board>',
+    );
     expect(last).toMatch(/ids .*replace any/i); // aliases may have changed since earlier messages
     expect(last.endsWith('Done, what next?')).toBe(true);
   });

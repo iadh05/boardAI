@@ -27,6 +27,9 @@ const EnvSchema = z
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
     // The fake model's scripted conversations (JSON): e2e runs and offline work (M1-19b).
     LLM_SCENARIO_FILE: z.string().min(1).optional(),
+    // Every model call, exactly as sent and answered, appended to this local file (JSON Lines):
+    // for diagnosing the agent (M1-28). Holds boards and conversations: off unless set; dev only.
+    LLM_CALL_LOG: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.LLM_PROVIDER !== 'fake' && !env.LLM_BASE_URL) {
@@ -64,6 +67,8 @@ export type Config = {
   telemetry: { endpoint: string } | null;
   /** /api/debug/* mounted: development only. */
   debugRoutes: boolean;
+  /** Where to record every model call (M1-28); null: not recorded. */
+  llmCallLog: string | null;
 };
 
 /** Parses an environment: process.env in production, a plain object in tests. */
@@ -103,6 +108,7 @@ export const loadConfig = (env: Record<string, string | undefined>): Config => {
     errorTracking,
     telemetry,
     debugRoutes: e.ENABLE_DEBUG_ROUTES === 'true',
+    llmCallLog: e.LLM_CALL_LOG ?? null,
   };
 };
 
