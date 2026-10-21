@@ -34,3 +34,25 @@ const ACTION =
  */
 export const recommendsChange = (answer: string): boolean =>
   COMPONENT.test(answer) && ACTION.test(answer);
+
+/** A sentence that offers a change as an option for later, not as a fix to make now. */
+const OPTIONAL =
+  /\b(optional(ly)?|not (strictly |yet )?(required|needed|necessary)|if you later|later on|potential enhancement)\b/i;
+const sentences = (text: string) => text.split(/(?<=[.!?])\s+|\n+/);
+/** The answer's own verdict that nothing has to change: then nothing is to be proposed. */
+const NO_CHANGE =
+  /\b(no (major |structural |immediate |architectural )?changes? (is |are )?(strictly )?(needed|required|necessary)|nothing (needs|has) to change|no changes? needed)\b/i;
+
+/**
+ * Whether to send PROPOSE_NUDGE (M1-29): the answer recommends a change outside sentences that
+ * offer it as an option, and doesn't say nothing needs to change. A comparison ("keep Kafka;
+ * optionally add RabbitMQ") or a "the design is fine" answer is left alone. Asking permission is
+ * not required: measured, most answers that propose nothing recommend without asking.
+ */
+export const shouldNudge = (answer: string): boolean =>
+  !NO_CHANGE.test(answer) &&
+  recommendsChange(
+    sentences(answer)
+      .filter((s) => !OPTIONAL.test(s))
+      .join(' '),
+  );
