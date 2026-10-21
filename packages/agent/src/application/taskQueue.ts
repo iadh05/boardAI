@@ -67,7 +67,15 @@ export async function* runTaskQueue(
     options.signal?.addEventListener('abort', stop, { once: true });
     let result: TaskResult;
     try {
-      const output = await options.run(card, task.signal);
+      // Raced against its own abort: a task that ignores its signal can't hold the queue (review
+      // of AV2-05); its late answer is dropped.
+      const stopped = new Promise<never>((_, reject) => {
+        const quit = () => reject(new Error('stopped'));
+        if (task.signal.aborted) quit();
+        else task.signal.addEventListener('abort', quit, { once: true });
+      });
+      stopped.catch(() => undefined); // only read when it wins the race
+      const output = await Promise.race([options.run(card, task.signal), stopped]);
       const findings = FindingsSchema.safeParse(output);
       result = findings.success
         ? { card, status: 'done', findings: findings.data }
