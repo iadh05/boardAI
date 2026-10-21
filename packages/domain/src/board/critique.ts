@@ -11,12 +11,21 @@ export type CritiqueCheck =
 
 export type CritiqueIssue = { check: CritiqueCheck; nodeIds: string[]; problem: string };
 
+/**
+ * A label as the issue text names it: JSON-quoted, with < and > escaped — the issues go into the
+ * model's <critique> block, and a label is user text that must not close it (review of AV2-05..09).
+ */
+const escaped = (text: string) =>
+  text.replace(/[<>]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+const quoted = (label: string) => escaped(JSON.stringify(label));
+
 /** New boxes in one proposal (the same cap as the agent's tools). */
 const MAX_NEW_BOXES = 3;
 
 export const critiqueProposal = (board: Board, ops: readonly AgentOp[]): CritiqueIssue[] => {
   const applied = applyOps(board, ops);
-  if (!applied.ok) return [{ check: 'invalid', nodeIds: [], problem: applied.error.message }];
+  if (!applied.ok)
+    return [{ check: 'invalid', nodeIds: [], problem: escaped(applied.error.message) }];
 
   const added = ops.flatMap((op) => (op.op === 'addNode' ? [op] : []));
   const linked = new Set(ops.flatMap((op) => (op.op === 'connect' ? [op.source, op.target] : [])));
@@ -29,7 +38,7 @@ export const critiqueProposal = (board: Board, ops: readonly AgentOp[]): Critiqu
         issues.push({
           check: 'kind-changed',
           nodeIds: [op.nodeId],
-          problem: `turns the ${before.kind} "${before.label}" into a ${op.kind}: a new box should do that`,
+          problem: `turns the ${before.kind} ${quoted(before.label)} into a ${op.kind}: a new box should do that`,
         });
     }
   for (const op of added) {
@@ -37,7 +46,7 @@ export const critiqueProposal = (board: Board, ops: readonly AgentOp[]): Critiqu
       issues.push({
         check: 'floating',
         nodeIds: [op.nodeId],
-        problem: `"${op.label}" has no arrow`,
+        problem: `${quoted(op.label)} has no arrow`,
       });
     const job = oneOfAKindJob(op.kind, op.label);
     const existing = job && board.nodes.find((n) => oneOfAKindJob(n.kind, n.label) === job);
@@ -45,7 +54,7 @@ export const critiqueProposal = (board: Board, ops: readonly AgentOp[]): Critiqu
       issues.push({
         check: 'duplicate',
         nodeIds: [op.nodeId],
-        problem: `"${op.label}" does the job of "${existing.label}", already on the board`,
+        problem: `${quoted(op.label)} does the job of ${quoted(existing.label)}, already on the board`,
       });
   }
   if (added.length > MAX_NEW_BOXES)
