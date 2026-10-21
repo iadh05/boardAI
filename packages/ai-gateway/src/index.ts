@@ -21,6 +21,8 @@ export {
 export {
   CLAUDE_MODELS,
   createAnthropicProvider,
+  createSpendTracker,
+  type SpendTracker,
   type AnthropicOptions,
 } from './providers/anthropic.ts';
 export { createFakeProvider, type FakeProvider, type FakeStep } from './providers/fake.ts';

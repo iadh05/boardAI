@@ -30,7 +30,11 @@ export type AnthropicOptions = {
   thinking?: { effort: 'low' | 'medium' | 'high' };
   /** Most tokens one answer may write (default 2048, as for the other providers). */
   maxOutputTokens?: number;
-  /** Spend per day in $, counted from each call's usage (default 5): past it, calls are refused. */
+  /**
+   * The day's spend, shared by every Claude provider it is given to (one budget, not one per
+   * role). By default each provider gets its own: `dailyBudgetUsd` (default 5) and `now`.
+   */
+  spend?: SpendTracker;
   dailyBudgetUsd?: number;
   /** Injected for tests: the budget's day comes from it (docs/rules/general.md). */
   now?: () => number;
@@ -39,6 +43,33 @@ export type AnthropicOptions = {
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+export type SpendTracker = {
+  /** True while today's spend is under the budget. */
+  allows(): boolean;
+  add(usd: number): void;
+  readonly dailyUsd: number;
+};
+
+/** Spend per day in $ (a UTC day), counted from each call's usage. */
+export const createSpendTracker = ({
+  dailyUsd = 5,
+  now = () => Date.now(),
+}: { dailyUsd?: number; now?: () => number } = {}): SpendTracker => {
+  const spent = { day: -1, usd: 0 };
+  const today = () => {
+    const day = Math.floor(now() / DAY_MS);
+    if (day !== spent.day) Object.assign(spent, { day, usd: 0 });
+    return spent;
+  };
+  return {
+    allows: () => today().usd < dailyUsd,
+    add: (usd) => {
+      today().usd += usd;
+    },
+    dailyUsd,
+  };
+};
 
 /** Thinking off as each model takes it: Haiku "disabled", Sonnet 5.5 only "between_tools". */
 const thinkingOf = (model: ClaudeModel, thinking: AnthropicOptions['thinking']) =>
@@ -92,9 +123,15 @@ const toClaude = (messages: readonly LlmMessage[]) => {
       const calls = message.toolCalls ?? [];
       // Claude refuses an empty text block: a turn with nothing said is a placeholder.
       const text = message.content.trim() ? message.content : calls.length ? '' : '(no answer)';
+      // The thinking blocks this turn came with, first and unchanged (preserved thinking).
+      const thinking = calls.flatMap((call) => {
+        const blocks = call.providerData?.claudeBlocks;
+        return Array.isArray(blocks) ? (blocks as Anthropic.ContentBlockParam[]) : [];
+      });
       wire.push({
         role: 'assistant',
         content: [
+          ...thinking,
           ...(text ? [{ type: 'text' as const, text }] : []),
           ...calls.map((call) => ({
             type: 'tool_use' as const,
@@ -149,61 +186,71 @@ export const createAnthropicProvider = (options: AnthropicOptions): LlmProvider 
     maxRetries: 0, // the gateway retries, with its own rules (before the first chunk only)
     ...(options.fetch ? { fetch: options.fetch } : {}),
   });
-  const now = options.now ?? (() => Date.now());
-  const budget = options.dailyBudgetUsd ?? 5;
-  const spent = { day: -1, usd: 0 };
-  const today = () => {
-    const day = Math.floor(now() / DAY_MS);
-    if (day !== spent.day) Object.assign(spent, { day, usd: 0 });
-    return spent;
-  };
+  const spend =
+    options.spend ??
+    createSpendTracker({
+      ...(options.dailyBudgetUsd === undefined ? {} : { dailyUsd: options.dailyBudgetUsd }),
+      ...(options.now ? { now: options.now } : {}),
+    });
 
   return {
     async *stream(input) {
       if (input.signal.aborted) throw cancelledError();
-      if (today().usd >= budget)
+      if (!spend.allows())
         throw new LlmError(
           'BAD_REQUEST',
-          `Today's Claude budget ($${budget}) is spent: the local model answers until tomorrow.`,
+          `Today's Claude budget ($${spend.dailyUsd}) is spent: the local model answers until tomorrow.`,
         );
       const { system, messages } = toClaude(input.messages);
-      const price = PRICES[model];
+      const chosen = input.model && isClaudeModel(input.model) ? input.model : model;
+      const price = PRICES[chosen];
+      // Tokens as they are reported, counted in `finally`: a call cut off or abandoned was billed.
+      const used = { input: 0, output: 0 };
       try {
+        // No temperature: Haiku and Sonnet 5.5 refuse any but the default (review of AV2-03).
         const stream = client.messages.stream(
           {
-            model,
+            model: chosen,
             max_tokens: options.maxOutputTokens ?? 2048,
             ...(system ? { system } : {}),
             messages,
             ...(input.tools?.length ? { tools: input.tools.map(toClaudeTool) } : {}),
-            ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
-            ...thinkingOf(model, options.thinking),
+            ...thinkingOf(chosen, options.thinking),
           },
           { signal: input.signal },
         );
-        for await (const event of stream)
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta')
+        for await (const event of stream) {
+          if (event.type === 'message_start') used.input = event.message.usage.input_tokens;
+          else if (event.type === 'message_delta') used.output = event.usage.output_tokens;
+          else if (event.type === 'content_block_delta' && event.delta.type === 'text_delta')
             yield { type: 'text', delta: event.delta.text };
+        }
         const message = await stream.finalMessage();
-        today().usd +=
-          (message.usage.input_tokens * price.input + message.usage.output_tokens * price.output) /
-          1e6;
         if (message.stop_reason === 'refusal')
           throw new LlmError('BAD_RESPONSE', 'Claude declined to answer this request.');
+        // Thinking blocks go back with the tool calls they came before (opaque to the agent).
+        const thinking = message.content.filter(
+          (b) => b.type === 'thinking' || b.type === 'redacted_thinking',
+        );
         // A tool input cut off at the token limit may parse but be incomplete: not run.
-        if (message.stop_reason !== 'max_tokens')
-          for (const block of message.content)
-            if (block.type === 'tool_use') {
-              const call: LlmToolCall = { id: block.id, name: block.name, arguments: block.input };
-              yield { type: 'toolCall', call } satisfies ProviderChunk;
-            }
-        yield {
-          type: 'tokens',
-          inputTokens: message.usage.input_tokens,
-          outputTokens: message.usage.output_tokens,
-        };
+        const calls =
+          message.stop_reason === 'max_tokens'
+            ? []
+            : message.content.flatMap((b) => (b.type === 'tool_use' ? [b] : []));
+        for (const [i, block] of calls.entries()) {
+          const call: LlmToolCall = {
+            id: block.id,
+            name: block.name,
+            arguments: block.input,
+            ...(i === 0 && thinking.length ? { providerData: { claudeBlocks: thinking } } : {}),
+          };
+          yield { type: 'toolCall', call } satisfies ProviderChunk;
+        }
+        yield { type: 'tokens', inputTokens: used.input, outputTokens: used.output };
       } catch (error) {
         throw toLlmError(error, input.signal);
+      } finally {
+        spend.add((used.input * price.input + used.output * price.output) / 1e6);
       }
     },
   };
