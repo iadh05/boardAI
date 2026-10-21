@@ -103,6 +103,31 @@ describe('runTaskQueue', () => {
     ]);
   });
 
+  // Review of AV2-05: a specialist that ignores its signal held the queue — and the request —
+  // forever. The queue no longer waits for it once its time is up.
+  it('a task that ignores its signal is still stopped at its time; its late answer is dropped', async () => {
+    const { timer, fireAll } = manualTimer();
+    let late: (value: unknown) => void = () => undefined;
+    const events = await collect(
+      runTaskQueue([card('deaf'), card('next')], {
+        run: (task) =>
+          task.id === 'deaf'
+            ? new Promise((resolve) => {
+                late = resolve; // answers some day, never looks at the signal
+                fireAll();
+              })
+            : Promise.resolve([]),
+        timer,
+      }),
+    );
+    late([finding('deaf')]);
+
+    expect(resultsOf(events).map((r) => [r.card.id, r.status])).toEqual([
+      ['deaf', 'timeout'],
+      ['next', 'done'],
+    ]);
+  });
+
   it('Stop cancels the running task and the waiting ones', async () => {
     const stop = new AbortController();
     const events = await collect(
