@@ -231,4 +231,4 @@ A cache never changes the answer, only its speed; delete it and everything still
 | **S5 — Critic, Scribe, memory** | Code checks + LLM Critic (D9, D14); Scribe with the decision log and ADR export; room memory (D12: structured lookups first, hybrid search for chat); feedback per change with reasons (D18); threads and compaction (D19); the ad-hoc expert (D17); F7, F8 | Fewer rejections in Phoenix feedback; a retrieval eval (the right decision fetched for a question) |
 | **S6 — The rest** | Chaos and Traffic (with the A1 simulator), DevOps, Researcher (Groq browser search or SearXNG) writing to the web cache | Per specialist, measured |
 
-Each step is its own ticket (or a few), written when we get there.
+Tickets: [tickets/agent-v2.md](../../tickets/agent-v2.md) — AV2-01 … AV2-10, written 2026-10-21 for the night, with the gateway work the hosted models need (Groq and Gemini dialects, Claude through the official SDK, a model per role).

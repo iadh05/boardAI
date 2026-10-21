@@ -400,6 +400,7 @@ sequenceDiagram
 | M2 | Board store backed by Yjs (`Y.Map<id, Y.Map>` per node). New server module `collaboration` (WebSocket sync). Proposals move into the doc. |
 | M3 | Persistence (Postgres) owned by a `rooms` module; 2 instances + Redis pub/sub; Grafana dashboards for connections and messages/sec. |
 | A1 | Node properties; simulator in a Web Worker (likely a `packages/simulation`). |
+| M1c | Agent V2: a chain (Main → Planner → Architect → task queue → specialists → Critic) behind `AGENT_MODE=v2`; hosted models per role (Groq, Gemini, Claude) with the local 9B as fallback. Design: [agents/architecture-v2.md](agents/architecture-v2.md); tickets: [agent-v2.md](../tickets/agent-v2.md). |
 | M4 | Agent joins rooms as a peer; same tools and `applyOps` validation; cost guard in ai-gateway. |
 | M5 | Sample-boards script → eval suite using the agent package directly. |
 | M6 | Gateway points at a hosted model; OTel exporter → Azure Monitor or Grafana Cloud; deploy. |

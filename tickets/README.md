@@ -4,7 +4,8 @@ Each milestone has one file. Each ticket is a section with an ID like `M1-04`.
 
 | File | Tickets | Detail level |
 |---|---|---|
-| [M1-solo-board.md](M1-solo-board.md) | M1-01 … M1-27 (+ 01b, 01c, 03b, 14b, 19b) | Full — ready to start |
+| [M1-solo-board.md](M1-solo-board.md) | M1-01 … M1-32 (+ 01b, 01c, 03b, 14b, 19b, …) | Full — ready to start |
+| [agent-v2.md](agent-v2.md) | AV2-01 … AV2-10: the multi-agent reviewer (M1c) | Full — written for the night of 2026-10-21 |
 
 Tickets for later milestones are written when that milestone's spec is written. You'll know much more by then.
 

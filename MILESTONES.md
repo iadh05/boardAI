@@ -37,6 +37,14 @@ Each milestone ends with something you can demo. Do not start the next one until
 - [ ] Error tracking (web + server): GlitchTip, self-hosted, through the Sentry SDKs; OpenTelemetry + Grafana dashboard for the AI path; Phoenix for agent traces + Accept/Reject feedback
 - [ ] `docs/decisions.md`: modular monolith; AI gateway; proposals instead of direct edits; observability
 
+**M1c — Agent V2 (multi-agent reviewer)**
+*Added 2026-10-21: the single agent becomes a chain (Main → Planner → Architect → task queue → specialists → Critic), designed in [docs/agents/architecture-v2.md](docs/agents/architecture-v2.md); tickets in [tickets/agent-v2.md](tickets/agent-v2.md). Pulled forward from M4 in a single-user form, like the AI reviewer was; M4 keeps the room parts (the agent as a peer with a cursor, cost guard per room).*
+- [ ] S0: the single agent gets tools (`check_design`, `ask_user`, `finish`); no fake user messages (AV2-01)
+- [ ] The gateway speaks Groq, Gemini and Claude (official SDK, Haiku and Sonnet, $100 cap); a model per role with the local fallback (AV2-02…04)
+- [ ] Orchestrator: task queue, typed findings, merge in code (AV2-05)
+- [ ] Specialists Data and Security, Planner, Main agent, Critic (AV2-06…08)
+- [ ] V2 behind `AGENT_MODE=v2` with progress in the chat; a V1 vs V2 eval decides the default (AV2-09, AV2-10)
+
 **Done when:** you draw "Client → Load Balancer → API → Database", ask the AI to review it, it points out the missing cache and proposes a Cache node connected to the API, and you accept it.
 
 ---
