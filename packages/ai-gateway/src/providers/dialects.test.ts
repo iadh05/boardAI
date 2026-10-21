@@ -64,6 +64,14 @@ describe('Gemini (recorded 2026-10-21, gemini-3.5-flash-lite)', () => {
     ]);
   });
 
+  // Review of AV2-02: Gemini repeats the running usage on every chunk; added up, it counted twice.
+  it('reports the token counts once, though Gemini repeats them on every chunk', async () => {
+    const chunks = await run(replying(fixture('gemini-tool-call')));
+    expect(chunks.filter((c) => c.type === 'tokens')).toEqual([
+      { type: 'tokens', inputTokens: 91, outputTokens: 22 },
+    ]);
+  });
+
   it('sends the thought signature back with the call it came with', async () => {
     const fetchFn = replying(fixture('gemini-tool-call'));
     const providerData = { extra_content: { google: { thought_signature: 'sig-1' } } };
@@ -207,6 +215,10 @@ describe('429: rate limited', () => {
     expect(
       await failure(limited({}, 'Rate limit reached. Please try again in 4.38s. Need more?')),
     ).toMatchObject({ retryAfterMs: 4380 });
+    // Groq's daily limits say minutes (review of AV2-02): read, so the gateway fails fast on them.
+    expect(await failure(limited({}, 'Please try again in 1m2.5s.'))).toMatchObject({
+      retryAfterMs: 62_500,
+    });
     expect(
       await failure(limited({}, 'Please try again in 454.285714ms. Need more tokens?')),
     ).toMatchObject({ retryAfterMs: 455 });

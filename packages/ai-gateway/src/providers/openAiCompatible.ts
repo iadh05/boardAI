@@ -84,7 +84,7 @@ const refusedCalls = (error: z.infer<typeof StreamErrorSchema>['error']): LlmToo
 
 /**
  * The wait a 429 asks for: the retry-after header (seconds), Gemini's RetryInfo ("31s"), or the
- * message ("try again in 4.38s" on Groq, "retry in 31.5s" on Gemini).
+ * message ("try again in 4.38s" or "1m2.5s" on Groq, "retry in 31.5s" on Gemini).
  */
 const retryAfterOf = (
   response: Response,
@@ -93,10 +93,11 @@ const retryAfterOf = (
   const header = Number(response.headers.get('retry-after'));
   if (header > 0) return header * 1000;
   const said =
-    /^([\d.]+)(s)$/.exec(retryDelay ?? '') ??
-    /(?:try again|retry) in ([\d.]+)\s*(ms|s)\b/i.exec(message);
-  if (!said?.[1]) return undefined;
-  return Math.ceil(Number(said[1]) * (said[2] === 'ms' ? 1 : 1000));
+    /^()([\d.]+)(s)$/.exec(retryDelay ?? '') ??
+    /(?:try again|retry) in (?:(\d+)m)?([\d.]+)\s*(ms|s)\b/i.exec(message);
+  if (!said?.[2]) return undefined;
+  const minutes = Number(said[1] || 0);
+  return Math.ceil(minutes * 60_000 + Number(said[2]) * (said[3] === 'ms' ? 1 : 1000));
 };
 
 const StreamChunkSchema = z.object({
@@ -132,10 +133,12 @@ const toWireMessage = (message: LlmMessage) => {
         ...(message.toolCalls?.length
           ? {
               tool_calls: message.toolCalls.map((call) => ({
+                // Back as it came (Gemini's thought signature); first, so it can never replace
+                // the id the tool reply refers to.
+                ...call.providerData,
                 id: call.id,
                 type: 'function',
                 function: { name: call.name, arguments: JSON.stringify(asObject(call.arguments)) },
-                ...call.providerData, // back as it came (Gemini's thought signature)
               })),
             }
           : {}),
@@ -186,12 +189,16 @@ const providerError = async (response: Response): Promise<ProviderError> => {
  * Tool calls arrive as pieces keyed by `index` (OpenAI, Groq) or whole (Ollama, Gemini — which
  * sends no index: each such piece is a call of its own): collect, then emit.
  */
+const UNINDEXED = 1_000_000;
+
 const createToolCallCollector = () => {
   type Pending = { id: string; name: string; args: string; data?: Record<string, unknown> };
   const pending = new Map<number, Pending>();
+  let unindexed = 0;
   return {
     add(delta: z.infer<typeof ToolCallDeltaSchema>) {
-      const index = delta.index ?? pending.size;
+      // A call without an index takes a key no indexed piece can use (review of AV2-02).
+      const index = delta.index ?? UNINDEXED + unindexed++;
       const call = pending.get(index) ?? { id: '', name: '', args: '' };
       call.id ||= delta.id ?? '';
       call.name += delta.function?.name ?? '';
@@ -202,13 +209,14 @@ const createToolCallCollector = () => {
     flush(): ProviderChunk[] {
       const calls = [...pending.entries()]
         .sort(([a], [b]) => a - b)
-        .map(([index, c]): LlmToolCall => ({
-          id: c.id || `call_${index}`, // the reply to the call must refer to an id
+        .map(([index, c], i): LlmToolCall => ({
+          id: c.id || `call_${index < UNINDEXED ? index : i}`, // the reply must refer to an id
           name: c.name,
           arguments: parseArguments(c.args),
           ...(c.data ? { providerData: c.data } : {}),
         }));
       pending.clear();
+      unindexed = 0;
       return calls.map((call) => ({ type: 'toolCall', call }));
     },
   };
@@ -277,6 +285,7 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
       }
 
       const toolCalls = createToolCallCollector();
+      let usage: z.infer<typeof StreamChunkSchema>['usage'];
       try {
         for await (const data of readSseData(response.body)) {
           if (data === '[DONE]') break;
@@ -307,12 +316,8 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
             for (const delta of choice.delta?.tool_calls ?? []) toolCalls.add(delta);
             if (choice.finish_reason) yield* toolCalls.flush();
           }
-          if (chunk.usage)
-            yield {
-              type: 'tokens',
-              inputTokens: chunk.usage.prompt_tokens,
-              outputTokens: chunk.usage.completion_tokens,
-            };
+          // Kept, reported once at the end: Gemini repeats the running total on every chunk.
+          if (chunk.usage) usage = chunk.usage;
         }
       } catch (error) {
         if (error instanceof LlmError) throw error;
@@ -322,6 +327,12 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
         });
       }
       yield* toolCalls.flush();
+      if (usage)
+        yield {
+          type: 'tokens',
+          inputTokens: usage.prompt_tokens,
+          outputTokens: usage.completion_tokens,
+        };
     },
   };
 };
