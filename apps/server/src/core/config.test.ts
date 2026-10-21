@@ -22,7 +22,17 @@ describe('loadConfig', () => {
       llmCallLog: null, // off unless LLM_CALL_LOG is set: it records boards and chats
       // Every agent role on the local model unless LLM_ROLE_<ROLE> says otherwise (AV2-04).
       roles: { main: null, planner: null, specialist: null, critic: null },
+      // Agent V1 unless AGENT_MODE=v2 (AV2-09); the Critic off unless AGENT_CRITIC=on.
+      agent: { mode: 'v1', critic: false },
     });
+  });
+
+  it('AGENT_MODE=v2 runs the multi-agent chain; AGENT_CRITIC=on adds the Critic (AV2-09)', () => {
+    expect(loadConfig({ ...valid, AGENT_MODE: 'v2', AGENT_CRITIC: 'on' }).agent).toEqual({
+      mode: 'v2',
+      critic: true,
+    });
+    expect(() => loadConfig({ ...valid, AGENT_MODE: 'v3' })).toThrow(/AGENT_MODE/);
   });
 
   describe('a model per role (AV2-04)', () => {
