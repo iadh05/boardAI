@@ -1,0 +1,541 @@
+{
+  "nodes": [
+    {
+      "id": "e320b271-de20-463a-a180-866b8e74a331",
+      "kind": "client",
+      "label": "You",
+      "position": {
+        "x": 400,
+        "y": 0
+      }
+    },
+    {
+      "id": "b878939c-4ed3-429e-89c1-49068f06aaeb",
+      "kind": "service",
+      "label": "Main agent (level 1, local 9B)",
+      "position": {
+        "x": 400,
+        "y": 170
+      }
+    },
+    {
+      "id": "9d1f840b-151b-4352-8262-50e5e94ada16",
+      "kind": "service",
+      "label": "Planner: prompt engineer (Groq 27B, thinking)",
+      "position": {
+        "x": 400,
+        "y": 340
+      }
+    },
+    {
+      "id": "0eed9fea-98e8-4bcd-a65f-b52f0e808e0b",
+      "kind": "service",
+      "label": "Fallback: local 9B + thinking",
+      "position": {
+        "x": 760,
+        "y": 340
+      }
+    },
+    {
+      "id": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "kind": "queue",
+      "label": "Task queue (code: one at a time, max 6, 60 s)",
+      "position": {
+        "x": 400,
+        "y": 520
+      }
+    },
+    {
+      "id": "4eb6e74b-1332-4afd-a17a-162a3326beb8",
+      "kind": "service",
+      "label": "Data",
+      "position": {
+        "x": 100,
+        "y": 720
+      }
+    },
+    {
+      "id": "a5ecdcbd-b72e-415a-89ed-5a46fad9c21e",
+      "kind": "service",
+      "label": "Security",
+      "position": {
+        "x": 330,
+        "y": 720
+      }
+    },
+    {
+      "id": "797970f2-aa30-4d3a-a237-36ca7f121b8a",
+      "kind": "service",
+      "label": "Cost",
+      "position": {
+        "x": 560,
+        "y": 720
+      }
+    },
+    {
+      "id": "feb1418c-4fd4-479a-ace7-0aa7562a2c98",
+      "kind": "service",
+      "label": "Stack & Cloud",
+      "position": {
+        "x": 790,
+        "y": 720
+      }
+    },
+    {
+      "id": "8b3e748e-133b-4380-8e49-7bacb2745344",
+      "kind": "service",
+      "label": "Chaos",
+      "position": {
+        "x": 100,
+        "y": 860
+      }
+    },
+    {
+      "id": "57c13f13-4c0d-45bf-a4b2-eefc7811f733",
+      "kind": "service",
+      "label": "Traffic",
+      "position": {
+        "x": 330,
+        "y": 860
+      }
+    },
+    {
+      "id": "4945c40b-32b4-41f3-9904-58163d58bc42",
+      "kind": "service",
+      "label": "DevOps",
+      "position": {
+        "x": 560,
+        "y": 860
+      }
+    },
+    {
+      "id": "f37348b9-61a5-400c-97a3-c6a9af8c706b",
+      "kind": "service",
+      "label": "Researcher (web)",
+      "position": {
+        "x": 790,
+        "y": 860
+      }
+    },
+    {
+      "id": "5cff2bf7-6de9-4fdc-b8c3-b9788d45fd0e",
+      "kind": "storage",
+      "label": "Blackboard: typed findings",
+      "position": {
+        "x": 400,
+        "y": 1060
+      }
+    },
+    {
+      "id": "96a09cbd-b8e3-4656-8df9-d768af722627",
+      "kind": "custom",
+      "label": "Merge (code: dedupe, conflicts)",
+      "position": {
+        "x": 400,
+        "y": 1220
+      }
+    },
+    {
+      "id": "060d54f9-9d43-4178-986c-cfce527a8191",
+      "kind": "custom",
+      "label": "Critic: code checks",
+      "position": {
+        "x": 400,
+        "y": 1380
+      }
+    },
+    {
+      "id": "4f547bd9-6679-4044-9997-26da1eba4c0f",
+      "kind": "service",
+      "label": "Critic agent (Groq, other model, thinking)",
+      "position": {
+        "x": 400,
+        "y": 1540
+      }
+    },
+    {
+      "id": "acbd9992-e899-45f5-a664-27e2a57404a5",
+      "kind": "custom",
+      "label": "Answer: ghost boxes, citations, Critic result",
+      "position": {
+        "x": 400,
+        "y": 1710
+      }
+    },
+    {
+      "id": "b3524b78-2afa-4387-bd0f-bec8d9666d37",
+      "kind": "service",
+      "label": "Scribe (saves on Accept / Reject)",
+      "position": {
+        "x": 820,
+        "y": 1710
+      }
+    },
+    {
+      "id": "e2e58250-31e8-4fef-bcc4-d503eb5f6611",
+      "kind": "custom",
+      "label": "Context builder (code, token budget)",
+      "position": {
+        "x": 1180,
+        "y": 340
+      }
+    },
+    {
+      "id": "965a58b3-0648-456e-bfcb-f78a70d8e6d4",
+      "kind": "storage",
+      "label": "Requirements card (room)",
+      "position": {
+        "x": 1500,
+        "y": 170
+      }
+    },
+    {
+      "id": "752dd9ba-9953-4b7d-84e1-c9a523cd29a8",
+      "kind": "database",
+      "label": "Decisions + why (room)",
+      "position": {
+        "x": 1500,
+        "y": 340
+      }
+    },
+    {
+      "id": "af9e7077-be46-4655-acf6-4fcab69b9842",
+      "kind": "database",
+      "label": "Chat history (room)",
+      "position": {
+        "x": 1500,
+        "y": 510
+      }
+    },
+    {
+      "id": "b81b142f-b20a-4e83-bd4b-ada96e53db0e",
+      "kind": "storage",
+      "label": "Web pages (untrusted, expire)",
+      "position": {
+        "x": 1500,
+        "y": 680
+      }
+    },
+    {
+      "id": "5ac7f076-0e98-40fc-af8e-92db17890273",
+      "kind": "storage",
+      "label": "Global: catalogue, prices, references",
+      "position": {
+        "x": 1500,
+        "y": 850
+      }
+    },
+    {
+      "id": "7e776640-81b6-4742-921d-d0ccf9b0bc29",
+      "kind": "service",
+      "label": "Embeddings model (local)",
+      "position": {
+        "x": 1820,
+        "y": 510
+      }
+    },
+    {
+      "id": "5ad29a3c-cc0b-48c4-912d-8f6e112f7b9a",
+      "kind": "cache",
+      "label": "Prompt prefix cache",
+      "position": {
+        "x": -360,
+        "y": 520
+      }
+    },
+    {
+      "id": "db51d9e0-bb5a-48db-b684-c33f2631bcb8",
+      "kind": "cache",
+      "label": "Findings cache (by context seen)",
+      "position": {
+        "x": -360,
+        "y": 720
+      }
+    },
+    {
+      "id": "736b70b0-8fa7-4c72-9aaa-4d020715d480",
+      "kind": "cache",
+      "label": "Embedding cache",
+      "position": {
+        "x": 1820,
+        "y": 680
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "92e1bbde-30ce-40c4-a2c6-3d9a56894b04",
+      "source": "e320b271-de20-463a-a180-866b8e74a331",
+      "target": "b878939c-4ed3-429e-89c1-49068f06aaeb",
+      "label": "question"
+    },
+    {
+      "id": "520ffa26-3459-4e68-a9aa-480d19d688bb",
+      "source": "b878939c-4ed3-429e-89c1-49068f06aaeb",
+      "target": "e320b271-de20-463a-a180-866b8e74a331",
+      "label": "answer, progress",
+      "mode": "async"
+    },
+    {
+      "id": "d363541f-14dc-4e1e-9a5e-ab16e898dbc4",
+      "source": "b878939c-4ed3-429e-89c1-49068f06aaeb",
+      "target": "9d1f840b-151b-4352-8262-50e5e94ada16",
+      "label": "request"
+    },
+    {
+      "id": "8c72b407-1780-4299-aac9-6f3a5e980590",
+      "source": "9d1f840b-151b-4352-8262-50e5e94ada16",
+      "target": "b878939c-4ed3-429e-89c1-49068f06aaeb",
+      "label": "question back (≤ 2 rounds)",
+      "mode": "async"
+    },
+    {
+      "id": "8e0a99ff-eb3c-4bb2-b326-543328ea5569",
+      "source": "9d1f840b-151b-4352-8262-50e5e94ada16",
+      "target": "0eed9fea-98e8-4bcd-a65f-b52f0e808e0b",
+      "label": "offline, limit reached",
+      "mode": "async"
+    },
+    {
+      "id": "4ea18a62-9853-4232-879f-500bea27a5f0",
+      "source": "9d1f840b-151b-4352-8262-50e5e94ada16",
+      "target": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "label": "plan: briefs per task"
+    },
+    {
+      "id": "435511b0-a89d-4311-87ac-8ab4d6536e60",
+      "source": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "target": "4eb6e74b-1332-4afd-a17a-162a3326beb8"
+    },
+    {
+      "id": "33e5d876-4ae2-4e27-a500-e42a0a53f808",
+      "source": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "target": "a5ecdcbd-b72e-415a-89ed-5a46fad9c21e"
+    },
+    {
+      "id": "dc272886-0537-4cc1-902f-f92fb815ffad",
+      "source": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "target": "797970f2-aa30-4d3a-a237-36ca7f121b8a"
+    },
+    {
+      "id": "3d1d1224-8630-4499-9ba7-fd665030f804",
+      "source": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "target": "feb1418c-4fd4-479a-ace7-0aa7562a2c98"
+    },
+    {
+      "id": "b5cc8b6f-62fa-439c-9046-7e73ed56be52",
+      "source": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "target": "8b3e748e-133b-4380-8e49-7bacb2745344"
+    },
+    {
+      "id": "710d5af0-6b6b-4324-904e-bcb818e902c3",
+      "source": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "target": "57c13f13-4c0d-45bf-a4b2-eefc7811f733"
+    },
+    {
+      "id": "5825d109-13ea-4cf9-b7a5-e419ef9eb053",
+      "source": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "target": "4945c40b-32b4-41f3-9904-58163d58bc42"
+    },
+    {
+      "id": "6092a864-eb93-4e52-8687-394b12738413",
+      "source": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "target": "f37348b9-61a5-400c-97a3-c6a9af8c706b"
+    },
+    {
+      "id": "5b5f9995-7954-4fc1-949f-9c4ab1509c3e",
+      "source": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "target": "5cff2bf7-6de9-4fdc-b8c3-b9788d45fd0e",
+      "label": "each task: a typed finding"
+    },
+    {
+      "id": "ebaf1142-7d03-48e4-a5d3-13e95f932740",
+      "source": "5cff2bf7-6de9-4fdc-b8c3-b9788d45fd0e",
+      "target": "96a09cbd-b8e3-4656-8df9-d768af722627",
+      "label": "findings"
+    },
+    {
+      "id": "f193dc04-9213-478b-902f-0c0e9fbcec97",
+      "source": "96a09cbd-b8e3-4656-8df9-d768af722627",
+      "target": "060d54f9-9d43-4178-986c-cfce527a8191",
+      "label": "proposal"
+    },
+    {
+      "id": "90db8a72-435d-4ea9-b24d-c14f5b390409",
+      "source": "060d54f9-9d43-4178-986c-cfce527a8191",
+      "target": "4f547bd9-6679-4044-9997-26da1eba4c0f",
+      "label": "pass"
+    },
+    {
+      "id": "504f084e-91e3-4709-b0ac-86e3bfaaf273",
+      "source": "060d54f9-9d43-4178-986c-cfce527a8191",
+      "target": "96a09cbd-b8e3-4656-8df9-d768af722627",
+      "label": "fail: back once",
+      "mode": "async"
+    },
+    {
+      "id": "cf5a1499-5fe5-4f15-81e5-269b3652b8ee",
+      "source": "4f547bd9-6679-4044-9997-26da1eba4c0f",
+      "target": "96a09cbd-b8e3-4656-8df9-d768af722627",
+      "label": "revise: back once",
+      "mode": "async"
+    },
+    {
+      "id": "d9cb5b03-abb6-4986-80e0-bfb0582ed883",
+      "source": "4f547bd9-6679-4044-9997-26da1eba4c0f",
+      "target": "acbd9992-e899-45f5-a664-27e2a57404a5",
+      "label": "pass"
+    },
+    {
+      "id": "37672647-0b26-46ee-8a5d-c34204611f35",
+      "source": "acbd9992-e899-45f5-a664-27e2a57404a5",
+      "target": "b3524b78-2afa-4387-bd0f-bec8d9666d37",
+      "label": "your decision"
+    },
+    {
+      "id": "aa3ddcbc-8f1a-45b2-9d0f-0dad3aaa7d17",
+      "source": "965a58b3-0648-456e-bfcb-f78a70d8e6d4",
+      "target": "e2e58250-31e8-4fef-bcc4-d503eb5f6611"
+    },
+    {
+      "id": "9c466722-592f-4143-b606-b69b834e332c",
+      "source": "752dd9ba-9953-4b7d-84e1-c9a523cd29a8",
+      "target": "e2e58250-31e8-4fef-bcc4-d503eb5f6611"
+    },
+    {
+      "id": "7650720c-9674-4daf-9266-92e60acb4784",
+      "source": "af9e7077-be46-4655-acf6-4fcab69b9842",
+      "target": "e2e58250-31e8-4fef-bcc4-d503eb5f6611"
+    },
+    {
+      "id": "4f9368e4-d13d-4e1e-a644-e8709ca58ad4",
+      "source": "b81b142f-b20a-4e83-bd4b-ada96e53db0e",
+      "target": "e2e58250-31e8-4fef-bcc4-d503eb5f6611"
+    },
+    {
+      "id": "ba988264-dae9-45c0-9198-a279b4d6df58",
+      "source": "5ac7f076-0e98-40fc-af8e-92db17890273",
+      "target": "e2e58250-31e8-4fef-bcc4-d503eb5f6611"
+    },
+    {
+      "id": "cc2cc797-7780-45c9-85b6-5b85fd0e767a",
+      "source": "9d1f840b-151b-4352-8262-50e5e94ada16",
+      "target": "e2e58250-31e8-4fef-bcc4-d503eb5f6611",
+      "label": "queries per specialist"
+    },
+    {
+      "id": "e11cf209-fe4f-4106-ac1d-94a9fb5ebd52",
+      "source": "e2e58250-31e8-4fef-bcc4-d503eb5f6611",
+      "target": "9d1f840b-151b-4352-8262-50e5e94ada16",
+      "label": "context"
+    },
+    {
+      "id": "e9849337-242b-498e-a907-4d6afb603411",
+      "source": "e2e58250-31e8-4fef-bcc4-d503eb5f6611",
+      "target": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "label": "context per task"
+    },
+    {
+      "id": "477146ca-bcd6-4ab6-938e-193b14a0fe8b",
+      "source": "7e776640-81b6-4742-921d-d0ccf9b0bc29",
+      "target": "af9e7077-be46-4655-acf6-4fcab69b9842",
+      "label": "hybrid search",
+      "mode": "async"
+    },
+    {
+      "id": "ad391079-0469-4bbd-a77c-136a7424334a",
+      "source": "f37348b9-61a5-400c-97a3-c6a9af8c706b",
+      "target": "b81b142f-b20a-4e83-bd4b-ada96e53db0e",
+      "label": "pages read",
+      "mode": "async"
+    },
+    {
+      "id": "f70cfd5e-a28d-4513-bcf5-91143e0e6c4f",
+      "source": "b3524b78-2afa-4387-bd0f-bec8d9666d37",
+      "target": "752dd9ba-9953-4b7d-84e1-c9a523cd29a8",
+      "label": "saves decision"
+    },
+    {
+      "id": "efe96ead-f782-456f-8363-39f71de2458f",
+      "source": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "target": "5ad29a3c-cc0b-48c4-912d-8f6e112f7b9a",
+      "label": "shared start re-read once",
+      "mode": "async"
+    },
+    {
+      "id": "47ab3939-ceac-4b2c-85c7-c9327dc29778",
+      "source": "e07517a3-201a-4a75-bd1e-8d853cce8f7f",
+      "target": "db51d9e0-bb5a-48db-b684-c33f2631bcb8",
+      "label": "hit: skip the agent",
+      "mode": "async"
+    },
+    {
+      "id": "b8f83e6f-df7a-41a6-afe7-53059181782f",
+      "source": "7e776640-81b6-4742-921d-d0ccf9b0bc29",
+      "target": "736b70b0-8fa7-4c72-9aaa-4d020715d480",
+      "mode": "async"
+    }
+  ],
+  "zones": [
+    {
+      "id": "c64bb07c-3bfe-4398-a587-dee5f369415e",
+      "label": "Knowledge: LLM memory (D12)",
+      "position": {
+        "x": 1440,
+        "y": 110
+      },
+      "size": {
+        "width": 600,
+        "height": 860
+      }
+    },
+    {
+      "id": "3c61b2aa-5190-4305-bc2f-a092e9688674",
+      "label": "LLM cache (D16)",
+      "position": {
+        "x": -420,
+        "y": 460
+      },
+      "size": {
+        "width": 360,
+        "height": 380
+      }
+    },
+    {
+      "id": "996ef3c6-b456-4af8-8b3b-3c5cfce0b14f",
+      "label": "Level 2: Groq, thinking",
+      "position": {
+        "x": 340,
+        "y": 290
+      },
+      "size": {
+        "width": 380,
+        "height": 140
+      }
+    },
+    {
+      "id": "bf07c384-f276-435e-af90-113ea2d84c5f",
+      "label": "Level 2: Groq, thinking",
+      "position": {
+        "x": 340,
+        "y": 1490
+      },
+      "size": {
+        "width": 380,
+        "height": 140
+      }
+    },
+    {
+      "id": "b57ba37b-a7e7-4e79-b972-41a4134f12b7",
+      "label": "Specialists: level 3, local 9B (one at a time)",
+      "position": {
+        "x": 60,
+        "y": 670
+      },
+      "size": {
+        "width": 960,
+        "height": 300
+      }
+    }
+  ]
+}

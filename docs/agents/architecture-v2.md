@@ -1,6 +1,6 @@
 # Agent architecture — V2 (draft, 2026-10-21)
 
-Starts from [V1](architecture-v1.md). Boards: [v2/main-agent-flows.json](v2/main-agent-flows.json) (the chain) and [v2/full.json](v2/full.json) (everything: tools, sub-agents, clarify loop, Critic checks). Draw one with `node scripts/board-snapshot.mjs load <file>`.
+Starts from [V1](architecture-v1.md). Boards: [v2/final.json](v2/final.json) (**the final design**: levels, Groq, queue, Critic, knowledge, caches), [v2/main-agent-flows.json](v2/main-agent-flows.json) (the chain) and [v2/full.json](v2/full.json) (everything: tools, sub-agents, clarify loop, Critic checks). Draw one with `node scripts/board-snapshot.mjs load <file>`.
 
 ## The owner's decisions (2026-10-21)
 
