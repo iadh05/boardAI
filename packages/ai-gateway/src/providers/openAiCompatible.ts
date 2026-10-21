@@ -82,11 +82,19 @@ const refusedCalls = (error: z.infer<typeof StreamErrorSchema>['error']): LlmToo
   }));
 };
 
-/** The wait a 429 asks for: the retry-after header (seconds), or Groq's "try again in 4.38s". */
-const retryAfterOf = (response: Response, message: string): number | undefined => {
+/**
+ * The wait a 429 asks for: the retry-after header (seconds), Gemini's RetryInfo ("31s"), or the
+ * message ("try again in 4.38s" on Groq, "retry in 31.5s" on Gemini).
+ */
+const retryAfterOf = (
+  response: Response,
+  { message, retryDelay }: ProviderError,
+): number | undefined => {
   const header = Number(response.headers.get('retry-after'));
   if (header > 0) return header * 1000;
-  const said = /try again in ([\d.]+)\s*(ms|s)\b/i.exec(message);
+  const said =
+    /^([\d.]+)(s)$/.exec(retryDelay ?? '') ??
+    /(?:try again|retry) in ([\d.]+)\s*(ms|s)\b/i.exec(message);
   if (!said?.[1]) return undefined;
   return Math.ceil(Number(said[1]) * (said[2] === 'ms' ? 1 : 1000));
 };
@@ -106,6 +114,13 @@ const StreamChunkSchema = z.object({
   usage: z.object({ prompt_tokens: z.number(), completion_tokens: z.number() }).nullish(),
 });
 
+/**
+ * Arguments as an object, as every server expects them back in the history: a call the model made
+ * with text instead (refused, then answered by our check) is kept as `{ "_raw": text }` (AV2-02).
+ */
+const asObject = (args: unknown) =>
+  typeof args === 'object' && args !== null && !Array.isArray(args) ? args : { _raw: args };
+
 const toWireMessage = (message: LlmMessage) => {
   switch (message.role) {
     case 'tool':
@@ -119,7 +134,7 @@ const toWireMessage = (message: LlmMessage) => {
               tool_calls: message.toolCalls.map((call) => ({
                 id: call.id,
                 type: 'function',
-                function: { name: call.name, arguments: JSON.stringify(call.arguments) },
+                function: { name: call.name, arguments: JSON.stringify(asObject(call.arguments)) },
                 ...call.providerData, // back as it came (Gemini's thought signature)
               })),
             }
@@ -145,13 +160,25 @@ const parseArguments = (raw: string): unknown => {
 
 const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError';
 
-const providerMessage = async (response: Response) => {
+type ProviderError = { message: string; retryDelay?: string };
+
+// OpenAI and Groq answer `{ error }`; Gemini an array of them, with a RetryInfo detail on a 429.
+const ErrorBodySchema = z.object({
+  error: z.object({
+    message: z.string(),
+    details: z.array(z.object({ retryDelay: z.string().optional() })).optional(),
+  }),
+});
+
+const providerError = async (response: Response): Promise<ProviderError> => {
   const text = await response.text().catch(() => '');
   try {
-    const parsed = z.object({ error: z.object({ message: z.string() }) }).parse(JSON.parse(text));
-    return parsed.error.message;
+    const json: unknown = JSON.parse(text);
+    const { error } = ErrorBodySchema.parse(Array.isArray(json) ? json[0] : json);
+    const retryDelay = error.details?.find((d) => d.retryDelay)?.retryDelay;
+    return { message: error.message, ...(retryDelay ? { retryDelay } : {}) };
   } catch {
-    return text.slice(0, 200) || response.statusText;
+    return { message: text.slice(0, 200) || response.statusText };
   }
 };
 
@@ -239,12 +266,12 @@ export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions)
       if (response.ok && !response.body)
         throw new LlmError('BAD_RESPONSE', `The model answered ${response.status} with no body.`);
       if (!response.ok || !response.body) {
-        const message = await providerMessage(response);
+        const failure = await providerError(response);
         const transient = response.status === 429 || response.status >= 500;
-        const retryAfterMs = response.status === 429 ? retryAfterOf(response, message) : undefined;
+        const retryAfterMs = response.status === 429 ? retryAfterOf(response, failure) : undefined;
         throw new LlmError(
           transient ? 'UNAVAILABLE' : 'BAD_REQUEST',
-          `The model answered ${response.status}: ${message}`,
+          `The model answered ${response.status}: ${failure.message}`,
           retryAfterMs === undefined ? undefined : { retryAfterMs },
         );
       }

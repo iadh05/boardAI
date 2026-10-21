@@ -64,8 +64,10 @@ export const connectRealModel = (model: string, provider: ProviderName = 'ollama
       ...(apiKey ? { apiKey } : {}),
     }),
     timeoutMs: 60_000,
-    // Hosted free tiers answer 429 with a wait: room for a few of them in one review.
-    retries: provider === 'ollama' ? 1 : 3,
+    // Hosted free tiers answer 429 with a wait (Groq up to ~25 s, Gemini ~31 s, measured): an eval
+    // can wait a whole minute for one; the server doesn't (the gateway's 20 s default).
+    retries: provider === 'ollama' ? 1 : 4,
+    ...(provider === 'ollama' ? {} : { maxRetryWaitMs: 65_000 }),
   });
   // A canary, like the server's: the measured agent is the one users get.
   const canary = `dr-${randomUUID().slice(0, 8)}`;
