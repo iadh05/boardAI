@@ -62,7 +62,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | done |
 | M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | done |
 | M1-26e | God eye: overview dashboard (RED + USE), alerts, runtime metrics | obs | M | done |
-| M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | review |
+| M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | done |
 | M1-27 | ADR-006…009, demo, retro | close | S | todo |
 | M1-32 | Agent v2: tools to check, ask and finish; round budget per task | M1b | L | todo |
 
@@ -1291,7 +1291,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 **Result (2026-10-21):** checked end to end with the fake model. One chat request gave 6 log lines in Loki (`{service_name="designroom-server"}`), each with `trace_id` equal to our `traceId`, and the same trace in Tempo: 13 spans, from `POST /api/chat` down to each tool call.
 
 ### M1-26c — Phoenix + feedback
-**Status:** review · **Size:** M · **Depends on:** M1-26a, Docker
+**Status:** done (#73, #74) · **Size:** M · **Depends on:** M1-26a, Docker
 
 **Tasks**
 - [x] **Phoenix**: `arizephoenix/phoenix:20.19.0` in `docker-compose.yml` behind the `agent` profile (UI and OTLP on :6006, SQLite in a volume); a second trace exporter when `PHOENIX_COLLECTOR_ENDPOINT` is set. Phoenix takes OTLP in **protobuf only** (415 to JSON), so its exporter is `exporter-trace-otlp-proto`; Grafana keeps JSON. Traces filed under the project "designroom".
