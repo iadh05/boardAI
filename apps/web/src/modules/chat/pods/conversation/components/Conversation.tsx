@@ -1,6 +1,7 @@
 import { useStore } from 'zustand';
 import { Panel } from '../../../../../core/ui/index.ts';
 import { useBoardStore } from '../../../../board/index.ts';
+import { sendFeedback } from '../../../api/sendFeedback.ts';
 import type { SendMessageDeps } from '../../../api/sendMessage.ts';
 import { chatAppDeps, useSendMessage } from '../../../api/useSendMessage.ts';
 import { ProposalCard } from '../../proposal/index.ts';
@@ -46,12 +47,15 @@ export function Conversation({ deps = chatAppDeps, board = useBoardStore }: Conv
             onAccept={() => {
               board.getState().acceptProposal();
               // Applied (else it stays, with its error): say so, for the user and the model.
-              if (board.getState().proposal === null)
+              if (board.getState().proposal === null) {
                 deps.chat.getState().addNote(`Accepted: ${proposal.summary}`);
+                sendFeedback(deps.fetch, proposal, 'accepted'); // on its trace (M1-26c)
+              }
             }}
             onReject={() => {
               board.getState().rejectProposal();
               deps.chat.getState().addNote(`Rejected: ${proposal.summary}`);
+              sendFeedback(deps.fetch, proposal, 'rejected');
             }}
           />
         )}

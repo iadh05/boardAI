@@ -170,6 +170,14 @@ describe('ProposalSchema', () => {
     expect(ProposalSchema.safeParse({ ...proposal, ops: [] }).success).toBe(false);
   });
 
+  // M1-26c: Phoenix annotates a span, so the proposal carries the agent span's id too.
+  it('accepts an optional spanId: 16 hex characters, as OpenTelemetry writes it', () => {
+    expect(ProposalSchema.safeParse({ ...proposal, spanId: '67f6740bbe1ddc3f' }).success).toBe(
+      true,
+    );
+    expect(ProposalSchema.safeParse({ ...proposal, spanId: 'not-a-span' }).success).toBe(false);
+  });
+
   it('accepts an optional traceId', () => {
     expect(ProposalSchema.safeParse({ ...proposal, traceId: 'abc123' }).success).toBe(true);
   });

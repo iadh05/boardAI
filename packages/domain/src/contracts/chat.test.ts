@@ -4,6 +4,7 @@ import {
   ChatRequestSchema,
   MAX_CHAT_BOARD_NODES,
   MAX_CHAT_BOARD_ZONES,
+  ProposalFeedbackSchema,
 } from './chat.ts';
 
 const board = { nodes: [], edges: [] };
@@ -107,5 +108,29 @@ describe('ChatEventSchema', () => {
       ChatEventSchema.safeParse({ type: 'proposal', proposal: { id: 'p1', summary: 'x', ops: [] } })
         .success,
     ).toBe(false);
+  });
+});
+
+// M1-26c: Accept/Reject goes back to the server as feedback on the review's trace.
+describe('ProposalFeedbackSchema', () => {
+  const feedback = {
+    traceId: '2adb8e295d202a612dc768b48ac1d3f4',
+    spanId: '67f6740bbe1ddc3f',
+    verdict: 'accepted',
+  };
+
+  it('takes the trace and span ids as OpenTelemetry writes them, and a verdict', () => {
+    expect(ProposalFeedbackSchema.parse(feedback)).toEqual(feedback);
+    expect(ProposalFeedbackSchema.safeParse({ ...feedback, verdict: 'rejected' }).success).toBe(
+      true,
+    );
+  });
+
+  it('refuses anything else: these ids end up in a request to Phoenix', () => {
+    expect(ProposalFeedbackSchema.safeParse({ ...feedback, verdict: 'maybe' }).success).toBe(false);
+    expect(ProposalFeedbackSchema.safeParse({ ...feedback, spanId: '../admin' }).success).toBe(
+      false,
+    );
+    expect(ProposalFeedbackSchema.safeParse({ ...feedback, traceId: 'abc' }).success).toBe(false);
   });
 });

@@ -193,4 +193,26 @@ describe('Conversation', () => {
       'Rejected: Add cache "Redis"',
     );
   });
+
+  // M1-26c: the verdict goes back to the server, as feedback on the review's trace.
+  it('sends the verdict on a traced proposal: rejected, or accepted once applied', async () => {
+    const { board, user, fetchFn } = renderChat();
+    const traced = {
+      summary: 'Add cache "Redis"',
+      ops: [{ op: 'addNode' as const, nodeId: 'cache', kind: 'cache' as const, label: 'Redis' }],
+      traceId: '2adb8e295d202a612dc768b48ac1d3f4',
+      spanId: '67f6740bbe1ddc3f',
+    };
+    const verdicts = () =>
+      fetchFn.mock.calls
+        .filter(([url]) => url === '/api/chat/feedback')
+        .map(([, init]) => (JSON.parse(init?.body as string) as { verdict: string }).verdict);
+
+    act(() => board.getState().setProposal({ id: 'p1', ...traced }));
+    await user.click(await screen.findByRole('button', { name: 'Reject' }));
+    act(() => board.getState().setProposal({ id: 'p2', ...traced }));
+    await user.click(await screen.findByRole('button', { name: 'Accept' }));
+
+    expect(verdicts()).toEqual(['rejected', 'accepted']);
+  });
 });
