@@ -36,6 +36,21 @@ services:
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /otel-lgtm/grafana/conf/provisioning/dashboards/designroom/overview.json
     restart: unless-stopped
 
+  # Phoenix (M1-26c): the agent's view of a review: prompt, board, each round, tool calls with
+  # their arguments and replies. Receives the same traces as Grafana (PHOENIX_COLLECTOR_ENDPOINT).
+  # Not started by `docker compose up`: `docker compose --profile agent up -d phoenix`, then
+  # http://localhost:6006. Pinned: Phoenix releases weekly.
+  phoenix:
+    image: arizephoenix/phoenix:20.19.0
+    profiles: [agent]
+    ports:
+      - '127.0.0.1:6006:6006' # UI and OTLP over HTTP (/v1/traces); this machine only
+    environment:
+      PHOENIX_WORKING_DIR: /mnt/data # SQLite: traces kept across restarts
+    volumes:
+      - phoenix-data:/mnt/data
+    restart: unless-stopped
+
   # GlitchTip: open-source error tracking that accepts the official Sentry SDKs (M1-25b). Our apps
   # keep @sentry/react and @sentry/node; only the DSN points here instead of sentry.io, so no
   # account and nothing leaves the machine. Adapted from glitchtip.com/assets/compose.sample.yml
@@ -75,5 +90,6 @@ services:
 
 volumes:
   lgtm-data:
+  phoenix-data:
   glitchtip-db:
   glitchtip-uploads:

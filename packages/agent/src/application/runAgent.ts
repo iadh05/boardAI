@@ -37,6 +37,11 @@ export type AgentDeps = {
   newId: () => string;
   /** Most model calls per request (chatPolicy): a model that keeps calling tools is stopped. */
   maxRounds?: number;
+  /**
+   * Put tool arguments and replies on the tool spans, for Phoenix (M1-26c). Off by default: they
+   * can quote the board — for a local Phoenix only (architecture §9).
+   */
+  recordContent?: boolean;
   /** The scope guard; by default one short call to `llm`. Injected in tests. */
   checkScope?: (question: ScopeQuestion) => Promise<Scope>;
   /**
@@ -208,9 +213,16 @@ export const createAgent = (deps: AgentDeps) => {
               const outcome = runToolCall(draft, call, deps);
               draft = outcome.draft;
               if (outcome.noChange !== undefined) noChange = outcome.noChange;
+              // The arguments and the reply can quote labels: in the trace only with content on
+              // (local Phoenix, M1-26c).
+              if (deps.recordContent)
+                used.span.setAttributes({
+                  'input.value': JSON.stringify(call.arguments),
+                  'output.value': outcome.reply,
+                });
               if (!outcome.ok) {
                 toolErrors++;
-                markFailed(used.span, outcome.reply); // what the model was told
+                markFailed(used.span, deps.recordContent ? outcome.reply : 'refused');
               }
               used.span.end();
               metered.toolCall(name, outcome.ok);

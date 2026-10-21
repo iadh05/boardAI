@@ -29,6 +29,7 @@ const config = {
   logLevel: 'info',
   errorTracking: null,
   telemetry: null,
+  traceContent: false,
   debugRoutes: false,
   llmCallLog: null,
 } as const;

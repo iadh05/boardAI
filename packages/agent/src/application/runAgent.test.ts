@@ -566,13 +566,14 @@ describe('tracing', () => {
   });
 
   /** The agent on a scripted model, recording which span was active when each call was made. */
-  const traced = (answers: Step[][], scope: 'in' | 'out' = 'in') => {
+  const traced = (answers: Step[][], scope: 'in' | 'out' = 'in', recordContent = false) => {
     const { llm } = scriptedLlm(answers);
     const activeAt = { llm: [] as (Span | undefined)[], scope: undefined as Span | undefined };
     let n = 0;
     const agent = createAgent({
       llm: { chat: (input) => (activeAt.llm.push(trace.getActiveSpan()), llm.chat(input)) },
       newId: () => `id-${++n}`,
+      recordContent,
       checkScope: () => {
         activeAt.scope = trace.getActiveSpan();
         return Promise.resolve(scope);
@@ -622,14 +623,38 @@ describe('tracing', () => {
       'tool.name': 'add_node',
     });
     expect(added?.status.code).toBe(SpanStatusCode.UNSET);
-    // A refused tool call is visibly marked, with the reply the model got.
+    // A refused tool call is visibly marked. Its reply can quote a label: not in the trace by default.
     expect(failed?.status.code).toBe(SpanStatusCode.ERROR);
-    expect(failed?.status.message).toMatch(/n9/);
+    expect(failed?.status.message).toBe('refused');
+    expect(Object.keys(added?.attributes ?? {})).not.toContain('input.value');
     expect(rounds[1]?.attributes).toMatchObject({
       'designroom.agent.round': 2,
       'designroom.agent.tool_calls': 1,
       'designroom.agent.tool_errors': 1,
     });
+  });
+
+  // M1-26c: with content on (local Phoenix), a tool span shows what was asked and answered.
+  it('with content on, a tool span holds its arguments and the reply the model got', async () => {
+    const { agent } = traced(
+      [
+        [tool('c1', 'add_node', { kind: 'cache', label: 'Redis', near: 'n1' })],
+        [tool('c2', 'connect_nodes', { source: 'n1', target: 'n9' })],
+        [text('Done.')],
+        [text('Left as is.')],
+      ],
+      'in',
+      true,
+    );
+
+    await run(agent);
+
+    const [added, failed] = [named('tool add_node')[0], named('tool connect_nodes')[0]];
+    expect(added?.attributes).toMatchObject({
+      'input.value': '{"kind":"cache","label":"Redis","near":"n1"}',
+      'output.value': 'added n3 [cache] "Redis"',
+    });
+    expect(failed?.status.message).toMatch(/n9/);
   });
 
   it('records the scope verdict; an off-topic question has no rounds', async () => {

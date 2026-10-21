@@ -17,9 +17,29 @@ describe('loadConfig', () => {
       logLevel: 'info',
       errorTracking: null, // off unless SENTRY_DSN is set
       telemetry: null, // off unless OTEL_EXPORTER_OTLP_ENDPOINT is set
+      traceContent: false, // prompts and boards stay out of traces unless TRACE_CONTENT=true
       debugRoutes: false, // ENABLE_DEBUG_ROUTES=true turns /api/debug/* on
       llmCallLog: null, // off unless LLM_CALL_LOG is set: it records boards and chats
     });
+  });
+
+  // M1-26c: Phoenix gets the same traces; content (prompts, boards) only when asked for.
+  it('sends traces to Phoenix too when its endpoint is set, and records content only if asked', () => {
+    const config = loadConfig({
+      ...valid,
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318',
+      PHOENIX_COLLECTOR_ENDPOINT: 'http://localhost:6006',
+      TRACE_CONTENT: 'true',
+    });
+    expect(config.telemetry).toEqual({
+      endpoint: 'http://localhost:4318',
+      phoenixEndpoint: 'http://localhost:6006',
+    });
+    expect(config.traceContent).toBe(true);
+    // Phoenix is a second destination for traces: without the first, nothing is recorded.
+    expect(() =>
+      loadConfig({ ...valid, PHOENIX_COLLECTOR_ENDPOINT: 'http://localhost:6006' }),
+    ).toThrow(/OTEL_EXPORTER_OTLP_ENDPOINT/);
   });
 
   it('reads the model’s context window, which sizes the chat budget', () => {

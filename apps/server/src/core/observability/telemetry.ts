@@ -3,6 +3,7 @@ import { SeverityNumber, type LogAttributes, type LogRecord } from '@opentelemet
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { OTLPTraceExporter as OTLPProtoTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { BatchLogRecordProcessor, LoggerProvider } from '@opentelemetry/sdk-logs';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
@@ -19,7 +20,22 @@ import type { LogEntry, Logger, LogLevel } from '../logger.ts';
 // the SDK and where data goes. Vendor-neutral: Grafana today (OTLP), Azure Monitor in M6 is another
 // exporter, not new instrumentation.
 
-export type TelemetryConfig = { endpoint: string } | null;
+export type TelemetryConfig = { endpoint: string; phoenixEndpoint?: string } | null;
+
+/**
+ * Where spans go: the OTLP collector (Grafana's Tempo), and Phoenix too when set (M1-26c), which
+ * shows the same traces as agent runs. One exporter each; a standalone OTel Collector fanning out
+ * would be the cleaner setup later (architecture §9). Phoenix takes OTLP in protobuf only (it
+ * answers 415 to JSON): checked against Phoenix 20.19.
+ */
+export const traceDestinations = (
+  config: NonNullable<TelemetryConfig>,
+): { url: string; encoding: 'json' | 'protobuf' }[] => [
+  { url: otlpUrl(config.endpoint, 'traces'), encoding: 'json' },
+  ...(config.phoenixEndpoint
+    ? [{ url: otlpUrl(config.phoenixEndpoint, 'traces'), encoding: 'protobuf' as const }]
+    : []),
+];
 
 const ignore = () => {};
 
@@ -86,14 +102,23 @@ export const startTelemetry = (
     { error: warn, warn, info: ignore, debug: ignore, verbose: ignore },
     DiagLogLevel.WARN,
   );
-  const resource = resourceFromAttributes({ [ATTR_SERVICE_NAME]: 'designroom-server' });
+  const resource = resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: 'designroom-server',
+    // Phoenix files the traces under this project instead of "default" (M1-26c).
+    'openinference.project.name': 'designroom',
+  });
 
   const tracerProvider = new NodeTracerProvider({
     resource,
     // Batches spans in memory and sends them every few seconds, off the request path.
-    spanProcessors: [
-      new BatchSpanProcessor(new OTLPTraceExporter({ url: otlpUrl(config.endpoint, 'traces') })),
-    ],
+    spanProcessors: traceDestinations(config).map(
+      ({ url, encoding }) =>
+        new BatchSpanProcessor(
+          encoding === 'protobuf'
+            ? new OTLPProtoTraceExporter({ url })
+            : new OTLPTraceExporter({ url }),
+        ),
+    ),
   });
   tracerProvider.register(); // also the AsyncLocalStorage context manager: spans find their parent
 

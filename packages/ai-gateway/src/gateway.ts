@@ -4,8 +4,15 @@
 
 import { context, type Context } from '@opentelemetry/api';
 import { cancelledError, LlmError } from './errors.ts';
-import { createLlmMetrics, recordFailure, startLlmSpan, usageAttributes } from './telemetry.ts';
-import type { AiGateway, ChatInput, LlmChunk, LlmProvider } from './types.ts';
+import {
+  createLlmMetrics,
+  inputAttributes,
+  outputAttributes,
+  recordFailure,
+  startLlmSpan,
+  usageAttributes,
+} from './telemetry.ts';
+import type { AiGateway, ChatInput, LlmChunk, LlmProvider, LlmToolCall } from './types.ts';
 
 export type GatewayOptions = {
   provider: LlmProvider;
@@ -21,6 +28,11 @@ export type GatewayOptions = {
   now?: () => number;
   /** Waits `ms`, or ends early when `signal` aborts. */
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
+  /**
+   * Put the messages and the answer on the call's span, for Phoenix (M1-26c). Off by default: they
+   * hold prompts, boards and chats — for a local Phoenix only (architecture §9).
+   */
+  recordContent?: boolean;
 };
 
 const sleepUnlessAborted = (ms: number, signal?: AbortSignal) =>
@@ -123,8 +135,13 @@ export const createGateway = (options: GatewayOptions): AiGateway => {
     const span = startLlmSpan(model, parent);
     const started = now();
     let measured = false; // by usage or by a failure; else the reader stopped before the end
+    let said = '';
+    const toolCalls: LlmToolCall[] = [];
+    if (options.recordContent) span.setAttributes(inputAttributes(input.messages));
     try {
       for await (const chunk of call(input)) {
+        if (chunk.type === 'text') said += chunk.delta;
+        else if (chunk.type === 'toolCall') toolCalls.push(chunk.call);
         if (chunk.type === 'usage') {
           span.setAttributes(usageAttributes(chunk.usage));
           metered.succeeded(model ?? 'unknown', chunk.usage);
@@ -140,6 +157,8 @@ export const createGateway = (options: GatewayOptions): AiGateway => {
     } finally {
       // The scope guard stops after its first word: still a model call, so still counted.
       if (!measured) metered.stopped(model ?? 'unknown', now() - started);
+      // What it said, however it ended: a cut answer is shown as far as it went.
+      if (options.recordContent) span.setAttributes(outputAttributes(said, toolCalls));
       span.end();
     }
   }
