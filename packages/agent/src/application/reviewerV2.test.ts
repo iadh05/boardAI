@@ -45,6 +45,7 @@ const setup = (options: {
   planner?: LlmChunk[][];
   architect?: LlmChunk[][];
   specialists?: Record<string, Specialist>;
+  critic?: { llm?: AiGateway };
 }) => {
   const main = scripted(options.main ?? []);
   const planner = scripted(options.planner ?? []);
@@ -70,6 +71,7 @@ const setup = (options: {
       security: () => Promise.resolve([]),
     },
     checkScope: () => Promise.resolve(options.scope ?? 'in'),
+    ...(options.critic ? { critic: options.critic } : {}),
   });
   return { reviewer, main, planner, architect: architectLlm };
 };
@@ -173,5 +175,65 @@ describe('createReviewerV2', () => {
     expect(textOf(events)).toMatch(/How many users at peak\?/);
     expect(architect.calls).toHaveLength(0);
     expect(events.at(-1)).toEqual({ type: 'done' });
+  });
+});
+
+describe('createReviewerV2 with the Critic (AV2-08)', () => {
+  const firstTry = [
+    text('The load balancer should be a CDN.'),
+    tool('update_node', { nodeId: 'n1', kind: 'cdn' }),
+    tool('finish', { summary: 'Changed it.' }),
+  ];
+  const secondTry = [
+    text('Postgres needs a copy.'),
+    tool('add_node', { kind: 'database', label: 'Replica' }),
+    tool('connect_nodes', { source: 'n2', target: 'n3' }),
+    tool('finish', { summary: 'Added a replica.' }),
+  ];
+
+  it('a first proposal that fails the code checks goes back once; the user sees only the second', async () => {
+    const { reviewer, architect } = setup({
+      planner: [plan({ flow: 'review', specialists: ['data'] })],
+      architect: [firstTry, secondTry],
+      critic: {},
+    });
+
+    const events = await run(reviewer, 'Review my design');
+
+    expect(architect.calls).toHaveLength(2);
+    expect(architect.calls[1]?.messages.at(-1)?.content).toMatch(
+      /<critique>\n- turns the api "API" into a cdn[\s\S]*<\/critique>/,
+    );
+    expect(textOf(events)).toBe('Postgres needs a copy.');
+    expect(events.find((e) => e.type === 'proposal')).toMatchObject({
+      proposal: { ops: [{ op: 'addNode' }, { op: 'connect' }] },
+    });
+  });
+
+  it('a sound proposal passes: shown as it was, the model not asked twice', async () => {
+    const { reviewer, architect } = setup({
+      planner: [plan({ flow: 'review', specialists: ['data'] })],
+      architect: [secondTry],
+      critic: {},
+    });
+
+    const events = await run(reviewer, 'Review my design');
+
+    expect(architect.calls).toHaveLength(1);
+    expect(textOf(events)).toBe('Postgres needs a copy.');
+  });
+
+  it('still failing after its one revision: shown, with what the Critic still sees', async () => {
+    const { reviewer } = setup({
+      planner: [plan({ flow: 'review', specialists: ['data'] })],
+      architect: [firstTry, firstTry],
+      critic: {},
+    });
+
+    const events = await run(reviewer, 'Review my design');
+
+    expect(textOf(events)).toMatch(
+      /^The load balancer should be a CDN\.\n\n\(Checked: .*into a cdn/,
+    );
   });
 });
