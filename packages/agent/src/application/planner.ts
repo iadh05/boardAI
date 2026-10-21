@@ -104,7 +104,8 @@ export const makePlan = async (llm: AiGateway, request: PlanRequest): Promise<Pl
   return {
     flow,
     // A review covers everything: a rule, not the model's pick (measured: it sometimes chose one).
-    specialists: flow === 'review' ? [...SPECIALIST_NAMES] : specialists.filter(isKnown),
+    specialists:
+      flow === 'review' ? [...SPECIALIST_NAMES] : [...new Set(specialists.filter(isKnown))],
     questions: request.allowQuestions ? questions.slice(0, MAX_QUESTIONS) : [],
     assumptions,
   };

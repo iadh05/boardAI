@@ -1,4 +1,4 @@
-import type { AiGateway } from '@designroom/ai-gateway';
+import type { AiGateway, LlmErrorCode } from '@designroom/ai-gateway';
 import { context } from '@opentelemetry/api';
 import { boardToText, inventoryText } from '../domain/boardToText.ts';
 import { createAliases } from '../domain/aliases.ts';
@@ -31,6 +31,14 @@ export type ReviewerV2Deps = {
   checkScope?: (question: ScopeQuestion) => Promise<Scope>;
   timer?: Timer;
 };
+
+type GatewayError = Error & { code: LlmErrorCode };
+
+/** The gateway throws LlmError; the agent may only import its types, so it checks the shape. */
+const isGatewayError = (error: unknown): error is GatewayError =>
+  error instanceof Error &&
+  error.name === 'LlmError' &&
+  typeof (error as GatewayError).code === 'string';
 
 /** "thanks", "ok", "great!" — nothing for the Planner (D3). */
 const TRIVIAL = /^(thanks?( you)?|thx|ok(ay)?|cool|great|nice|perfect|got it|merci|👍)[\s.!]*$/i;
@@ -135,8 +143,15 @@ export const createReviewerV2 = (deps: ReviewerV2Deps) => {
       );
       yield* answer;
     } catch (error) {
-      markFailed(root.span, error instanceof Error ? error.message : String(error));
-      throw error;
+      // A model failing, or the user's Stop, ends the answer the way V1's does: an error event the
+      // user can act on, then done (review of AV2-05..09). Anything else is a bug: thrown.
+      if (!isGatewayError(error)) {
+        markFailed(root.span, error instanceof Error ? error.message : String(error));
+        throw error;
+      }
+      if (error.code !== 'ABORTED') markFailed(root.span, error.message);
+      yield { type: 'error', code: error.code, message: error.message };
+      yield { type: 'done' };
     } finally {
       root.span.end();
     }
