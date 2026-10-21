@@ -77,7 +77,7 @@ const EnvSchema = z
     CLAUDE_API_KEY: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
-    for (const role of ROLES) {
+    for (const role of env.LLM_HOSTED === 'off' ? [] : ROLES) {
       const spec = (env as Record<string, unknown>)[roleVar(role)] as RoleSpec | undefined;
       if (!spec) continue;
       const keyVar = KEY_VARS[spec.provider];

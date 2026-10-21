@@ -1,5 +1,6 @@
 import {
   createAnthropicProvider,
+  createSpendTracker,
   createFallbackProvider,
   createOpenAiCompatibleProvider,
   createScenarioProvider,
@@ -7,6 +8,7 @@ import {
   type LlmError,
   type LlmProvider,
   type ScenarioFile,
+  type SpendTracker,
 } from '@designroom/ai-gateway';
 import { ROLES, type LlmConfig, type Role, type RoleModel } from './config.ts';
 
@@ -60,12 +62,17 @@ const OPENAI_COMPATIBLE_URLS = {
 } as const;
 
 /** One hosted model, as its provider speaks (AV2-02, AV2-03). */
-const hostedProvider = (spec: RoleModel, fetchFn?: typeof fetch): LlmProvider => {
+const hostedProvider = (
+  spec: RoleModel,
+  spend: SpendTracker,
+  fetchFn?: typeof fetch,
+): LlmProvider => {
   const injected = fetchFn ? { fetch: fetchFn } : {};
   if (spec.provider === 'claude')
     return createAnthropicProvider({
       apiKey: spec.apiKey,
       model: spec.model,
+      spend,
       ...(spec.thinking ? { thinking: { effort: 'medium' } } : {}),
       ...injected,
     });
@@ -89,19 +96,21 @@ export type RoleProviderDeps = {
 
 /**
  * A provider per agent role (AV2-04, D13): the role's hosted model with the local one behind it,
- * or the local one alone. The local model answers whenever the hosted can't (offline, 429 past the
- * wait, budget spent): a request never fails because a hosted model is down.
+ * or the local one alone. The local model answers whenever the hosted can't (offline, rate-limited,
+ * silent, budget spent): a request never fails because a hosted model is down. One Claude budget
+ * for all roles: the daily cap is the cap, however many roles use Claude (review of AV2-04).
  */
 export const createRoleProviders = (
   roles: Record<Role, RoleModel | null>,
   local: LlmProvider,
   deps: RoleProviderDeps = {},
-): Record<Role, LlmProvider> =>
-  Object.fromEntries(
+): Record<Role, LlmProvider> => {
+  const spend = createSpendTracker();
+  return Object.fromEntries(
     ROLES.map((role) => {
       const spec = roles[role];
       if (!spec) return [role, local];
-      const hosted = hostedProvider(spec, deps.fetch);
+      const hosted = hostedProvider(spec, spend, deps.fetch);
       return [
         role,
         createFallbackProvider(hosted, local, {
@@ -110,3 +119,4 @@ export const createRoleProviders = (
       ];
     }),
   ) as Record<Role, LlmProvider>;
+};
