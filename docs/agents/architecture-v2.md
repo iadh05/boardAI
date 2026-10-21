@@ -1,6 +1,6 @@
 # Agent architecture — V2 (draft, 2026-10-21)
 
-Starts from [V1](architecture-v1.md). Board: [v2/main-agent-flows.json](v2/main-agent-flows.json) (draw it with `node scripts/board-snapshot.mjs load docs/agents/v2/main-agent-flows.json`).
+Starts from [V1](architecture-v1.md). Boards: [v2/main-agent-flows.json](v2/main-agent-flows.json) (the chain) and [v2/full.json](v2/full.json) (everything: tools, sub-agents, clarify loop, Critic checks). Draw one with `node scripts/board-snapshot.mjs load <file>`.
 
 ## The owner's decisions (2026-10-21)
 
@@ -73,6 +73,17 @@ All drawn on the V2 board. Each is a starting value, changed by measurement.
 | D9 | **Critic** | Code checks first (applyOps, no duplicates, every box connected, no kind changed); a failing proposal goes back to the Architect **once**; an LLM Critic later, only if measured useful | Same 9B can't catch its own blind spots |
 | D10 | **Sub-agents** | A specialist's sub-agents (Stack / Cloud; Data model / storage / consistency) are **sub-tasks in the same queue**, counted in the budget | One queue, one budget, one place to watch |
 | D11 | **Flows first** | F2 (review), F6 (decision), F1 (question); then F4, F5, F3, F7, F8 | F2 is today's agent; F6 and F1 are small |
+
+### The owner's answers so far (2026-10-21)
+
+| # | Answer |
+|---|---|
+| D3 | ✅ Main agent alone for trivial turns |
+| D5 | ✅ ≤ 6 tasks, 60 s each |
+| D9 | No preference → default kept: code checks first, LLM check later if measured |
+| D10 | ✅ Sub-tasks in the same queue |
+| D2, D11 | To decide on the complete board: [v2/full.json](v2/full.json) (clarify loop and Critic checks drawn as boxes) |
+| D1, D4, D6, D7, D8 | Not discussed yet |
 
 ## Build plan (each step measured before the next)
 
