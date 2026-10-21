@@ -1,5 +1,10 @@
 import { context, SpanStatusCode, trace } from '@opentelemetry/api';
-import { boardToText, createAliases, type AgentEvent, type AgentInput } from '@designroom/agent';
+import {
+  boardToText,
+  createAliases,
+  type AgentInput,
+  type ReviewerV2Event,
+} from '@designroom/agent';
 import type { LlmErrorCode } from '@designroom/ai-gateway';
 import type { ChatEvent, ChatRequest, Result } from '@designroom/domain';
 import type { Logger } from '../../../core/logger.ts';
@@ -10,7 +15,8 @@ import { fitHistory, type ChatPolicyErrorCode } from '../domain/chatPolicy.ts';
 // its events into the chat API's events. Knows nothing of HTTP: the route streams what this yields.
 
 /** The port this use case needs; infra/ builds it from @designroom/agent and the gateway. */
-export type ReviewAgent = { run(input: AgentInput): AsyncIterable<AgentEvent> };
+/** V1's agent, or V2's chain (AV2-09): the same events, plus V2's progress. */
+export type ReviewAgent = { run(input: AgentInput): AsyncIterable<ReviewerV2Event> };
 
 export type ReviewBoardDeps = {
   agent: ReviewAgent;

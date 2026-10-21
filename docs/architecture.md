@@ -166,8 +166,11 @@ type ChatEvent =
   | { type: 'text';     delta: string }
   | { type: 'proposal'; proposal: Proposal }
   | { type: 'error';    message: string }
+  | { type: 'progress'; text: string }   // agent V2 (AV2-09): "Data ✓ · Security running · 1 left"
   | { type: 'done' };
 ```
+
+**Agent V1 or V2** (`AGENT_MODE`, default `v1`): the same endpoint and events; V2 adds `progress` while its specialists work. V2 is the chain of [agents/architecture-v2.md](agents/architecture-v2.md) — Main and Planner on their roles' models (`LLM_ROLE_*`, the local model behind each), the rule specialists through the task queue, then the single agent of §7 as the Architect, given their findings. `AGENT_CRITIC=on` adds the Critic (code checks, and an LLM when `LLM_ROLE_CRITIC` is set).
 
 All types are inferred from zod schemas.
 

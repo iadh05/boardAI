@@ -72,6 +72,11 @@ const EnvSchema = z
     ...Object.fromEntries(ROLES.map((role) => [roleVar(role), RoleSpecSchema.optional()])),
     // "off": every role back on the local model, nothing leaves the PC (architecture-v2 § Privacy).
     LLM_HOSTED: z.enum(['on', 'off']).default('on'),
+    // Agent V1 (one agent) or V2 (Main, Planner, specialists, Architect — AV2-09). V1 until the V1
+    // vs V2 eval says otherwise (AV2-10).
+    AGENT_MODE: z.enum(['v1', 'v2']).default('v1'),
+    // V2's Critic (AV2-08): checks each proposal before the user sees it. Off until measured.
+    AGENT_CRITIC: z.enum(['on', 'off']).default('off'),
     GROQ_API_KEY: z.string().min(1).optional(),
     GEMINI_API_KEY: z.string().min(1).optional(),
     CLAUDE_API_KEY: z.string().min(1).optional(),
@@ -142,6 +147,8 @@ export type Config = {
   llmCallLog: string | null;
   /** The model each agent role runs on (AV2-04); null: the local model (`llm`). */
   roles: Record<Role, RoleModel | null>;
+  /** Which agent answers (AV2-09) and whether V2's Critic checks its proposals. */
+  agent: { mode: 'v1' | 'v2'; critic: boolean };
 };
 
 /** Parses an environment: process.env in production, a plain object in tests. */
@@ -186,6 +193,7 @@ export const loadConfig = (env: Record<string, string | undefined>): Config => {
     traceContent: e.TRACE_CONTENT === 'true',
     debugRoutes: e.ENABLE_DEBUG_ROUTES === 'true',
     llmCallLog: e.LLM_CALL_LOG ?? null,
+    agent: { mode: e.AGENT_MODE, critic: e.AGENT_CRITIC === 'on' },
     roles: Object.fromEntries(
       ROLES.map((role) => {
         const spec = e[roleVar(role) as keyof typeof e] as RoleSpec | undefined;
