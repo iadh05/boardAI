@@ -67,6 +67,7 @@ const setup = (options: {
             confidence: 1,
           },
         ]),
+      security: () => Promise.resolve([]),
     },
     checkScope: () => Promise.resolve(options.scope ?? 'in'),
   });
@@ -119,7 +120,7 @@ describe('createReviewerV2', () => {
 
     expect(
       events.filter((e) => e.type === 'progress').map((e) => e.type === 'progress' && e.text),
-    ).toEqual(['Data running', 'Data ✓']);
+    ).toEqual(['Data running · 1 left', 'Data ✓ · Security running', 'Data ✓ · Security ✓']);
     expect(architect.calls[0]?.messages.at(-1)?.content).toMatch(
       /<findings>\n- \[critical\] n2 "Postgres" \(data\)/,
     );

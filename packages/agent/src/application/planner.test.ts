@@ -57,8 +57,14 @@ describe('makePlan', () => {
   });
 
   it('drops a specialist that does not exist', async () => {
-    const { llm } = plannerAnswering({ flow: 'review', specialists: ['data', 'astrology'] });
-    expect((await ask(llm, 'Review')).specialists).toEqual(['data']);
+    const { llm } = plannerAnswering({ flow: 'deep-dive', specialists: ['data', 'astrology'] });
+    expect((await ask(llm, 'Will the database survive?')).specialists).toEqual(['data']);
+  });
+
+  // Measured on local Qwen: "Review my design" sometimes got one specialist. A rule, not a pick.
+  it('a review always uses every specialist', async () => {
+    const { llm } = plannerAnswering({ flow: 'review', specialists: ['security'] });
+    expect((await ask(llm, 'Review my design')).specialists).toEqual(['data', 'security']);
   });
 
   it('a plan it cannot read falls back to a full review', async () => {
