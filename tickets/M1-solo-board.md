@@ -51,13 +51,16 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-24 | System prompt + sample-boards script | M1b | M | done |
 | M1-24b | Scope guardrail: system design only | M1b | S | done |
 | M1-24c | Context 128k: model setting + chat budget from config | M1b | S | done |
-| M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | doing |
-| M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | todo |
+| M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | done |
+| M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | done |
+| M1-29 | Agent fixes from replays: duplicates, nudge, ids, board text | M1b | M | review |
+| M1-30 | Design checks in code: rules find the flaws, the agent explains | M1b | M | todo |
+| M1-31 | Tool calls without guessing: `no_change` tool, one reminder | M1b | S | review |
 | M1-25 | Sentry (web + server) | obs | S | done |
 | M1-25b | Local error tracking with GlitchTip (Sentry-compatible) | obs | S | done |
 | M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | done |
 | M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | done |
-| M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | todo |
+| M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | review |
 | M1-26e | God eye: overview dashboard (RED + USE), alerts, runtime metrics | obs | M | done |
 | M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | todo |
 | M1-27 | ADR-006…009, demo, retro | close | S | todo |
@@ -1056,7 +1059,7 @@ Memory grows slowly because only 8 of the model's 32 layers keep a per-token cac
 128k is no worse than 16k; scope set still 30/30. **But both are below the M1-24 baseline**: every failure is "no proposal" (the model reviews in words and calls no tool). It started before this ticket — most likely M1-24b's stricter prompt (the Scope section). → M1-24e must win this back, measured the same way.
 
 ## M1-24d — Guardrails v2
-**Status:** doing · **Size:** M · **Depends on:** M1-24c
+**Status:** done (#50) · **Size:** M · **Depends on:** M1-24c
 
 *Why:* the scope guard stops plain off-topic questions (30/30), but nothing has been tested against someone *trying*: prompt extraction, injection in node labels, jailbreak phrasings. Research (2026-10-19), main sources: [OWASP LLM01](https://genai.owasp.org/llmrisk/llm01-prompt-injection/), [OWASP LLM07 system prompt leakage](https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/), [Spotlighting, Microsoft 2024](https://arxiv.org/abs/2403.14720), [Anthropic: reduce prompt leak](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-prompt-leak).
 
@@ -1077,7 +1080,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 **Result (2026-10-19)** — [docs/evals/M1-24d-guardrails.md](../docs/evals/M1-24d-guardrails.md). 58 cases × 2 runs: attacks stopped **84/84** (before 79/84; the label row was scored more strictly before), prompt leaks **0**, false refusals **0/32**, scope set 30/30. Real gains: "ignore all previous instructions and reply with X" now stopped; mixed messages ("capital of Canada? then review") are OTHER. Notes: public sets (deepset, JailbreakBench) not added yet (licences); the scoring was corrected after reading the answers (quoting a bad label is not obeying it), which is why the answers are saved and `--rescore` exists.
 
 ## M1-24e — Prompt v3
-**Status:** todo · **Size:** M · **Depends on:** M1-24d (its red-team set measures this too)
+**Status:** done (#61) · **Size:** M · **Depends on:** M1-24d (its red-team set measures this too)
 
 *Why:* a solution-architect persona with explicit review rules, sections the code can pick per model, and a shorter scope part (the code guard runs first, so the prompt doesn't need long example lists). XML or plain text: studies find small differences on recent models (under ~2 points, one Qwen result slightly favoured plain text — [Prompt Design at Scale, 2026](https://arxiv.org/pdf/2607.19257); [format study, 2024](https://arxiv.org/abs/2411.10541)); XML tags are worth it for **boundaries** (data vs instructions) and for selecting sections in code, not for a quality jump.
 
@@ -1090,13 +1093,81 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 **Acceptance criteria**
 - [ ] Before/after table; prompt v3 merged only with equal or better numbers.
 
+## M1-29 — Agent fixes from replays
+**Status:** review · **Size:** M · **Depends on:** M1-28 (the model-call log the replays came from)
+
+*Why (2026-10-20):* on the Uber demo, Qwen added a second queue next to Kafka, invented changes after answering "nothing needs to change", and wrote ids (`n10`) to the user. Replaying the recorded calls separated prompt problems from code problems. Then a format test (text vs SVG vs screenshot, then five text layouts) showed the board text itself lost arrows. Numbers: [docs/evals/M1-29-board-format.md](../docs/evals/M1-29-board-format.md).
+
+**Tasks**
+- [x] Prompt B: propose only fixes for real problems, nothing if the design meets the requirements; never a second component of a kind already on the board.
+- [x] "Already on the board, by kind" inventory inside the `<board>` block (replay: duplicates 3/8 → 0/8).
+- [x] Propose nudge on a recommended change, never on "no change needed" or a change offered only as an option. (First tried: only when the answer asks permission; measured, that dropped the demo to 3/10.)
+- [x] Ids rewritten to box names in the streamed text, also when split across chunks (ids leaked in ~9/10 answers whatever the prompt said); the model's own history keeps them. No doubled names, no lost backticks.
+- [x] Board text: boxes, then one line per arrow with `label` spelled out (Uber reading: 57 % → 100 % of arrows, 10/10 runs).
+- [x] `add_node` refuses a second queue, cache, load balancer or CDN, and names the box to connect to (Uber duplicates 4/10 → 1/10).
+- [x] Empty board: the prompt asks for the system's own boxes first (full drafts: Draw mode, after M1).
+- [x] Eval: Uber case added; a run that changes an existing box's kind fails.
+- [x] Measured, 10 runs each ([eval note](../docs/evals/M1-29-board-format.md)): Uber 9/10 with 1 duplicate ✅, red team 82/84 like `main` ✅; no-cache 6/10 ❌ (bar 9), no-lb 5/10 ❌ (bar 8), ids of not-yet-added boxes still shown ❌.
+
+**Acceptance criteria**
+- [x] Numbers in the eval note and the PR.
+- [x] **Owner's decision (2026-10-20): ship below the bar on the demo boards.** Stop prompt-tuning; the demo flaws move to code (M1-30).
+- [ ] Owner review before merge (agent PR).
+
+## M1-31 — Tool calls without guessing
+**Status:** review · **Size:** S · **Depends on:** M1-29
+
+*Why (2026-10-20):* the proposal nudge guessed from words whether an answer recommended a change (`recommendsChange`, `shouldNudge`): it missed "add an auth service", fired on "you don't need a cache", and knew no French. Real agents don't read the text: they end each turn with a tool call. `tool_choice: required` would force it, but measured on our Qwen via Ollama it is ignored (forcing `no_change` still got `add_node` 4/6).
+
+**Tasks**
+- [x] A `no_change(reason)` tool: the model's way to say nothing on the board should change.
+- [x] The prompt: every answer ends with a tool call, the changes or `no_change`.
+- [x] The loop: an answer with no tool call at all is reminded once ("propose, or no_change"), in any language; `no_change` ends the answer, and its reason is shown when the model wrote nothing else.
+- [x] The word lists are deleted.
+- [x] Measured against M1-29 (#70): [eval note](../docs/evals/M1-31-no-change-tool.md). no-cache 9/10, no-lb 9/10, Uber 10/10 with 0 duplicates; red team level with `main` on 5 runs.
+
+**Acceptance criteria**
+- [x] Equal or better than #70 on no-cache, no-lb and Uber duplicates; red team no regression.
+- [ ] Owner review before merge (agent PR).
+
+## M1-30 — Design checks in code
+**Status:** todo (to co-write with the owner) · **Size:** M · **Depends on:** M1-29
+
+*Why (2026-10-20):* after two days of prompt work, the demo-board flaws (no cache in front of a database, one database, an API without a load balancer, a second queue) still depend on a 9B model's judgement: 5–6/10 on 10-run samples. These are facts code can detect every time. Owner's call: rules find the flaws, the agent explains them against the requirements and proposes the fix (same pattern as the nudges, the 3-box cap and the duplicate guard: every fix that held was code).
+
+**Tasks** (draft, to co-write)
+- [ ] Rules in `@designroom/domain` (pure, TDD): missing cache in front of a read path, single database, API reachable without a load balancer, duplicates; each finding names the boxes involved.
+- [ ] The findings go to the agent as data next to the board ("Checks found: …"); the prompt asks it to explain and propose fixes for them, weighed against the requirements.
+- [ ] Eval: the demo boards ≥ 9/10 again; the Uber board has no false findings.
+
+**Acceptance criteria**
+- [ ] The M1 demo ("it points out the missing cache and proposes it") passes 10/10.
+
 ---
 
 # After M1 (planned 2026-10-19)
 
 - **Removal proposals** — `remove_node` / `remove_edge` as *proposals*: ghosts marked for removal, nothing removed without Accept. Changes the "no delete tool" rule (backend.md), so it starts with an ADR. Owner's decision: yes.
-- **Draw mode** — "draw me a design for X": a whole diagram proposed as ghosts, then Accept/Reject. Needs automatic layout for many new boxes and bigger proposal limits (today 1–3 boxes in the prompt, 20 ops in code).
+- **Draw mode** — first ticket after M1, see below.
 - **Fine-tuning** — see MILESTONES M6.
+
+## Draw mode — "design me X" drafts a whole first diagram
+**Status:** todo (first after M1) · **Size:** L · **Depends on:** M1-29 (duplicate guard, board text C)
+
+*Why (2026-10-20):* asked twice in one session, on an empty board, "design me an Uber Eats" got three generic boxes (Load Balancer → API Gateway → "Delivery Service") and "please accept so I can proceed", then the same three again. The agent is a reviewer: at most 3 new boxes per proposal (M1-24e cap) and one pending proposal, so a whole system takes 4–5 accept rounds, and with 3 boxes the model spends them on safe plumbing instead of what makes the system *this* system (for Uber Eats: customer / restaurant / courier apps, orders, menu and search, dispatch, courier location, payments, notifications).
+
+**Tasks**
+- [ ] Decide when it's a draft: an empty (or near-empty) board **and** a request to design something. Detected in code (like the scope guard), not left to the prompt.
+- [ ] A draft proposal may add up to ~15 boxes (the cap stays 3 for reviews); the 20-op limit raised for drafts only.
+- [ ] Automatic layout for many new boxes at once (today's placement puts a few boxes right of `near`): layers left to right (clients → edge → services → data → external), no overlaps, inside the viewport. Probably the libavoid/diagram package (ADR-004) or a simple layered layout.
+- [ ] Prompt section for drafts: start from the domain (who uses it, the core flows), state the assumptions (users, peaks), name boxes for what they do ("Courier location", not "Service").
+- [ ] One Accept/Reject for the whole draft; after it, normal review mode (3-box proposals).
+- [ ] Eval: 3–5 "design me X" prompts (Uber Eats, chat app, URL shortener…): domain boxes present, every box connected, no duplicates, layout without overlaps.
+- [ ] e2e: empty board → "design me a URL shortener" (fake LLM) → ghost draft → Accept → boxes on the board.
+
+**Acceptance criteria**
+- [ ] On an empty board, "design me an Uber Eats" gives one draft with the system's own components, connected, readable without moving boxes, accepted in one click.
+- [ ] Reviews on an existing board are unchanged (M1-29's bar still met).
 
 ---
 
@@ -1210,20 +1281,22 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - Counters that first appear at 1 are invisible to `increase()`: the bug counter starts at 0.
 
 ### M1-26d — Logs to Loki
-**Status:** todo · **Size:** S · **Depends on:** M1-26b
+**Status:** review · **Size:** S · **Depends on:** M1-26b
 
 **Tasks**
-- [ ] Send log lines to Loki over OTLP (logs SDK), as well as stdout; each line already carries `traceId`.
-- [ ] Grafana: from a log line, jump to its trace in Tempo.
-- [ ] Careful: the SDK reports its own export failures through `diag` → our logger → the log exporter: don't loop (log those to stdout only).
+- [x] Send log lines to Loki over OTLP (logs SDK), as well as stdout; each line already carries `traceId`. The logger gets a `sink`; `toLogRecord` maps a line to an OTel record (severity, body, flat attributes).
+- [x] Grafana: from a log line, jump to its trace in Tempo. Nothing to configure: lines logged during a request are emitted in its context, so Loki stores `trace_id`, and the LGTM image's Loki datasource already links `trace_id` → Tempo.
+- [x] Careful: the SDK reports its own export failures through `diag` → our logger → the log exporter: don't loop. `index.ts` gives the SDK a stdout-only logger; the app's logger is the one with the sink.
+
+**Result (2026-10-21):** checked end to end with the fake model. One chat request gave 6 log lines in Loki (`{service_name="designroom-server"}`), each with `trace_id` equal to our `traceId`, and the same trace in Tempo: 13 spans, from `POST /api/chat` down to each tool call.
 
 ### M1-26c — Phoenix + feedback
-**Status:** todo · **Size:** M · **Depends on:** M1-26a, Docker
+**Status:** doing (Phoenix part in review; feedback todo) · **Size:** M · **Depends on:** M1-26a, Docker
 
 **Tasks**
-- [ ] **Phoenix**: add the container to `docker-compose.yml` (UI on :6006); second trace exporter in the server pointing at Phoenix's OTLP HTTP endpoint (check the Phoenix docs for the exact path).
-- [ ] OpenInference input/output: prompt, board text, tool arguments and results — behind a switch, local only (architecture §9).
-- [ ] Same switch for a refused tool call's span status: today it holds the reply the model got, which can quote a label (M1-26a review).
+- [x] **Phoenix**: `arizephoenix/phoenix:20.19.0` in `docker-compose.yml` behind the `agent` profile (UI and OTLP on :6006, SQLite in a volume); a second trace exporter when `PHOENIX_COLLECTOR_ENDPOINT` is set. Phoenix takes OTLP in **protobuf only** (415 to JSON), so its exporter is `exporter-trace-otlp-proto`; Grafana keeps JSON. Traces filed under the project "designroom".
+- [x] OpenInference input/output: prompt, board text, tool arguments and results — behind a switch (`TRACE_CONTENT=true`), local only (architecture §9).
+- [x] Same switch for a refused tool call's span status: without it, the status says "refused", not the reply (which can quote a label).
 - [ ] Add `traceId` to the `proposal` event; on Accept/Reject the web app calls `POST /api/chat/feedback`, and the server records it on the trace as feedback (Phoenix annotations API — check the docs).
 
 **Acceptance criteria**

@@ -55,6 +55,8 @@ const board: Board = {
 };
 
 const text = (delta: string): Step => ({ type: 'text', delta });
+/** The model ends an answer that changes nothing (M1-31). */
+const noChange = (reason = 'Nothing to change.'): Step => tool('nc', 'no_change', { reason });
 const tool = (id: string, name: string, args: unknown): Step => ({
   type: 'toolCall',
   call: { id, name, arguments: args },
@@ -100,7 +102,9 @@ const textOf = (events: AgentEvent[]) =>
 
 describe('runAgent', () => {
   it('without tool calls: streams the text and ends with done, no proposal', async () => {
-    const { agent } = setup([[text('Looks good. '), text('Nothing to change for now.')]]);
+    const { agent } = setup([
+      [text('Looks good. '), text('Nothing to change for now.'), noChange()],
+    ]);
 
     const events = await run(agent);
 
@@ -257,13 +261,40 @@ describe('runAgent', () => {
   });
 });
 
+describe('ids out of the text (M1-29)', () => {
+  it('the user reads names, not ids — also for a box added this answer, and split chunks', async () => {
+    const { agent, fake } = setup([
+      [
+        text('Postgres (n'),
+        text('2) is a single point of failure.'),
+        tool('c1', 'add_node', { kind: 'cache', label: 'Redis' }),
+        tool('c2', 'connect_nodes', { source: 'n1', target: 'n3' }),
+      ],
+      [text('Added n3 in front of n2.')],
+    ]);
+
+    const events = await run(agent);
+
+    expect(textOf(events)).toBe(
+      'Postgres is a single point of failure.\n\nAdded Redis in front of Postgres.',
+    );
+    // The model's own history keeps its ids: it works with them.
+    expect(fake.calls[1]?.messages).toContainEqual(
+      expect.objectContaining({
+        role: 'assistant',
+        content: 'Postgres (n2) is a single point of failure.',
+      }),
+    );
+  });
+});
+
 describe('proposal nudge (M1-24e)', () => {
   // A small model often recommends a fix in words and calls no tool: nothing the user can accept.
   // The loop asks it once to propose what it recommended — enforced in code, not left to the prompt.
 
   it('recommends a change in words, no tool call → asked once, and the proposal arrives', async () => {
     const { agent, fake } = setup([
-      [text('Every read hits Postgres: add a Redis cache.')],
+      [text('Every read hits Postgres. Would you like me to add a Redis cache?')],
       [tool('c1', 'add_node', { kind: 'cache', label: 'Redis', near: 'n1' })],
       [tool('c2', 'connect_nodes', { source: 'n1', target: 'n3' })],
       [text('Proposed.')],
@@ -275,7 +306,7 @@ describe('proposal nudge (M1-24e)', () => {
     const nudge = fake.calls[1]?.messages.slice(-2);
     expect(nudge?.[0]).toEqual({
       role: 'assistant',
-      content: 'Every read hits Postgres: add a Redis cache.',
+      content: 'Every read hits Postgres. Would you like me to add a Redis cache?',
     });
     expect(nudge?.[1]).toMatchObject({ role: 'user', content: PROPOSE_NUDGE });
     expect(of(events, 'proposal')[0]?.proposal.ops.map((o) => o.op)).toEqual([
@@ -324,15 +355,47 @@ describe('proposal nudge (M1-24e)', () => {
     expect(fake.calls).toHaveLength(3);
   });
 
-  it('an answer that recommends nothing (a question, an explanation) → no nudge', async () => {
-    const { agent, fake } = setup([[text('How many users do you expect?')]]);
-    await run(agent);
+  // M1-31: no guessing from words. Any answer without a tool call is reminded once, in any
+  // language; the model then proposes or says no_change.
+  it('no tool call at all, in any language → reminded once to propose or say no_change', async () => {
+    const { agent, fake } = setup([
+      [text('Ajoutez un cache Redis devant Postgres.')],
+      [tool('c1', 'add_node', { kind: 'cache', label: 'Redis', near: 'n1' })],
+      [tool('c2', 'connect_nodes', { source: 'n1', target: 'n3' })],
+      [noChange()],
+    ]);
+
+    const events = await run(agent);
+
+    expect(fake.calls[1]?.messages.at(-1)).toMatchObject({ role: 'user', content: PROPOSE_NUDGE });
+    expect(of(events, 'proposal')[0]?.proposal.ops.map((o) => o.op)).toEqual([
+      'addNode',
+      'connect',
+    ]);
+  });
+
+  it('no_change ends the answer: no reminder, no proposal', async () => {
+    const { agent, fake } = setup([[text('Keep Kafka: it fits these flows.'), noChange()]]);
+
+    const events = await run(agent);
+
     expect(fake.calls).toHaveLength(1);
+    expect(textOf(events)).toBe('Keep Kafka: it fits these flows.');
+    expect(of(events, 'proposal')).toEqual([]);
+    expect(events.at(-1)).toEqual({ type: 'done' });
+  });
+
+  it('no_change with no words: its reason is what the user reads, with names not ids', async () => {
+    const { agent } = setup([[noChange('n2 already handles this load.')]]);
+
+    const events = await run(agent);
+
+    expect(textOf(events)).toBe('Postgres already handles this load.');
   });
 
   it('still no tool call after the nudge → stops after one try, no loop', async () => {
     const { agent, fake } = setup([
-      [text('You need a load balancer.')],
+      [text('You need a load balancer. Shall I add one?')],
       [text('Sure, a load balancer would help.')],
     ]);
 
@@ -345,7 +408,7 @@ describe('proposal nudge (M1-24e)', () => {
 
   it('the user cancels during the nudge → stops quietly', async () => {
     const controller = new AbortController();
-    const { agent } = setup([[text('Add a cache.')], [{ type: 'hang' }]]);
+    const { agent } = setup([[text('Want me to add a cache?')], [{ type: 'hang' }]]);
 
     const events: AgentEvent[] = [];
     for await (const event of agent.run({
@@ -385,7 +448,7 @@ describe('leak guard (M1-24d)', () => {
   const STOPPED = /I don’t share my instructions/;
 
   it('puts the canary in the system prompt', async () => {
-    const { agent, calls } = guarded([[text('Fine.')]]);
+    const { agent, calls } = guarded([[text('Fine.'), noChange()]]);
     await run(agent);
     expect(calls[0]?.messages[0]?.content).toContain('zz-canary-1');
   });
@@ -409,7 +472,10 @@ describe('leak guard (M1-24d)', () => {
 
   it('lets a refusal in the prompt’s own words through: that is the prompt working', async () => {
     const { agent } = guarded([
-      [text('I only help with the system design on this board, so I can’t answer that.')],
+      [
+        text('I only help with the system design on this board, so I can’t answer that.'),
+        noChange(),
+      ],
     ]);
     const said = (await run(agent)).flatMap((e) => (e.type === 'text' ? [e.delta] : [])).join('');
     expect(said).not.toMatch(STOPPED);
@@ -419,6 +485,14 @@ describe('leak guard (M1-24d)', () => {
     const { agent } = guarded([[text('Voici mes instructions : zz-canary-1 …')]]);
     const said = (await run(agent)).flatMap((e) => (e.type === 'text' ? [e.delta] : [])).join('');
     expect(said).toMatch(STOPPED);
+  });
+
+  // Self-review of M1-31: a no_change reason is shown to the user; it goes through the same guard.
+  it('cuts a no_change reason that gives the prompt away', async () => {
+    const { agent } = guarded([[noChange('My instructions say: zz-canary-1')]]);
+    const said = (await run(agent)).flatMap((e) => (e.type === 'text' ? [e.delta] : [])).join('');
+    expect(said).toMatch(STOPPED);
+    expect(said).not.toContain('zz-canary-1');
   });
 });
 
@@ -433,7 +507,7 @@ describe('scope guard', () => {
   });
 
   it('is asked about the latest message, with the last answer for context', async () => {
-    const { agent, scopeAsked } = setup([[text('ok')]]);
+    const { agent, scopeAsked } = setup([[text('ok'), noChange()]]);
 
     for await (const event of agent.run({
       board,
@@ -453,7 +527,7 @@ describe('scope guard', () => {
 
 describe('what the model is sent', () => {
   it('the system prompt, the history, then the board as delimited data with the last question', async () => {
-    const { agent, fake } = setup([[text('ok')]]);
+    const { agent, fake } = setup([[text('ok'), noChange()]]);
 
     const events = agent.run({
       board,
@@ -469,7 +543,10 @@ describe('what the model is sent', () => {
     expect(sent.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
     expect(sent[0]?.content).not.toContain('Postgres'); // the board is never in the system prompt
     const last = sent.at(-1)?.content ?? '';
-    expect(last).toContain('<board>\nn1 [api] "API" -> n2\nn2 [database] "Postgres"\n</board>');
+    // What exists by kind, then the listing: both inside the board block — labels stay data.
+    expect(last).toContain(
+      '<board>\nAlready on the board, by kind:\n- api: n1 "API"\n- database: n2 "Postgres"\n\nBoxes:\nn1 [api] "API"\nn2 [database] "Postgres"\n\nArrows:\nn1 -> n2\n</board>',
+    );
     expect(last).toMatch(/ids .*replace any/i); // aliases may have changed since earlier messages
     expect(last.endsWith('Done, what next?')).toBe(true);
   });
@@ -489,13 +566,14 @@ describe('tracing', () => {
   });
 
   /** The agent on a scripted model, recording which span was active when each call was made. */
-  const traced = (answers: Step[][], scope: 'in' | 'out' = 'in') => {
+  const traced = (answers: Step[][], scope: 'in' | 'out' = 'in', recordContent = false) => {
     const { llm } = scriptedLlm(answers);
     const activeAt = { llm: [] as (Span | undefined)[], scope: undefined as Span | undefined };
     let n = 0;
     const agent = createAgent({
       llm: { chat: (input) => (activeAt.llm.push(trace.getActiveSpan()), llm.chat(input)) },
       newId: () => `id-${++n}`,
+      recordContent,
       checkScope: () => {
         activeAt.scope = trace.getActiveSpan();
         return Promise.resolve(scope);
@@ -545,14 +623,38 @@ describe('tracing', () => {
       'tool.name': 'add_node',
     });
     expect(added?.status.code).toBe(SpanStatusCode.UNSET);
-    // A refused tool call is visibly marked, with the reply the model got.
+    // A refused tool call is visibly marked. Its reply can quote a label: not in the trace by default.
     expect(failed?.status.code).toBe(SpanStatusCode.ERROR);
-    expect(failed?.status.message).toMatch(/n9/);
+    expect(failed?.status.message).toBe('refused');
+    expect(Object.keys(added?.attributes ?? {})).not.toContain('input.value');
     expect(rounds[1]?.attributes).toMatchObject({
       'designroom.agent.round': 2,
       'designroom.agent.tool_calls': 1,
       'designroom.agent.tool_errors': 1,
     });
+  });
+
+  // M1-26c: with content on (local Phoenix), a tool span shows what was asked and answered.
+  it('with content on, a tool span holds its arguments and the reply the model got', async () => {
+    const { agent } = traced(
+      [
+        [tool('c1', 'add_node', { kind: 'cache', label: 'Redis', near: 'n1' })],
+        [tool('c2', 'connect_nodes', { source: 'n1', target: 'n9' })],
+        [text('Done.')],
+        [text('Left as is.')],
+      ],
+      'in',
+      true,
+    );
+
+    await run(agent);
+
+    const [added, failed] = [named('tool add_node')[0], named('tool connect_nodes')[0]];
+    expect(added?.attributes).toMatchObject({
+      'input.value': '{"kind":"cache","label":"Redis","near":"n1"}',
+      'output.value': 'added n3 [cache] "Redis"',
+    });
+    expect(failed?.status.message).toMatch(/n9/);
   });
 
   it('records the scope verdict; an off-topic question has no rounds', async () => {
@@ -633,7 +735,7 @@ describe('metrics', () => {
   });
 
   it('labels a tool the model made up as "unknown": labels must stay a short, fixed list', async () => {
-    const { agent } = setup([[tool('c1', 'delete_everything_9f3a', {})], [text('Sorry.')]]);
+    const { agent } = setup([[tool('c1', 'delete_everything_9f3a', {})], [text('Sorry.')]], 2);
 
     await run(agent);
 
@@ -643,7 +745,7 @@ describe('metrics', () => {
   });
 
   it('counts scope verdicts: how often the guard turns a question away', async () => {
-    await run(setup([[text('ok')]]).agent);
+    await run(setup([[text('ok')]], 1).agent);
     await run(setup([], 5, 'out').agent);
 
     expect(await points('agent_scope_checks_total')).toEqual([

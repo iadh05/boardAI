@@ -25,10 +25,26 @@ const EnvSchema = z
     // Traces and metrics (OpenTelemetry): where to send them, e.g. the Grafana LGTM container's OTLP/HTTP port
     // (http://localhost:4318). Off when unset. The standard OTel variable name, so tools know it.
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
+    // Phoenix (M1-26c): the same traces, also sent there (e.g. http://localhost:6006). Phoenix's own
+    // variable name. Needs OTEL_EXPORTER_OTLP_ENDPOINT: it's a second destination, not a switch.
+    PHOENIX_COLLECTOR_ENDPOINT: z.url().optional(),
+    // Prompts, boards, answers and tool arguments in the spans (M1-26c): local Phoenix only. Off
+    // unless exactly "true" (architecture §9).
+    TRACE_CONTENT: z.enum(['true', 'false']).default('false'),
     // The fake model's scripted conversations (JSON): e2e runs and offline work (M1-19b).
     LLM_SCENARIO_FILE: z.string().min(1).optional(),
+    // Every model call, exactly as sent and answered, appended to this local file (JSON Lines):
+    // for diagnosing the agent (M1-28). Holds boards and conversations: off unless set; dev only.
+    LLM_CALL_LOG: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
+    if (env.PHOENIX_COLLECTOR_ENDPOINT && !env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['OTEL_EXPORTER_OTLP_ENDPOINT'],
+        message: 'is required when PHOENIX_COLLECTOR_ENDPOINT is set (traces are off without it)',
+      });
+    }
     if (env.LLM_PROVIDER !== 'fake' && !env.LLM_BASE_URL) {
       ctx.addIssue({
         code: 'custom',
@@ -61,9 +77,13 @@ export type Config = {
   /** Null: error tracking is off. */
   errorTracking: { dsn: string; environment: string } | null;
   /** Null: traces and metrics are not exported (recording them costs almost nothing then). */
-  telemetry: { endpoint: string } | null;
+  telemetry: { endpoint: string; phoenixEndpoint?: string } | null;
+  /** Prompts, boards and answers in the spans (M1-26c): local Phoenix only. */
+  traceContent: boolean;
   /** /api/debug/* mounted: development only. */
   debugRoutes: boolean;
+  /** Where to record every model call (M1-28); null: not recorded. */
+  llmCallLog: string | null;
 };
 
 /** Parses an environment: process.env in production, a plain object in tests. */
@@ -94,7 +114,10 @@ export const loadConfig = (env: Record<string, string | undefined>): Config => {
     ? { dsn: e.SENTRY_DSN, environment: e.SENTRY_ENVIRONMENT }
     : null;
   const telemetry = e.OTEL_EXPORTER_OTLP_ENDPOINT
-    ? { endpoint: e.OTEL_EXPORTER_OTLP_ENDPOINT }
+    ? {
+        endpoint: e.OTEL_EXPORTER_OTLP_ENDPOINT,
+        ...(e.PHOENIX_COLLECTOR_ENDPOINT ? { phoenixEndpoint: e.PHOENIX_COLLECTOR_ENDPOINT } : {}),
+      }
     : null;
   return {
     port: e.PORT,
@@ -102,7 +125,9 @@ export const loadConfig = (env: Record<string, string | undefined>): Config => {
     logLevel: e.LOG_LEVEL,
     errorTracking,
     telemetry,
+    traceContent: e.TRACE_CONTENT === 'true',
     debugRoutes: e.ENABLE_DEBUG_ROUTES === 'true',
+    llmCallLog: e.LLM_CALL_LOG ?? null,
   };
 };
 

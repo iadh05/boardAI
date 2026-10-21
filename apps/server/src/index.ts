@@ -8,11 +8,18 @@ import { createApp, createRealtime } from './main.ts';
 // Starts the real server. Everything testable lives in createApp (main.ts).
 
 const config = loadConfigFromProcess();
-const logger = createLogger({ level: config.logLevel });
+// The SDK reports its own trouble to stdout only: through the OTLP log exporter, a failed log
+// export would report itself again, forever (M1-26d).
+const stdoutOnly = createLogger({ level: config.logLevel });
+// Before the app is built: its spans need the SDK in place. Off without an OTLP endpoint.
+const telemetry = startTelemetry(config.telemetry, stdoutOnly);
+// The app's logger: stdout, and Loki when telemetry is on.
+const logger = createLogger({
+  level: config.logLevel,
+  ...(telemetry.logSink ? { sink: telemetry.logSink } : {}),
+});
 // Started once, before anything can fail: Sentry when SENTRY_DSN is set, else nothing.
 const reporter = createErrorReporter(config.errorTracking);
-// Before the app is built: its spans need the SDK in place. Off without an OTLP endpoint.
-const flushTelemetry = startTelemetry(config.telemetry, logger);
 const app = createApp({ config, logger, reporter });
 const realtime = createRealtime({ logger });
 
@@ -33,8 +40,8 @@ const stop = (signal: string) => {
   realtime.close(); // open WebSockets would keep server.close() waiting forever
   server.close();
   // Send the last batch of spans before the process exits.
-  flushTelemetry().catch((error: unknown) => {
-    logger.warn('could not flush traces', { error: String(error) });
+  telemetry.flush().catch((error: unknown) => {
+    stdoutOnly.warn('could not flush telemetry', { error: String(error) });
   });
 };
 process.on('SIGINT', () => stop('SIGINT'));

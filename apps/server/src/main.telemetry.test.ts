@@ -29,7 +29,9 @@ const config = {
   logLevel: 'info',
   errorTracking: null,
   telemetry: null,
+  traceContent: false,
   debugRoutes: false,
+  llmCallLog: null,
 } as const;
 
 const chat = async (script: Parameters<typeof createFakeProvider>[0], lines: string[] = []) => {
@@ -55,7 +57,14 @@ describe('telemetry of a request', () => {
   it('HTTP → review board → agent → scope check and rounds → LLM calls, in one trace', async () => {
     const spans = await chat([
       [{ type: 'text', delta: 'DESIGN' }], // the scope guard's call
-      [{ type: 'text', delta: 'Looks fine.' }],
+      [
+        { type: 'text', delta: 'Looks fine.' },
+        // Every answer ends with a tool call (M1-31): here, nothing to change.
+        {
+          type: 'toolCall',
+          call: { id: 'c1', name: 'no_change', arguments: { reason: 'The design fits.' } },
+        },
+      ],
     ]);
 
     const byName = (name: string) => spans.find((s) => s.name === name);

@@ -6,6 +6,7 @@ import {
   NodeKindSchema,
   type AgentOp,
   type Board,
+  type NodeKind,
 } from '@designroom/domain';
 import { z } from 'zod';
 import { createAliases, type Aliases } from './aliases.ts';
@@ -26,7 +27,13 @@ export const createDraft = (board: Board): Draft => ({
 });
 
 export type ToolCallInput = { name: string; arguments: unknown };
-export type ToolOutcome = { draft: Draft; ok: boolean; reply: string };
+export type ToolOutcome = {
+  draft: Draft;
+  ok: boolean;
+  reply: string;
+  /** The model said nothing should change (no_change): its reason. */
+  noChange?: string;
+};
 export type ToolDeps = {
   /** New node and edge ids. The agent chooses them, never the model (M1-08 review). */
   newId: () => string;
@@ -60,6 +67,19 @@ const toParameters = (schema: z.ZodType): Record<string, unknown> => {
   return parameters;
 };
 
+/**
+ * The model's way to say "nothing to change" (M1-31). With it, every answer can end with a tool
+ * call, and the loop no longer guesses from words whether an answer recommended something.
+ */
+export const NO_CHANGE = 'no_change';
+const NoChangeArgs = z.object({
+  reason: z
+    .string()
+    .min(1)
+    .max(500)
+    .describe('Why nothing on the board should change now, in one or two sentences.'),
+});
+
 export const AGENT_TOOLS: ToolDefinition[] = [
   {
     name: 'add_node',
@@ -76,12 +96,49 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     description: 'Propose an arrow between two nodes (existing, or added earlier in this answer).',
     parameters: toParameters(ConnectArgs),
   },
+  {
+    name: NO_CHANGE,
+    description:
+      'Say that nothing on the board should change now (the design is fine, or you only answered a question). Call it instead of proposing.',
+    parameters: toParameters(NoChangeArgs),
+  },
 ];
 
 const TOOL_NAMES = AGENT_TOOLS.map((t) => t.name).join(', ');
 
 /** New boxes in one proposal: a review proposes the few fixes that matter (owner's call, M1-24e). */
 export const MAX_NEW_BOXES = 3;
+
+/**
+ * Kinds a design needs once: a second one is a duplicate (M1-29: a RabbitMQ queue next to Kafka).
+ * The words catch the same thing added as a custom or service box ("RabbitMQ broker").
+ */
+const ONE_OF_A_KIND: Partial<Record<NodeKind, RegExp>> = {
+  queue: /\b(queue|kafka|rabbit ?mq|broker|sqs|event (bus|stream)|pub ?\/? ?sub)\b/i,
+  cache: /\b(cache|redis|memcached)\b/i,
+  loadBalancer: /\b(load ?balancer)\b/i,
+  cdn: /\bcdn\b/i,
+};
+
+/** A box that works *with* a queue or cache, not one: "Order queue worker", "Kafka consumer". */
+const ROLE = /\b(worker|consumer|processor|service|warmer|api)\b/i;
+const JOBS = Object.keys(ONE_OF_A_KIND) as NodeKind[];
+
+/**
+ * Which one-of-a-kind job a box does: its kind, or what its label names whatever its kind (a
+ * custom "Kafka", a storage "Analytics cache"; review of #70). None for the boxes around it.
+ */
+const jobOf = (kind: NodeKind, label: string): NodeKind | undefined => {
+  if (kind in ONE_OF_A_KIND) return kind;
+  if (ROLE.test(label)) return undefined;
+  return JOBS.find((job) => ONE_OF_A_KIND[job]?.test(label));
+};
+
+/** The box already doing the job of the one the model wants to add, if any. */
+const alreadyThere = (board: Board, kind: NodeKind, label: string) => {
+  const job = jobOf(kind, label);
+  return job && board.nodes.find((n) => jobOf(n.kind, n.label) === job);
+};
 
 type Planned = { op: AgentOp; aliases: Aliases; describe: (board: Board) => string };
 type Plan = { ok: true; planned: Planned } | { ok: false; reply: string };
@@ -137,6 +194,13 @@ const plan = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
       if (added >= MAX_NEW_BOXES)
         return refuse(
           `A proposal has at most ${MAX_NEW_BOXES} new boxes, and this one has them. Keep the most important fixes: connect the boxes you added, then stop.`,
+        );
+      // The prompt says "never a second queue, cache or load balancer"; measured, the model did it
+      // anyway. In code, with what to do instead (M1-29).
+      const existing = alreadyThere(draft.board, args.data.kind, args.data.label);
+      if (existing)
+        return refuse(
+          `There is already a ${jobOf(existing.kind, existing.label) ?? existing.kind}: ${nodeLine(draft.board, existing.id, draft.aliases)}. Do not add a second one: connect to it, or rename it with update_node to show it does more (e.g. "Redis (cluster, 3 nodes)").`,
         );
       const near = args.data.near === undefined ? undefined : resolve(args.data.near);
       if (args.data.near !== undefined && near === undefined) return unknown(args.data.near);
@@ -194,6 +258,11 @@ export const runToolCall = (draft: Draft, call: ToolCallInput, deps: ToolDeps): 
     return refused(
       `${call.name}: arguments must be a JSON object, e.g. {"kind": "cache", "label": "Redis"}.`,
     );
+  if (call.name === NO_CHANGE) {
+    const args = NoChangeArgs.safeParse(call.arguments);
+    if (!args.success) return refused(argsError(call.name, args.error));
+    return { draft, ok: true, reply: 'Noted: no change.', noChange: args.data.reason };
+  }
   if (draft.ops.length >= MAX_OPS_PER_PROPOSAL)
     return refused(
       `This proposal already has ${MAX_OPS_PER_PROPOSAL} changes; stop and summarise.`,

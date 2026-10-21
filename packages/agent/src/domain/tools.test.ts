@@ -47,8 +47,12 @@ describe('add_node', () => {
   it(`refuses a box beyond ${MAX_NEW_BOXES} per proposal, saying to keep the most important`, () => {
     const deps = ids();
     let draft: Draft = createDraft(board);
-    for (const label of ['Redis', 'Queue', 'Replica']) {
-      draft = runToolCall(draft, call('add_node', { kind: 'cache', label }), deps).draft;
+    for (const [kind, label] of [
+      ['cache', 'Redis'],
+      ['queue', 'Queue'],
+      ['database', 'Replica'],
+    ]) {
+      draft = runToolCall(draft, call('add_node', { kind, label }), deps).draft;
     }
 
     const fourth = runToolCall(draft, call('add_node', { kind: 'cdn', label: 'CDN' }), deps);
@@ -63,6 +67,131 @@ describe('add_node', () => {
       deps,
     );
     expect(connected.ok).toBe(true);
+  });
+});
+
+// M1-29: on the Uber board, Qwen added a RabbitMQ queue next to Kafka (4/10 runs had a duplicate),
+// even right after writing "adding a second queue would over-engineer". The prompt says never;
+// the tool makes it hold, and tells the model what to do instead.
+describe('add_node: no second queue, cache, load balancer or CDN', () => {
+  const withKafka: Board = {
+    nodes: [
+      ...board.nodes,
+      { id: 'uuid-kafka', kind: 'queue', label: 'Event stream (Kafka)', position: { x: 0, y: 0 } },
+    ],
+    edges: board.edges,
+  };
+
+  it('refuses a box of a kind already on the board, naming the one to use', () => {
+    const { ok, reply, draft } = runToolCall(
+      createDraft(withKafka),
+      call('add_node', { kind: 'queue', label: 'RabbitMQ' }),
+      ids(),
+    );
+
+    expect(ok).toBe(false);
+    expect(reply).toContain('n3 [queue] "Event stream (Kafka)"');
+    expect(reply).toMatch(/connect to it/i);
+    expect(draft.ops).toEqual([]);
+  });
+
+  it('sees through the kind: a custom or service box named after one counts too', () => {
+    const custom = runToolCall(
+      createDraft(withKafka),
+      call('add_node', { kind: 'custom', label: 'RabbitMQ broker' }),
+      ids(),
+    );
+    const service = runToolCall(
+      createDraft(withKafka),
+      call('add_node', { kind: 'service', label: 'Notifications queue' }),
+      ids(),
+    );
+
+    expect(custom.ok).toBe(false);
+    expect(service.ok).toBe(false);
+  });
+
+  it('counts boxes added earlier in the same proposal', () => {
+    const deps = ids();
+    const first = runToolCall(
+      createDraft(board),
+      call('add_node', { kind: 'cache', label: 'Redis' }),
+      deps,
+    );
+    const second = runToolCall(
+      first.draft,
+      call('add_node', { kind: 'cache', label: 'Memcached' }),
+      deps,
+    );
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(false);
+    expect(second.reply).toContain('n3 [cache] "Redis"');
+  });
+
+  it('lets other kinds repeat: a second database or service is a normal fix', () => {
+    const replica = runToolCall(
+      createDraft(withKafka),
+      call('add_node', { kind: 'database', label: 'Postgres replica' }),
+      ids(),
+    );
+    const worker = runToolCall(
+      createDraft(withKafka),
+      call('add_node', { kind: 'service', label: 'Order worker' }),
+      ids(),
+    );
+
+    expect(replica.ok).toBe(true);
+    expect(worker.ok).toBe(true);
+  });
+
+  // Review of #70: a worker that consumes the queue is a normal fix, not a second queue.
+  it('a worker, consumer or service named after the queue it reads is not a duplicate', () => {
+    for (const label of ['Order queue worker', 'Kafka consumer', 'Cache warmer service']) {
+      const added = runToolCall(
+        createDraft(withKafka),
+        call('add_node', { kind: 'service', label }),
+        ids(),
+      );
+      expect(added.ok, label).toBe(true);
+    }
+  });
+
+  // Review of #70: people draw named products as custom boxes.
+  it('sees an existing custom box named Kafka as the queue', () => {
+    const customKafka: Board = {
+      nodes: [
+        ...board.nodes,
+        { id: 'uuid-kafka', kind: 'custom', label: 'Kafka', position: { x: 0, y: 0 } },
+      ],
+      edges: board.edges,
+    };
+    const second = runToolCall(
+      createDraft(customKafka),
+      call('add_node', { kind: 'queue', label: 'RabbitMQ' }),
+      ids(),
+    );
+
+    expect(second.ok).toBe(false);
+    expect(second.reply).toContain('"Kafka"');
+  });
+
+  // Measured on the Uber board: a storage box labelled "…Cache" went through next to Redis.
+  it('reads the label whatever the kind', () => {
+    const withRedis: Board = {
+      nodes: [
+        ...board.nodes,
+        { id: 'uuid-redis', kind: 'cache', label: 'Redis GEO', position: { x: 0, y: 0 } },
+      ],
+      edges: board.edges,
+    };
+    const storage = runToolCall(
+      createDraft(withRedis),
+      call('add_node', { kind: 'storage', label: 'Trip Analytics Cache' }),
+      ids(),
+    );
+
+    expect(storage.ok).toBe(false);
   });
 });
 
@@ -227,9 +356,9 @@ describe('mistakes the model makes', () => {
 });
 
 describe('the tool list', () => {
-  it('offers add, update and connect — and nothing that deletes', () => {
+  it('offers add, update, connect and no_change — and nothing that deletes', () => {
     const names = AGENT_TOOLS.map((t) => t.name);
-    expect(names).toEqual(['add_node', 'update_node', 'connect_nodes']);
+    expect(names).toEqual(['add_node', 'update_node', 'connect_nodes', 'no_change']);
     expect(names.some((n) => /delete|remove/.test(n))).toBe(false);
   });
 
@@ -253,5 +382,24 @@ describe('the tool list', () => {
 
     const applied = applyOps(board, draft.ops);
     expect(applied.ok).toBe(true);
+  });
+});
+
+describe('no_change (M1-31)', () => {
+  it('records nothing and hands back the reason', () => {
+    const outcome = runToolCall(
+      createDraft(board),
+      call('no_change', { reason: 'The design fits the load.' }),
+      ids(),
+    );
+
+    expect(outcome).toMatchObject({ ok: true, noChange: 'The design fits the load.' });
+    expect(outcome.draft.ops).toEqual([]);
+  });
+
+  it('needs a reason', () => {
+    const outcome = runToolCall(createDraft(board), call('no_change', { reason: '' }), ids());
+    expect(outcome.ok).toBe(false);
+    expect(outcome.reply).toMatch(/reason/);
   });
 });

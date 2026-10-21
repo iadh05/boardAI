@@ -8,7 +8,7 @@ import {
   type Span,
 } from '@opentelemetry/api';
 import { LlmError } from './errors.ts';
-import type { Usage } from './types.ts';
+import type { LlmMessage, LlmToolCall, Usage } from './types.ts';
 
 // One span per LLM call (architecture §9). Only the OpenTelemetry *API* is used here: it does
 // nothing until the server registers an SDK, so tests and other users of this package pay nothing.
@@ -43,6 +43,38 @@ export const usageAttributes = (usage: Usage): Attributes => ({
     ? {}
     : { 'designroom.llm.time_to_first_token_ms': usage.timeToFirstTokenMs }),
 });
+
+/**
+ * What was sent, as OpenInference attributes (M1-26c): Phoenix shows them as the call's messages.
+ * Recorded only when the server turns content on (local Phoenix): they hold prompts and boards.
+ */
+export const inputAttributes = (messages: readonly LlmMessage[]): Attributes => {
+  const attributes: Attributes = {};
+  messages.forEach((m, i) => {
+    attributes[`llm.input_messages.${i}.message.role`] = m.role;
+    attributes[`llm.input_messages.${i}.message.content`] = m.content;
+  });
+  const question = messages.findLast((m) => m.role === 'user');
+  if (question) attributes['input.value'] = question.content;
+  return attributes;
+};
+
+/** What came back: the text and the tool calls (M1-26c). */
+export const outputAttributes = (text: string, toolCalls: readonly LlmToolCall[]): Attributes => {
+  const out = 'llm.output_messages.0.message';
+  const attributes: Attributes = {
+    [`${out}.role`]: 'assistant',
+    [`${out}.content`]: text,
+    'output.value': text,
+  };
+  toolCalls.forEach((call, i) => {
+    attributes[`${out}.tool_calls.${i}.tool_call.function.name`] = call.name;
+    attributes[`${out}.tool_calls.${i}.tool_call.function.arguments`] = JSON.stringify(
+      call.arguments,
+    );
+  });
+  return attributes;
+};
 
 /** A failure marks the span as an error, except a cancel: a closed tab is normal use. */
 export const recordFailure = (span: Span, error: unknown) => {

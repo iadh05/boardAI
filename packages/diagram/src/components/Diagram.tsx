@@ -389,7 +389,8 @@ function DiagramCanvas({
               {/* Panels first: they come before the zoom controls when tabbing. */}
               {children}
               <Background variant={BackgroundVariant.Dots} gap={snapGrid ?? 20} />
-              <Controls />
+              {/* Its fit button fits around the panels too, like the fit on open (found by hand). */}
+              <Controls onFitView={fitAroundPanels} />
               {minimap && <MiniMap pannable zoomable />}
             </ReactFlow>
           </RoutesContext>
