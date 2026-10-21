@@ -23,6 +23,7 @@ export {
   createAnthropicProvider,
   type AnthropicOptions,
 } from './providers/anthropic.ts';
+export { createFallbackProvider, type FallbackOptions } from './providers/fallback.ts';
 export { createFakeProvider, type FakeProvider, type FakeStep } from './providers/fake.ts';
 export {
   createScenarioProvider,
