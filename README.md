@@ -23,9 +23,9 @@ This is a **learning project**. Every milestone is meant to teach one big idea (
 
 | What | Start | Open |
 |---|---|---|
-| Web + API (dev) | `pnpm dev`, plus `docker compose up -d` for Nginx | http://localhost:8080 |
+| Web + API (dev) | `pnpm dev`, plus `docker compose up -d` for Nginx | http://localhost:8080 (this machine only; `EDGE_BIND=0.0.0.0` in the root `.env` opens it to your network) |
 | Production preview, real model | `pnpm --filter @designroom/web build && pnpm --filter @designroom/web exec vite preview --port 4180` with `API_URL=http://localhost:3000` | http://localhost:4180 |
-| Grafana: the "DesignRoom overview" (home), "AI reviewer", traces, alerts | `docker compose up -d`; set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` in `apps/server/.env` | http://localhost:3001 (admin / admin) |
+| Grafana: the "DesignRoom overview" (home), "AI reviewer", traces, alerts | `docker compose up -d`; set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` in `apps/server/.env` | http://localhost:3001 (admin / `GRAFANA_ADMIN_PASSWORD` from the root `.env`, `admin` when unset) |
 | GlitchTip: error tracking (Sentry SDKs, nothing leaves the PC) | `docker compose --profile errors up -d`, then once `node scripts/glitchtip-setup.ts` | http://localhost:8000 (login in the root `.env`) |
 
 ### Watching it all: the overview

@@ -25,7 +25,7 @@
 | Coding rules | [docs/rules/](rules/) — general, frontend, backend | One place for conventions; read by humans and AI assistants (via `CLAUDE.md`) |
 | CI | GitHub Actions on every PR: lint, typecheck, unit tests, Playwright e2e (§15) | Nothing merges red |
 | Review | PR template + review/fix workflow ([docs/workflow.md](workflow.md)) | Learn to give and answer review comments |
-| Errors | **Sentry** (FE + BE) | Stack traces, context, alerting |
+| Errors | **GlitchTip**, self-hosted, through the **Sentry SDKs** (FE + BE) | Stack traces, context, alerting; nothing leaves the PC. Sentry-compatible, so moving to sentry.io is a DSN change |
 | Metrics / traces / logs | **OpenTelemetry → Grafana** (local LGTM stack in Docker) | Vendor-neutral instrumentation; dashboards for API + LLM |
 | Agent observability | **Arize Phoenix**, self-hosted (1 container) — receives the same OTel traces | See prompts, rounds, tool calls and Accept/Reject feedback per request. Chosen over Langfuse because Langfuse's self-host stack (Postgres + ClickHouse + Redis + storage) is too heavy for a 16 GB RAM machine. Re-evaluate at M5. |
 | Saving | **None in M1** | Persistence comes with Yjs in M2 |
@@ -54,7 +54,7 @@ flowchart LR
 
   Nginx["Nginx<br/>localhost:8080<br/>routing · SSE · rate limit"]
   Ollama["Ollama · Qwen<br/>localhost:11434"]
-  Sentry[("Sentry")]
+  Sentry[("GlitchTip<br/>(Sentry SDKs)")]
   Grafana[("Grafana LGTM<br/>Docker")]
 
   Browser -- "http://localhost:8080" --> Nginx
@@ -337,12 +337,12 @@ Could become a standalone service later (same idea as open-source AI gateways su
 
 | Tool | Where | What |
 |---|---|---|
-| **Sentry** | web (`@sentry/react`) + server (`@sentry/node`) | Unhandled errors with stack trace, React error boundary, request context. Disabled when `SENTRY_DSN` is unset, so tests and offline dev just work. |
+| **GlitchTip** (Sentry SDKs) | web (`@sentry/react`) + server (`@sentry/node`), sending to a local GlitchTip (`docker compose --profile errors`) | Unhandled errors with stack trace, React error boundary, request context. Disabled when `SENTRY_DSN` is unset, so tests and offline dev just work. |
 | **OpenTelemetry** | server + ai-gateway | Traces: HTTP request → `reviewBoard` → agent round → LLM call. Metrics: HTTP duration, `llm_request_duration`, `llm_time_to_first_token`, `llm_tokens_total`, `agent_rounds`, `tool_call_errors_total`. Logs: JSON with trace id. |
 | **Grafana** | local, `grafana/otel-lgtm` in `docker-compose.yml` | One container with OTel collector + Prometheus-compatible metrics + Loki (logs) + Tempo (traces) + Grafana. One dashboard "AI reviewer". |
 | **Phoenix** | local, one container in `docker-compose.yml` (UI on :6006, OTLP over HTTP) | Agent view per request: prompt, board text, each round, tool calls with arguments/results/errors, tokens, latency. Accept/Reject recorded as feedback on the trace. Later: datasets + experiments for M5. |
 
-- Split of jobs: **Sentry = "something broke, here's why"**; **Grafana = "how is the system behaving over time"**; **Phoenix = "what did the agent do and why"**.
+- Split of jobs: **GlitchTip = "something broke, here's why"**; **Grafana = "how is the system behaving over time"**; **Phoenix = "what did the agent do and why"**.
 - The server's OTel SDK has **two trace exporters**: Grafana (all spans) and Phoenix (same spans; Phoenix shows the LLM/agent ones best). A standalone OTel Collector fanning out to both is the cleaner setup later — one exporter in the app, routing in the collector.
 - Span attributes follow the **OpenInference / OTel GenAI** naming (model name, token counts, tool name, tool arguments, input/output) so Phoenix renders them as LLM and tool spans — and so a later switch to Langfuse is just a different exporter endpoint.
 - Prompt and board text are recorded in spans **locally only**; if traces ever go to a hosted service, make this switchable.
@@ -412,7 +412,7 @@ sequenceDiagram
 4. **Which Qwen model** → default `qwen3.5:9b`, fallback `qwen3:14b` (both fit fully in 16 GB; `qwen3.6` / `qwen3.8` start at 27B and don't). Qwen's model card reports BFCL-V4 66.1 and TAU2-Bench 79.1 for Qwen3.5-9B — ahead of Qwen3-30B-A3B-Thinking-2507 (42.4 / 41.9), which is itself at least as strong as Qwen3-14B. Vendor numbers; the M1-15 spike confirms on our own tool calls. Thinking is **on by default** in Qwen3.5 and the `/no_think` switch no longer works — the ai-gateway must turn it off through the API. **Answered by M1-15** ([spike](spikes/M1-15-qwen.md)): `qwen3.5:9b` (64 tok/s vs 41, same 3/3, 6.1 vs 11.7 GB); thinking off with `reasoning_effort: "none"` on the OpenAI-compatible endpoint (`think: false` is ignored there) — thinking added 4–12 s per answer for no better calls.
 5. **Chat lost on refresh** in M1 — acceptable?
 6. **Observability timing** — Sentry + OTel/Grafana in M1 (planned as the last tickets) or move OTel/Grafana to M3?
-7. **Sentry** — SaaS free tier (simplest) or self-hosted?
+7. **Sentry** — SaaS free tier (simplest) or self-hosted? **Answered (M1-25b):** self-hosted GlitchTip, through the Sentry SDKs.
 
 ## 14. Edge proxy — Nginx
 
