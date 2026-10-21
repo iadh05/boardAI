@@ -1,0 +1,571 @@
+{
+  "nodes": [
+    {
+      "id": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "kind": "storage",
+      "label": "Blackboard: findings this session",
+      "position": {
+        "x": -20,
+        "y": 1240
+      }
+    },
+    {
+      "id": "fbcc280f-d920-4713-ac9f-fc6c4b08cdcc",
+      "kind": "storage",
+      "label": "Board history (Yjs)",
+      "position": {
+        "x": -20,
+        "y": 1380
+      }
+    },
+    {
+      "id": "1f19ab20-e1c9-4d8c-b1fc-aaaba51249eb",
+      "kind": "storage",
+      "label": "Past decisions + patterns (RAG)",
+      "position": {
+        "x": -20,
+        "y": 1520
+      }
+    },
+    {
+      "id": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
+      "kind": "client",
+      "label": "You (chat + board)",
+      "position": {
+        "x": 0,
+        "y": 300
+      }
+    },
+    {
+      "id": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "kind": "service",
+      "label": "Main agent: talks with you",
+      "position": {
+        "x": 300,
+        "y": 300
+      }
+    },
+    {
+      "id": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "kind": "service",
+      "label": "Planner (Draw mode)",
+      "position": {
+        "x": 600,
+        "y": 100
+      }
+    },
+    {
+      "id": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "kind": "service",
+      "label": "Architect (lead): owns, arbitrates",
+      "position": {
+        "x": 600,
+        "y": 300
+      }
+    },
+    {
+      "id": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "kind": "service",
+      "label": "Critic (checks the proposal)",
+      "position": {
+        "x": 600,
+        "y": 500
+      }
+    },
+    {
+      "id": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "kind": "service",
+      "label": "Scribe (decisions, why)",
+      "position": {
+        "x": 600,
+        "y": 700
+      }
+    },
+    {
+      "id": "f95fbd2a-d7db-4033-aaec-39b0451df2b1",
+      "kind": "storage",
+      "label": "Draft board",
+      "position": {
+        "x": 600,
+        "y": 900
+      }
+    },
+    {
+      "id": "dc13c8cb-86e9-4ccd-a0c7-77139e5a948c",
+      "kind": "custom",
+      "label": "AI gateway → Qwen",
+      "position": {
+        "x": 300,
+        "y": 900
+      }
+    },
+    {
+      "id": "548886f8-01ea-4bb5-aa13-a83691838b82",
+      "kind": "service",
+      "label": "Data",
+      "position": {
+        "x": 960,
+        "y": 120
+      }
+    },
+    {
+      "id": "aedd827a-1417-4ac4-bfdf-1981c257ea42",
+      "kind": "service",
+      "label": "Security",
+      "position": {
+        "x": 960,
+        "y": 240
+      }
+    },
+    {
+      "id": "3345c732-09c1-4d2e-8db8-4c20b90645f0",
+      "kind": "service",
+      "label": "Traffic",
+      "position": {
+        "x": 960,
+        "y": 360
+      }
+    },
+    {
+      "id": "1eb02d00-4e57-42e7-bb6d-62ac059845ad",
+      "kind": "service",
+      "label": "Chaos",
+      "position": {
+        "x": 960,
+        "y": 480
+      }
+    },
+    {
+      "id": "d1adca11-3255-4b9a-9f11-f94724323bc7",
+      "kind": "service",
+      "label": "Cost (financier)",
+      "position": {
+        "x": 960,
+        "y": 600
+      }
+    },
+    {
+      "id": "bf3f4d6e-4097-496e-bfa9-2d31afdb900b",
+      "kind": "service",
+      "label": "DevOps",
+      "position": {
+        "x": 960,
+        "y": 720
+      }
+    },
+    {
+      "id": "1753943d-5797-4ef7-b569-7d86c04d545b",
+      "kind": "service",
+      "label": "Researcher (web)",
+      "position": {
+        "x": 960,
+        "y": 840
+      }
+    },
+    {
+      "id": "c9f25358-0652-4be4-afbb-acd06a67db15",
+      "kind": "service",
+      "label": "Stack & Cloud (AWS/Azure/GCP)",
+      "position": {
+        "x": 960,
+        "y": 960
+      }
+    },
+    {
+      "id": "cdb01535-76fb-464e-ace4-7fced575a467",
+      "kind": "storage",
+      "label": "Requirements card",
+      "position": {
+        "x": -20,
+        "y": 1660
+      }
+    },
+    {
+      "id": "4aa31cc2-ad6e-4f30-964c-a81aed11b6d0",
+      "kind": "storage",
+      "label": "Decision log → ADRs",
+      "position": {
+        "x": -20,
+        "y": 1780
+      }
+    },
+    {
+      "id": "6c6b0455-2a82-4d59-84d8-69a7fe31e9fe",
+      "kind": "custom",
+      "label": "F1 Question: \"what is a CDN?\"",
+      "position": {
+        "x": 280,
+        "y": -500
+      }
+    },
+    {
+      "id": "5d388de4-dec5-457c-981c-152a0c1de30d",
+      "kind": "custom",
+      "label": "F2 Review: \"review my design\"",
+      "position": {
+        "x": 600,
+        "y": -500
+      }
+    },
+    {
+      "id": "2e8ce542-2364-4551-9363-688094c00b72",
+      "kind": "custom",
+      "label": "F3 Draft: \"design me Uber Eats\"",
+      "position": {
+        "x": 280,
+        "y": -390
+      }
+    },
+    {
+      "id": "607e6b40-1071-48f5-9844-a5719097f614",
+      "kind": "custom",
+      "label": "F4 Change: \"add a cache\"",
+      "position": {
+        "x": 600,
+        "y": -390
+      }
+    },
+    {
+      "id": "3d5745b8-eb3b-43b4-805f-9bb35ecda433",
+      "kind": "custom",
+      "label": "F5 Deep dive: \"is it secure?\"",
+      "position": {
+        "x": 280,
+        "y": -280
+      }
+    },
+    {
+      "id": "57e1731c-0329-44cb-a11f-142c1364b48f",
+      "kind": "custom",
+      "label": "F6 Decision: Accept / Reject",
+      "position": {
+        "x": 600,
+        "y": -280
+      }
+    },
+    {
+      "id": "43cff4a9-8d79-4bcd-9287-d21c85030cb1",
+      "kind": "custom",
+      "label": "F7 Disagree: \"keep RabbitMQ\"",
+      "position": {
+        "x": 280,
+        "y": -170
+      }
+    },
+    {
+      "id": "4c180838-a6ce-4664-bc31-04090fc86111",
+      "kind": "custom",
+      "label": "F8 Recall: \"what did we decide?\"",
+      "position": {
+        "x": 600,
+        "y": -170
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "48c40122-cc94-416b-b6b5-55a059a50ff8",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "label": "read / write findings",
+      "mode": "async"
+    },
+    {
+      "id": "f0ad638f-003e-4f94-a670-c564dc444dd9",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "fbcc280f-d920-4713-ac9f-fc6c4b08cdcc",
+      "label": "what changed?"
+    },
+    {
+      "id": "12e4d72e-118f-4685-87b4-854943ffa522",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "1f19ab20-e1c9-4d8c-b1fc-aaaba51249eb",
+      "label": "retrieve"
+    },
+    {
+      "id": "24759b04-cdba-43e7-931a-66edb1005f5d",
+      "source": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
+      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "label": "question"
+    },
+    {
+      "id": "8a883208-7139-498b-9084-6586ff78c453",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "plan"
+    },
+    {
+      "id": "0268b6ae-9ad1-492e-9aac-cd718bc6bbcb",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "f95fbd2a-d7db-4033-aaec-39b0451df2b1",
+      "label": "add / connect"
+    },
+    {
+      "id": "e7aa6959-10a3-401f-a030-8edb06ebc5e8",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "label": "proposal"
+    },
+    {
+      "id": "ffb5ff84-2e1b-4047-b390-f726376dc820",
+      "source": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "target": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
+      "label": "ghost boxes",
+      "mode": "async"
+    },
+    {
+      "id": "11364e62-283f-4961-903b-9e24c36f0c7e",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "label": "decisions",
+      "mode": "async"
+    },
+    {
+      "id": "594cba60-ba76-4b3d-ade5-7228f71c47d0",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "dc13c8cb-86e9-4ccd-a0c7-77139e5a948c",
+      "label": "every agent calls it"
+    },
+    {
+      "id": "4758ae41-54cc-4a78-a9a0-85d7864b12a6",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "548886f8-01ea-4bb5-aa13-a83691838b82"
+    },
+    {
+      "id": "b7405409-1853-4164-b832-5c9dec5678db",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "aedd827a-1417-4ac4-bfdf-1981c257ea42"
+    },
+    {
+      "id": "a2fd70ea-1d26-44e1-a5fc-3a265e81aea3",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "3345c732-09c1-4d2e-8db8-4c20b90645f0"
+    },
+    {
+      "id": "a7aff0a9-7d49-4f7b-83f9-1118d7a119a9",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "1eb02d00-4e57-42e7-bb6d-62ac059845ad"
+    },
+    {
+      "id": "6e67175a-d9c1-41f3-8860-80db66d56487",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "d1adca11-3255-4b9a-9f11-f94724323bc7"
+    },
+    {
+      "id": "0d908d70-64dc-4119-89a0-85a6408d48f1",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "bf3f4d6e-4097-496e-bfa9-2d31afdb900b"
+    },
+    {
+      "id": "1df99620-cb3e-4300-acd8-f100560e052f",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "1753943d-5797-4ef7-b569-7d86c04d545b"
+    },
+    {
+      "id": "a050144a-705c-49da-8aa1-502bde1a8c64",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "c9f25358-0652-4be4-afbb-acd06a67db15",
+      "label": "which tech?"
+    },
+    {
+      "id": "3d27ceb9-e798-44dc-ab18-e45518773e7c",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "cdb01535-76fb-464e-ace4-7fced575a467",
+      "label": "read every time"
+    },
+    {
+      "id": "d86297cf-2c84-4b65-80a5-462ff4d6cbb5",
+      "source": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "target": "4aa31cc2-ad6e-4f30-964c-a81aed11b6d0",
+      "label": "record_decision"
+    },
+    {
+      "id": "b42d7f91-9079-4a16-873b-82ded4beabca",
+      "source": "4aa31cc2-ad6e-4f30-964c-a81aed11b6d0",
+      "target": "1f19ab20-e1c9-4d8c-b1fc-aaaba51249eb",
+      "label": "indexed",
+      "mode": "async"
+    },
+    {
+      "id": "9a951b9e-b81e-47a0-acc4-b40fb98d4845",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "6c6b0455-2a82-4d59-84d8-69a7fe31e9fe"
+    },
+    {
+      "id": "e20c1731-286c-48eb-9faa-ccea5a0ac19a",
+      "source": "6c6b0455-2a82-4d59-84d8-69a7fe31e9fe",
+      "target": "1753943d-5797-4ef7-b569-7d86c04d545b",
+      "label": "best practice?"
+    },
+    {
+      "id": "5b0c2826-4b2f-4650-a6d7-2036102546bf",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "5d388de4-dec5-457c-981c-152a0c1de30d"
+    },
+    {
+      "id": "25256c50-fa05-4d8c-a6bf-858d6caeab8e",
+      "source": "5d388de4-dec5-457c-981c-152a0c1de30d",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "all specialists"
+    },
+    {
+      "id": "57eb3dd5-000d-43d4-9a47-2d3961979cad",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "2e8ce542-2364-4551-9363-688094c00b72"
+    },
+    {
+      "id": "411a80e7-0220-4d5d-995a-cfd447aa5c32",
+      "source": "2e8ce542-2364-4551-9363-688094c00b72",
+      "target": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "label": "needs first"
+    },
+    {
+      "id": "22ab1cdb-146d-4dba-81e2-77d7d1fbfc7d",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "607e6b40-1071-48f5-9844-a5719097f614"
+    },
+    {
+      "id": "80ecfe10-6463-43eb-9ed4-2252b1b5cd5f",
+      "source": "607e6b40-1071-48f5-9844-a5719097f614",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "just that, checked"
+    },
+    {
+      "id": "e39c90ec-e0ee-4975-9253-7b256d6a1b9f",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "3d5745b8-eb3b-43b4-805f-9bb35ecda433"
+    },
+    {
+      "id": "c060ba3f-fa18-4337-8c49-97651b353b36",
+      "source": "3d5745b8-eb3b-43b4-805f-9bb35ecda433",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "one specialist"
+    },
+    {
+      "id": "dc423762-c0ac-4177-aa25-08ef9a7d680d",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "57e1731c-0329-44cb-a11f-142c1364b48f"
+    },
+    {
+      "id": "b1f89ccd-889e-44f1-944a-d51ea094187c",
+      "source": "57e1731c-0329-44cb-a11f-142c1364b48f",
+      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "label": "record"
+    },
+    {
+      "id": "7fd37e9c-f940-49a2-b28d-304fde6dc98c",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "43cff4a9-8d79-4bcd-9287-d21c85030cb1"
+    },
+    {
+      "id": "59f466c0-3378-41a4-8128-e6deb1189f9b",
+      "source": "43cff4a9-8d79-4bcd-9287-d21c85030cb1",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "with memory"
+    },
+    {
+      "id": "61a2f4a8-df7d-499f-948b-2bc3492cbf4f",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "4c180838-a6ce-4664-bc31-04090fc86111"
+    },
+    {
+      "id": "19fc08bf-a4f7-45b3-856b-9a2c4ee15ed7",
+      "source": "4c180838-a6ce-4664-bc31-04090fc86111",
+      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "label": "decision log"
+    },
+    {
+      "id": "89897695-146e-4b0a-a81d-3a0cfb05a918",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "label": "keeps the thread",
+      "mode": "async"
+    }
+  ],
+  "zones": [
+    {
+      "id": "75e3f852-0c5b-40a8-8535-05dee5423fe6",
+      "label": "Memory (shared, in the room)",
+      "position": {
+        "x": -60,
+        "y": 1180
+      },
+      "size": {
+        "width": 280,
+        "height": 780
+      }
+    },
+    {
+      "id": "cc0a3f05-60e0-46de-8436-77d8d3e56309",
+      "label": "You",
+      "position": {
+        "x": -40,
+        "y": 240
+      },
+      "size": {
+        "width": 280,
+        "height": 180
+      }
+    },
+    {
+      "id": "7c50bbcf-aa38-430e-95e6-1e5c71150b6f",
+      "label": "Main agent (understands, asks, explains)",
+      "position": {
+        "x": 260,
+        "y": 240
+      },
+      "size": {
+        "width": 300,
+        "height": 180
+      }
+    },
+    {
+      "id": "f4d13faa-3360-4241-acb0-c12b5d3650d6",
+      "label": "Agents",
+      "position": {
+        "x": 560,
+        "y": 40
+      },
+      "size": {
+        "width": 320,
+        "height": 780
+      }
+    },
+    {
+      "id": "6cd086bf-db4e-4627-82dc-bf4ec0f2052d",
+      "label": "Model",
+      "position": {
+        "x": 260,
+        "y": 840
+      },
+      "size": {
+        "width": 300,
+        "height": 180
+      }
+    },
+    {
+      "id": "1c7e4a2c-54cf-46c5-8e9d-21616d788dc8",
+      "label": "Lenses (their tools: Lenses board)",
+      "position": {
+        "x": 920,
+        "y": -60
+      },
+      "size": {
+        "width": 320,
+        "height": 1140
+      }
+    },
+    {
+      "id": "bfecf212-7220-4c06-bc2b-f33fc78907a5",
+      "label": "Flows (what you ask → who works)",
+      "position": {
+        "x": 240,
+        "y": -560
+      },
+      "size": {
+        "width": 680,
+        "height": 470
+      }
+    }
+  ]
+}

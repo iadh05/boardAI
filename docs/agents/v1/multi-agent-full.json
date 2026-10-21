@@ -1,0 +1,945 @@
+{
+  "nodes": [
+    {
+      "id": "d81e0ea2-d4d9-4917-913c-a0ff476a7d8e",
+      "kind": "client",
+      "label": "You (chat + board)",
+      "position": {
+        "x": 0,
+        "y": 300
+      }
+    },
+    {
+      "id": "2872594e-76e5-4f9e-b0e0-9ba851dc1282",
+      "kind": "service",
+      "label": "Router: question / review / draft",
+      "position": {
+        "x": 300,
+        "y": 300
+      }
+    },
+    {
+      "id": "9279678b-7838-4edb-8107-ab870b5506b9",
+      "kind": "service",
+      "label": "Planner (Draw mode)",
+      "position": {
+        "x": 580,
+        "y": 60
+      }
+    },
+    {
+      "id": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "kind": "service",
+      "label": "Architect (lead): owns, arbitrates",
+      "position": {
+        "x": 580,
+        "y": 260
+      }
+    },
+    {
+      "id": "8672c1f3-316d-4d09-8080-a3c5f414c04d",
+      "kind": "service",
+      "label": "Critic (checks the proposal)",
+      "position": {
+        "x": 580,
+        "y": 460
+      }
+    },
+    {
+      "id": "cf222545-5bc2-427b-a385-8338b292dfcc",
+      "kind": "service",
+      "label": "Scribe (decisions, why)",
+      "position": {
+        "x": 580,
+        "y": 660
+      }
+    },
+    {
+      "id": "fe62f755-a2b2-4ed5-a67f-c501f1f4b7f1",
+      "kind": "service",
+      "label": "Interviewer",
+      "position": {
+        "x": 920,
+        "y": 0
+      }
+    },
+    {
+      "id": "69631496-c38f-4127-9c35-3c1e3550cc0f",
+      "kind": "service",
+      "label": "Data",
+      "position": {
+        "x": 920,
+        "y": 120
+      }
+    },
+    {
+      "id": "d0e22bbf-8d20-4fc4-b4cf-756e3628d685",
+      "kind": "service",
+      "label": "Security",
+      "position": {
+        "x": 920,
+        "y": 240
+      }
+    },
+    {
+      "id": "e687bcc4-6051-4423-ad5c-2b319341c052",
+      "kind": "service",
+      "label": "Traffic",
+      "position": {
+        "x": 920,
+        "y": 360
+      }
+    },
+    {
+      "id": "065e4398-f5fc-4803-b751-e5ce3faddbeb",
+      "kind": "service",
+      "label": "Chaos",
+      "position": {
+        "x": 920,
+        "y": 480
+      }
+    },
+    {
+      "id": "08b201e5-417f-40b4-aaa5-54f530716f85",
+      "kind": "service",
+      "label": "Cost (financier)",
+      "position": {
+        "x": 920,
+        "y": 600
+      }
+    },
+    {
+      "id": "9b71d39c-caa4-4345-9560-e055fde60ea9",
+      "kind": "service",
+      "label": "DevOps",
+      "position": {
+        "x": 920,
+        "y": 720
+      }
+    },
+    {
+      "id": "30a6375e-67ea-473f-8979-716184733d7c",
+      "kind": "service",
+      "label": "Researcher (web)",
+      "position": {
+        "x": 920,
+        "y": 840
+      }
+    },
+    {
+      "id": "6b53abe3-2e8f-4f21-b7c5-6e4e13f80053",
+      "kind": "storage",
+      "label": "Requirements card",
+      "position": {
+        "x": 1440,
+        "y": 320
+      }
+    },
+    {
+      "id": "2811d035-2a5f-42ef-9806-b1b95a2b62ee",
+      "kind": "custom",
+      "label": "Design rules (code)",
+      "position": {
+        "x": 1440,
+        "y": 560
+      }
+    },
+    {
+      "id": "f0464d5c-c4f7-4142-b174-14e4e8abd04d",
+      "kind": "custom",
+      "label": "Simulator",
+      "position": {
+        "x": 1440,
+        "y": 740
+      }
+    },
+    {
+      "id": "2e6c88ca-fddf-4b33-8fe1-7d57d62878a0",
+      "kind": "storage",
+      "label": "Price table",
+      "position": {
+        "x": 1440,
+        "y": 920
+      }
+    },
+    {
+      "id": "2e6642d8-9e98-4415-9642-32d30725f866",
+      "kind": "custom",
+      "label": "SearXNG (self-hosted)",
+      "position": {
+        "x": 1440,
+        "y": 1160
+      }
+    },
+    {
+      "id": "e07233a3-4cfe-488d-9984-a5c40a3f1f46",
+      "kind": "storage",
+      "label": "Decision log → ADRs",
+      "position": {
+        "x": 1440,
+        "y": 1320
+      }
+    },
+    {
+      "id": "b6aadcdd-e695-466a-9ed4-35ddd69cae80",
+      "kind": "storage",
+      "label": "Draft board",
+      "position": {
+        "x": 620,
+        "y": 940
+      }
+    },
+    {
+      "id": "abb14ec2-c84c-4f0a-8311-7a6b219c8d74",
+      "kind": "custom",
+      "label": "AI gateway → Qwen",
+      "position": {
+        "x": 300,
+        "y": 900
+      }
+    },
+    {
+      "id": "6dd0f486-f5d0-4d56-9483-62f30be995c3",
+      "kind": "service",
+      "label": "Stack & Cloud (AWS/Azure/GCP)",
+      "position": {
+        "x": 920,
+        "y": 960
+      }
+    },
+    {
+      "id": "0630779a-8cd6-44cb-a5ba-1f97689d1492",
+      "kind": "storage",
+      "label": "Service catalogue",
+      "position": {
+        "x": 1440,
+        "y": 1480
+      }
+    },
+    {
+      "id": "a7f957f0-b801-4bad-b4bb-981e568f1180",
+      "kind": "custom",
+      "label": "Azure",
+      "position": {
+        "x": 2020,
+        "y": 700
+      }
+    },
+    {
+      "id": "c367fc9f-f783-49d7-aea6-33880b5c1821",
+      "kind": "cache",
+      "label": "Azure Cache for Redis",
+      "position": {
+        "x": 2020,
+        "y": 820
+      }
+    },
+    {
+      "id": "f95f5b47-9a3f-43e0-b329-de22231cd52b",
+      "kind": "queue",
+      "label": "Event Hubs / Service Bus",
+      "position": {
+        "x": 2020,
+        "y": 930
+      }
+    },
+    {
+      "id": "3f4bf98d-9748-4ba2-8b55-adb4d5bb8282",
+      "kind": "database",
+      "label": "Azure Database for PostgreSQL",
+      "position": {
+        "x": 2020,
+        "y": 1040
+      }
+    },
+    {
+      "id": "ffd4b2aa-ece1-4fe2-a0c9-d36e66d0174b",
+      "kind": "storage",
+      "label": "Blob Storage",
+      "position": {
+        "x": 2020,
+        "y": 1150
+      }
+    },
+    {
+      "id": "ac61af6b-1c35-4e51-82e2-810286497111",
+      "kind": "service",
+      "label": "Container Apps / AKS",
+      "position": {
+        "x": 2020,
+        "y": 1260
+      }
+    },
+    {
+      "id": "67d6f71b-7dd1-44a5-8595-bf8340443a4f",
+      "kind": "loadBalancer",
+      "label": "Application Gateway / API Mgmt",
+      "position": {
+        "x": 2020,
+        "y": 1370
+      }
+    },
+    {
+      "id": "4d831e18-863b-4cc2-a6c1-fa5bba3bc32e",
+      "kind": "cdn",
+      "label": "Front Door",
+      "position": {
+        "x": 2020,
+        "y": 1480
+      }
+    },
+    {
+      "id": "11dc56a0-2299-486e-864c-1124e238ba3e",
+      "kind": "custom",
+      "label": "AWS",
+      "position": {
+        "x": 2340,
+        "y": 700
+      }
+    },
+    {
+      "id": "674d4f7b-1351-4d7d-b5d8-0f4701f96d43",
+      "kind": "cache",
+      "label": "ElastiCache (Redis)",
+      "position": {
+        "x": 2340,
+        "y": 820
+      }
+    },
+    {
+      "id": "ab04f39c-37fd-4956-8550-a492547834d0",
+      "kind": "queue",
+      "label": "MSK (Kafka) / SQS",
+      "position": {
+        "x": 2340,
+        "y": 930
+      }
+    },
+    {
+      "id": "b03d1b19-3347-435b-aa60-fec0dd6dede3",
+      "kind": "database",
+      "label": "RDS / Aurora",
+      "position": {
+        "x": 2340,
+        "y": 1040
+      }
+    },
+    {
+      "id": "4325fe64-8c76-40a3-883d-40804df1e954",
+      "kind": "storage",
+      "label": "S3",
+      "position": {
+        "x": 2340,
+        "y": 1150
+      }
+    },
+    {
+      "id": "acc62c3c-3df4-40a2-8030-28508194c259",
+      "kind": "service",
+      "label": "ECS / EKS / Lambda",
+      "position": {
+        "x": 2340,
+        "y": 1260
+      }
+    },
+    {
+      "id": "ec088e38-8fe0-48a5-ae16-2dfcc3e48220",
+      "kind": "loadBalancer",
+      "label": "ALB / API Gateway",
+      "position": {
+        "x": 2340,
+        "y": 1370
+      }
+    },
+    {
+      "id": "14e58b9e-b06d-4ed3-a483-81bf61f868a2",
+      "kind": "cdn",
+      "label": "CloudFront",
+      "position": {
+        "x": 2340,
+        "y": 1480
+      }
+    },
+    {
+      "id": "09d3b6e4-7c71-4529-9ec7-545763dd979d",
+      "kind": "custom",
+      "label": "GCP",
+      "position": {
+        "x": 2660,
+        "y": 700
+      }
+    },
+    {
+      "id": "45075771-bcae-4ff4-8a31-c296725eb83a",
+      "kind": "cache",
+      "label": "Memorystore (Redis)",
+      "position": {
+        "x": 2660,
+        "y": 820
+      }
+    },
+    {
+      "id": "4e7a398c-afde-431d-93f7-fdf41cb0d408",
+      "kind": "queue",
+      "label": "Pub/Sub",
+      "position": {
+        "x": 2660,
+        "y": 930
+      }
+    },
+    {
+      "id": "5f0d44a0-eb2b-42a4-8a9a-b3cd2f1d5af9",
+      "kind": "database",
+      "label": "Cloud SQL / Spanner",
+      "position": {
+        "x": 2660,
+        "y": 1040
+      }
+    },
+    {
+      "id": "c6691d24-8762-497b-b613-962ecd1188f6",
+      "kind": "storage",
+      "label": "Cloud Storage",
+      "position": {
+        "x": 2660,
+        "y": 1150
+      }
+    },
+    {
+      "id": "8cc2b76e-ed8d-43df-9b47-702d4fdef8d3",
+      "kind": "service",
+      "label": "Cloud Run / GKE",
+      "position": {
+        "x": 2660,
+        "y": 1260
+      }
+    },
+    {
+      "id": "7f9b5d6d-9541-4cf8-8b48-a74b73bbcf1c",
+      "kind": "loadBalancer",
+      "label": "Cloud Load Balancing",
+      "position": {
+        "x": 2660,
+        "y": 1370
+      }
+    },
+    {
+      "id": "341ee5dc-5cad-4bc4-9cc3-b9d28205e876",
+      "kind": "cdn",
+      "label": "Cloud CDN",
+      "position": {
+        "x": 2660,
+        "y": 1480
+      }
+    },
+    {
+      "id": "5a4fca33-1f7b-42b5-a9d9-a9ffa9988d63",
+      "kind": "service",
+      "label": "Stack: which technology?",
+      "position": {
+        "x": 920,
+        "y": 1240
+      }
+    },
+    {
+      "id": "53dfbef1-457e-4bb1-b2df-8c8307b21454",
+      "kind": "service",
+      "label": "Cloud: which service, which cloud?",
+      "position": {
+        "x": 920,
+        "y": 1380
+      }
+    },
+    {
+      "id": "b186d792-a3e2-4dbc-ae1e-32230d6deba2",
+      "kind": "service",
+      "label": "Data model: entities, keys",
+      "position": {
+        "x": 280,
+        "y": 1240
+      }
+    },
+    {
+      "id": "3cc03621-1881-469a-8d11-d3192543fda0",
+      "kind": "service",
+      "label": "Storage choice: SQL, NoSQL, cache",
+      "position": {
+        "x": 280,
+        "y": 1360
+      }
+    },
+    {
+      "id": "dccf6f86-b9bf-4c09-8f6a-278a7d9a1d8d",
+      "kind": "service",
+      "label": "Consistency: replicas, events",
+      "position": {
+        "x": 280,
+        "y": 1480
+      }
+    },
+    {
+      "id": "19ba2cd5-26e7-47a0-960c-b1213b523e57",
+      "kind": "storage",
+      "label": "Blackboard: findings this session",
+      "position": {
+        "x": -20,
+        "y": 1240
+      }
+    },
+    {
+      "id": "5e50f2fa-bf05-47d4-b22c-426a44fa0bd4",
+      "kind": "storage",
+      "label": "Board history (Yjs)",
+      "position": {
+        "x": -20,
+        "y": 1380
+      }
+    },
+    {
+      "id": "b5bda4f1-19ee-4e29-8a44-74dca27d11e2",
+      "kind": "storage",
+      "label": "Past decisions + patterns (RAG)",
+      "position": {
+        "x": -20,
+        "y": 1520
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "445cc528-88d7-45c0-a687-cb12504c802c",
+      "source": "d81e0ea2-d4d9-4917-913c-a0ff476a7d8e",
+      "target": "2872594e-76e5-4f9e-b0e0-9ba851dc1282",
+      "label": "question"
+    },
+    {
+      "id": "1ff7e5a8-b47e-4508-a1af-8b0559df16db",
+      "source": "2872594e-76e5-4f9e-b0e0-9ba851dc1282",
+      "target": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "label": "review / question"
+    },
+    {
+      "id": "0127753f-42d2-41f2-a251-9b768ead31a3",
+      "source": "2872594e-76e5-4f9e-b0e0-9ba851dc1282",
+      "target": "9279678b-7838-4edb-8107-ab870b5506b9",
+      "label": "design me X"
+    },
+    {
+      "id": "9eb0bbe6-4f7e-4013-9915-b447f1f79aa2",
+      "source": "9279678b-7838-4edb-8107-ab870b5506b9",
+      "target": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "label": "plan"
+    },
+    {
+      "id": "eb7d52da-ee2f-4236-8e62-1f5ce6aa66bc",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "fe62f755-a2b2-4ed5-a67f-c501f1f4b7f1",
+      "label": "needs?"
+    },
+    {
+      "id": "62b2e30c-f99d-4856-9302-d76035db373f",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "69631496-c38f-4127-9c35-3c1e3550cc0f"
+    },
+    {
+      "id": "74e3b7e1-a662-408b-acfb-cefd7fb63607",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "d0e22bbf-8d20-4fc4-b4cf-756e3628d685"
+    },
+    {
+      "id": "a09b75a1-8f00-40e3-b1ad-c3c8e1e61522",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "e687bcc4-6051-4423-ad5c-2b319341c052"
+    },
+    {
+      "id": "7e5ccd98-454c-4075-8296-56513b6153c8",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "065e4398-f5fc-4803-b751-e5ce3faddbeb"
+    },
+    {
+      "id": "4fc64424-95fc-4670-b6ce-3bfb110dead9",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "08b201e5-417f-40b4-aaa5-54f530716f85"
+    },
+    {
+      "id": "9319a0c6-bcfc-48ce-a95e-0c8bc9fc606d",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "9b71d39c-caa4-4345-9560-e055fde60ea9"
+    },
+    {
+      "id": "8765a799-0509-4173-877d-3c19b22ac0b8",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "30a6375e-67ea-473f-8979-716184733d7c"
+    },
+    {
+      "id": "dea4548b-83b4-4086-8046-6d28eb38d4e9",
+      "source": "fe62f755-a2b2-4ed5-a67f-c501f1f4b7f1",
+      "target": "6b53abe3-2e8f-4f21-b7c5-6e4e13f80053",
+      "label": "set_requirements"
+    },
+    {
+      "id": "65e544ae-f03b-4cc9-96d2-5f7f4302def0",
+      "source": "69631496-c38f-4127-9c35-3c1e3550cc0f",
+      "target": "2811d035-2a5f-42ef-9806-b1b95a2b62ee",
+      "label": "check_data"
+    },
+    {
+      "id": "78ac4640-da3c-4c08-ba21-6c01432e3eb9",
+      "source": "d0e22bbf-8d20-4fc4-b4cf-756e3628d685",
+      "target": "2811d035-2a5f-42ef-9806-b1b95a2b62ee",
+      "label": "check_security"
+    },
+    {
+      "id": "38fb0d3c-f221-4919-b590-321119e3862e",
+      "source": "9b71d39c-caa4-4345-9560-e055fde60ea9",
+      "target": "2811d035-2a5f-42ef-9806-b1b95a2b62ee",
+      "label": "check_ops"
+    },
+    {
+      "id": "83fabf1a-ea7d-4dfd-be17-e8ac062eb735",
+      "source": "e687bcc4-6051-4423-ad5c-2b319341c052",
+      "target": "f0464d5c-c4f7-4142-b174-14e4e8abd04d",
+      "label": "simulate"
+    },
+    {
+      "id": "e7edd521-0d3d-4cad-af0f-53bb3390e1f2",
+      "source": "065e4398-f5fc-4803-b751-e5ce3faddbeb",
+      "target": "f0464d5c-c4f7-4142-b174-14e4e8abd04d",
+      "label": "fail(component)"
+    },
+    {
+      "id": "b49124d0-f990-49af-8b03-49771befb334",
+      "source": "08b201e5-417f-40b4-aaa5-54f530716f85",
+      "target": "2e6c88ca-fddf-4b33-8fe1-7d57d62878a0",
+      "label": "estimate_cost"
+    },
+    {
+      "id": "c813d0c8-0ffa-4aa2-be3c-718ec6640346",
+      "source": "30a6375e-67ea-473f-8979-716184733d7c",
+      "target": "2e6642d8-9e98-4415-9642-32d30725f866",
+      "label": "search_web"
+    },
+    {
+      "id": "93aa3972-3dfb-4ba4-9350-da01b7050ee0",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "b6aadcdd-e695-466a-9ed4-35ddd69cae80",
+      "label": "add / connect"
+    },
+    {
+      "id": "8dde7572-79cf-4b60-b947-a822e628e5f5",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "8672c1f3-316d-4d09-8080-a3c5f414c04d",
+      "label": "proposal"
+    },
+    {
+      "id": "b601d829-10e0-4a4b-9266-c64fbad77fb3",
+      "source": "8672c1f3-316d-4d09-8080-a3c5f414c04d",
+      "target": "d81e0ea2-d4d9-4917-913c-a0ff476a7d8e",
+      "label": "ghost boxes",
+      "mode": "async"
+    },
+    {
+      "id": "8e3adc9a-b2a0-4864-9cea-4310355dcb28",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "cf222545-5bc2-427b-a385-8338b292dfcc",
+      "label": "decisions",
+      "mode": "async"
+    },
+    {
+      "id": "9e709c37-bd2f-4071-9fff-2ecdf813075b",
+      "source": "cf222545-5bc2-427b-a385-8338b292dfcc",
+      "target": "e07233a3-4cfe-488d-9984-a5c40a3f1f46",
+      "label": "record_decision"
+    },
+    {
+      "id": "410d87c0-535c-4cda-abd4-68bbc2a02b94",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "abb14ec2-c84c-4f0a-8311-7a6b219c8d74",
+      "label": "every agent calls it"
+    },
+    {
+      "id": "1f974861-c874-4fb3-90ba-02ae64ce5e81",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "6dd0f486-f5d0-4d56-9483-62f30be995c3",
+      "label": "which tech?"
+    },
+    {
+      "id": "ea18c98c-7cf0-402d-b60e-606f49ee7dcf",
+      "source": "6dd0f486-f5d0-4d56-9483-62f30be995c3",
+      "target": "0630779a-8cd6-44cb-a5ba-1f97689d1492",
+      "label": "service_catalog"
+    },
+    {
+      "id": "4b7ab88d-87d5-4f8d-adf4-d7b161ba53da",
+      "source": "6dd0f486-f5d0-4d56-9483-62f30be995c3",
+      "target": "2e6c88ca-fddf-4b33-8fe1-7d57d62878a0",
+      "label": "prices"
+    },
+    {
+      "id": "9c7846d4-cff9-4ee8-a3df-bc5602ada157",
+      "source": "6dd0f486-f5d0-4d56-9483-62f30be995c3",
+      "target": "6b53abe3-2e8f-4f21-b7c5-6e4e13f80053",
+      "label": "cloud, skills, region"
+    },
+    {
+      "id": "e1e9d964-ab3c-4c70-9fa6-0ec627d80f6e",
+      "source": "0630779a-8cd6-44cb-a5ba-1f97689d1492",
+      "target": "a7f957f0-b801-4bad-b4bb-981e568f1180",
+      "label": "maps each kind"
+    },
+    {
+      "id": "9f395f7e-7bb1-4b01-a14d-a38fe48fd37f",
+      "source": "0630779a-8cd6-44cb-a5ba-1f97689d1492",
+      "target": "11dc56a0-2299-486e-864c-1124e238ba3e"
+    },
+    {
+      "id": "a1bb4767-3b6b-4f4d-a14a-3e0ae8788280",
+      "source": "0630779a-8cd6-44cb-a5ba-1f97689d1492",
+      "target": "09d3b6e4-7c71-4529-9ec7-545763dd979d"
+    },
+    {
+      "id": "4d66853e-5202-48a1-9524-32db27348368",
+      "source": "6dd0f486-f5d0-4d56-9483-62f30be995c3",
+      "target": "5a4fca33-1f7b-42b5-a9d9-a9ffa9988d63",
+      "label": "Postgres or Mongo? Kafka or RabbitMQ?"
+    },
+    {
+      "id": "47c8e3cd-b8e9-4788-8703-828ba47cf3ca",
+      "source": "6dd0f486-f5d0-4d56-9483-62f30be995c3",
+      "target": "53dfbef1-457e-4bb1-b2df-8c8307b21454",
+      "label": "map to Azure / AWS / GCP"
+    },
+    {
+      "id": "c213565d-4447-4a51-9406-d22acf440272",
+      "source": "5a4fca33-1f7b-42b5-a9d9-a9ffa9988d63",
+      "target": "6b53abe3-2e8f-4f21-b7c5-6e4e13f80053",
+      "label": "load, consistency, skills"
+    },
+    {
+      "id": "5d7a3116-696f-40b8-a77d-2568a6687839",
+      "source": "53dfbef1-457e-4bb1-b2df-8c8307b21454",
+      "target": "0630779a-8cd6-44cb-a5ba-1f97689d1492",
+      "label": "service_catalog"
+    },
+    {
+      "id": "c4000ab2-2239-4824-9915-dbee89515907",
+      "source": "53dfbef1-457e-4bb1-b2df-8c8307b21454",
+      "target": "2e6c88ca-fddf-4b33-8fe1-7d57d62878a0",
+      "label": "prices"
+    },
+    {
+      "id": "6ae8433d-74c3-4814-9e83-e39a2204fba6",
+      "source": "69631496-c38f-4127-9c35-3c1e3550cc0f",
+      "target": "b186d792-a3e2-4dbc-ae1e-32230d6deba2",
+      "label": "what is stored?"
+    },
+    {
+      "id": "5d31e425-a779-493e-a320-b9b7bf57789f",
+      "source": "69631496-c38f-4127-9c35-3c1e3550cc0f",
+      "target": "3cc03621-1881-469a-8d11-d3192543fda0",
+      "label": "where?"
+    },
+    {
+      "id": "faf52117-9482-4955-b539-a7cb8e183c25",
+      "source": "69631496-c38f-4127-9c35-3c1e3550cc0f",
+      "target": "dccf6f86-b9bf-4c09-8f6a-278a7d9a1d8d",
+      "label": "what if two writes collide?"
+    },
+    {
+      "id": "e7b1c9f8-5516-44ff-bdbb-13fc736c3320",
+      "source": "dccf6f86-b9bf-4c09-8f6a-278a7d9a1d8d",
+      "target": "2811d035-2a5f-42ef-9806-b1b95a2b62ee",
+      "label": "check_data"
+    },
+    {
+      "id": "a179ba38-dc27-4d5d-9e49-2fc5139b7b0e",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "19ba2cd5-26e7-47a0-960c-b1213b523e57",
+      "label": "read / write findings",
+      "mode": "async"
+    },
+    {
+      "id": "2fb4560b-9d98-4ceb-bcec-158937214574",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "6b53abe3-2e8f-4f21-b7c5-6e4e13f80053",
+      "label": "read every time"
+    },
+    {
+      "id": "8441b29a-f103-49cd-aa8d-b18220eb5f39",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "5e50f2fa-bf05-47d4-b22c-426a44fa0bd4",
+      "label": "what changed?"
+    },
+    {
+      "id": "5c61ad3c-ed3c-42fc-a66a-1915ff240d73",
+      "source": "e07233a3-4cfe-488d-9984-a5c40a3f1f46",
+      "target": "b5bda4f1-19ee-4e29-8a44-74dca27d11e2",
+      "label": "indexed",
+      "mode": "async"
+    },
+    {
+      "id": "6a07571c-86a3-44c3-89f4-13fe0fe9484b",
+      "source": "e1fa21da-4f66-477a-8657-e63af1d554d9",
+      "target": "b5bda4f1-19ee-4e29-8a44-74dca27d11e2",
+      "label": "retrieve"
+    }
+  ],
+  "zones": [
+    {
+      "id": "037458df-aa81-43d5-afa5-bb81f8f8c56c",
+      "label": "You",
+      "position": {
+        "x": -40,
+        "y": 240
+      },
+      "size": {
+        "width": 280,
+        "height": 180
+      }
+    },
+    {
+      "id": "09149076-5c3d-4f44-bcb1-def585ee0dac",
+      "label": "Routing",
+      "position": {
+        "x": 260,
+        "y": 240
+      },
+      "size": {
+        "width": 300,
+        "height": 180
+      }
+    },
+    {
+      "id": "d0069124-12a7-40cb-ace5-bb6d74410e38",
+      "label": "Agents",
+      "position": {
+        "x": 540,
+        "y": 0
+      },
+      "size": {
+        "width": 320,
+        "height": 780
+      }
+    },
+    {
+      "id": "d0adbcf1-0160-4c90-8130-dd0e03e00e89",
+      "label": "Lenses (one prompt + its tools each)",
+      "position": {
+        "x": 880,
+        "y": -60
+      },
+      "size": {
+        "width": 320,
+        "height": 1180
+      }
+    },
+    {
+      "id": "8adcbb0d-33fe-42e8-b994-ceb22b47055e",
+      "label": "Tools and data (code)",
+      "position": {
+        "x": 1400,
+        "y": 260
+      },
+      "size": {
+        "width": 320,
+        "height": 1400
+      }
+    },
+    {
+      "id": "16fb32fa-5377-4127-ab8a-55a8ae89dec7",
+      "label": "Model",
+      "position": {
+        "x": 260,
+        "y": 840
+      },
+      "size": {
+        "width": 300,
+        "height": 180
+      }
+    },
+    {
+      "id": "57f2e5a2-132f-4def-8d0c-bf5df0344488",
+      "label": "Cloud catalogue (kept in the repo)",
+      "position": {
+        "x": 1980,
+        "y": 620
+      },
+      "size": {
+        "width": 1000,
+        "height": 1000
+      }
+    },
+    {
+      "id": "383bf306-8283-49c2-a253-f8b38f397269",
+      "label": "Azure",
+      "position": {
+        "x": 2000,
+        "y": 660
+      },
+      "size": {
+        "width": 300,
+        "height": 920
+      }
+    },
+    {
+      "id": "2ca2784d-3e8a-4288-87b9-9be6cd9901f5",
+      "label": "AWS",
+      "position": {
+        "x": 2320,
+        "y": 660
+      },
+      "size": {
+        "width": 300,
+        "height": 920
+      }
+    },
+    {
+      "id": "613163de-a61f-493d-80dd-4742a1a2f6c9",
+      "label": "GCP",
+      "position": {
+        "x": 2640,
+        "y": 660
+      },
+      "size": {
+        "width": 300,
+        "height": 920
+      }
+    },
+    {
+      "id": "1e390288-cee1-48bc-9a38-26ffa7b76898",
+      "label": "Stack & Cloud sub-agents (run in parallel)",
+      "position": {
+        "x": 880,
+        "y": 1180
+      },
+      "size": {
+        "width": 320,
+        "height": 300
+      }
+    },
+    {
+      "id": "260789b5-4365-470d-b455-af76a60adaa0",
+      "label": "Data sub-agents (run in parallel)",
+      "position": {
+        "x": 240,
+        "y": 1180
+      },
+      "size": {
+        "width": 320,
+        "height": 420
+      }
+    },
+    {
+      "id": "ebbf2862-a106-4036-854c-e5cca3866e4a",
+      "label": "Memory (shared, in the room)",
+      "position": {
+        "x": -60,
+        "y": 1180
+      },
+      "size": {
+        "width": 280,
+        "height": 640
+      }
+    }
+  ]
+}

@@ -1,0 +1,315 @@
+{
+  "nodes": [
+    {
+      "id": "0710a950-c41f-4ba6-9247-465d882aa2bd",
+      "kind": "custom",
+      "label": "Azure",
+      "position": {
+        "x": 1640,
+        "y": 1000
+      }
+    },
+    {
+      "id": "e99a4dc2-67cb-467c-ac1d-76fc73f69b68",
+      "kind": "cache",
+      "label": "Azure Cache for Redis",
+      "position": {
+        "x": 1640,
+        "y": 1120
+      }
+    },
+    {
+      "id": "3b6583a1-6221-49f9-807c-177826b78cea",
+      "kind": "queue",
+      "label": "Event Hubs / Service Bus",
+      "position": {
+        "x": 1640,
+        "y": 1230
+      }
+    },
+    {
+      "id": "374c8e0d-450a-4e80-88a0-adcd172858fb",
+      "kind": "database",
+      "label": "Azure Database for PostgreSQL",
+      "position": {
+        "x": 1640,
+        "y": 1340
+      }
+    },
+    {
+      "id": "37ccb084-31d1-4760-a146-a106125bb5ca",
+      "kind": "storage",
+      "label": "Blob Storage",
+      "position": {
+        "x": 1640,
+        "y": 1450
+      }
+    },
+    {
+      "id": "554fcb60-99dd-46f2-aba7-2cffa9f1ebed",
+      "kind": "service",
+      "label": "Container Apps / AKS",
+      "position": {
+        "x": 1640,
+        "y": 1560
+      }
+    },
+    {
+      "id": "409ca0a4-1c5b-4d42-af18-770f4ec87b83",
+      "kind": "loadBalancer",
+      "label": "Application Gateway / API Mgmt",
+      "position": {
+        "x": 1640,
+        "y": 1670
+      }
+    },
+    {
+      "id": "abfbd6c8-1d6d-45a7-805a-f4d4fc919cf9",
+      "kind": "cdn",
+      "label": "Front Door",
+      "position": {
+        "x": 1640,
+        "y": 1780
+      }
+    },
+    {
+      "id": "f63ec343-f5c2-45c4-a263-edf9b6cb5e5b",
+      "kind": "custom",
+      "label": "AWS",
+      "position": {
+        "x": 1960,
+        "y": 1000
+      }
+    },
+    {
+      "id": "edcc6304-5927-4bc0-a169-c7010ebe23b6",
+      "kind": "cache",
+      "label": "ElastiCache (Redis)",
+      "position": {
+        "x": 1960,
+        "y": 1120
+      }
+    },
+    {
+      "id": "2402b03b-e7f8-491a-afcf-486a6759baf1",
+      "kind": "queue",
+      "label": "MSK (Kafka) / SQS",
+      "position": {
+        "x": 1960,
+        "y": 1230
+      }
+    },
+    {
+      "id": "dc051fb1-c7c2-4a2d-9694-01bd9bd12eb7",
+      "kind": "database",
+      "label": "RDS / Aurora",
+      "position": {
+        "x": 1960,
+        "y": 1340
+      }
+    },
+    {
+      "id": "843924bb-f47c-4730-b914-31caf419ad91",
+      "kind": "storage",
+      "label": "S3",
+      "position": {
+        "x": 1960,
+        "y": 1450
+      }
+    },
+    {
+      "id": "b8cb5bcd-32db-49e7-9be4-eaa07cfd5769",
+      "kind": "service",
+      "label": "ECS / EKS / Lambda",
+      "position": {
+        "x": 1960,
+        "y": 1560
+      }
+    },
+    {
+      "id": "75421a1a-58f1-4996-8e1f-ac00fc74cf06",
+      "kind": "loadBalancer",
+      "label": "ALB / API Gateway",
+      "position": {
+        "x": 1960,
+        "y": 1670
+      }
+    },
+    {
+      "id": "ab4ab6ea-1844-435d-a5f1-4275be35aa1e",
+      "kind": "cdn",
+      "label": "CloudFront",
+      "position": {
+        "x": 1960,
+        "y": 1780
+      }
+    },
+    {
+      "id": "0734e447-48da-4b1a-a01c-5c225040e305",
+      "kind": "custom",
+      "label": "GCP",
+      "position": {
+        "x": 2280,
+        "y": 1000
+      }
+    },
+    {
+      "id": "ef790cf0-58c1-4386-a07a-2afd301d90a2",
+      "kind": "cache",
+      "label": "Memorystore (Redis)",
+      "position": {
+        "x": 2280,
+        "y": 1120
+      }
+    },
+    {
+      "id": "0e54acf4-22d7-4470-af56-d1611e2f708f",
+      "kind": "queue",
+      "label": "Pub/Sub",
+      "position": {
+        "x": 2280,
+        "y": 1230
+      }
+    },
+    {
+      "id": "6ff26926-dca8-4c55-bbb8-a313ac27fa8b",
+      "kind": "database",
+      "label": "Cloud SQL / Spanner",
+      "position": {
+        "x": 2280,
+        "y": 1340
+      }
+    },
+    {
+      "id": "b617e2f8-096a-425d-863e-2803b98dcb0d",
+      "kind": "storage",
+      "label": "Cloud Storage",
+      "position": {
+        "x": 2280,
+        "y": 1450
+      }
+    },
+    {
+      "id": "50e59be1-dd31-4f6e-b13d-09903e8458e6",
+      "kind": "service",
+      "label": "Cloud Run / GKE",
+      "position": {
+        "x": 2280,
+        "y": 1560
+      }
+    },
+    {
+      "id": "3bfee611-911d-4316-8c53-73dd409df319",
+      "kind": "loadBalancer",
+      "label": "Cloud Load Balancing",
+      "position": {
+        "x": 2280,
+        "y": 1670
+      }
+    },
+    {
+      "id": "ea242efc-75c5-4dc5-b856-381f88107edc",
+      "kind": "cdn",
+      "label": "Cloud CDN",
+      "position": {
+        "x": 2280,
+        "y": 1780
+      }
+    },
+    {
+      "id": "b447f779-14d0-426e-925a-408c4533ae5a",
+      "kind": "custom",
+      "label": "→ Lenses board",
+      "position": {
+        "x": 1900,
+        "y": 1060
+      }
+    },
+    {
+      "id": "fe3ffb7d-dbc8-49fe-8061-b00ea011d340",
+      "kind": "custom",
+      "label": "→ Lenses board",
+      "position": {
+        "x": 2220,
+        "y": 1060
+      }
+    },
+    {
+      "id": "2bf66b34-1086-424c-8975-74ee003209a7",
+      "kind": "custom",
+      "label": "→ Lenses board",
+      "position": {
+        "x": 2540,
+        "y": 1060
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "20f2dfcc-e858-4a0a-be62-9a5d34ecf735",
+      "source": "b447f779-14d0-426e-925a-408c4533ae5a",
+      "target": "0710a950-c41f-4ba6-9247-465d882aa2bd",
+      "label": "maps each kind"
+    },
+    {
+      "id": "5e51dd5b-7ae0-461e-8e12-fb8b2d30bad9",
+      "source": "fe3ffb7d-dbc8-49fe-8061-b00ea011d340",
+      "target": "f63ec343-f5c2-45c4-a263-edf9b6cb5e5b"
+    },
+    {
+      "id": "bf485cad-97e7-45e7-8703-824dcc696238",
+      "source": "2bf66b34-1086-424c-8975-74ee003209a7",
+      "target": "0734e447-48da-4b1a-a01c-5c225040e305"
+    }
+  ],
+  "zones": [
+    {
+      "id": "860e2251-2203-41b2-9488-6016c538bde3",
+      "label": "Cloud catalogue (kept in the repo)",
+      "position": {
+        "x": 1600,
+        "y": 920
+      },
+      "size": {
+        "width": 1000,
+        "height": 1000
+      }
+    },
+    {
+      "id": "6c9141bc-b84b-4b26-a2a1-517f0f9b6b9d",
+      "label": "Azure",
+      "position": {
+        "x": 1620,
+        "y": 960
+      },
+      "size": {
+        "width": 300,
+        "height": 920
+      }
+    },
+    {
+      "id": "30a6c5c3-38ba-44e3-927d-04d49b6bea7b",
+      "label": "AWS",
+      "position": {
+        "x": 1940,
+        "y": 960
+      },
+      "size": {
+        "width": 300,
+        "height": 920
+      }
+    },
+    {
+      "id": "bca51db0-3988-40de-9b45-5fc9f607b215",
+      "label": "GCP",
+      "position": {
+        "x": 2260,
+        "y": 960
+      },
+      "size": {
+        "width": 300,
+        "height": 920
+      }
+    }
+  ]
+}
