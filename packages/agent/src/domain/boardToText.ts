@@ -19,7 +19,7 @@ import type { Aliases } from './aliases.ts';
 // with < and > escaped (<, >, as JSON allows), so it can't close the <board> tag the
 // listing is sent in and pose as instructions after it (M1-24d).
 
-const quote = (text: string) =>
+export const quote = (text: string) =>
   JSON.stringify(text).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e');
 
 /** `n3 -> n5 (async, label "order events")`: `label` spelled out, or the model reads it as a box. */
