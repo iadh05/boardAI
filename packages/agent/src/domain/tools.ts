@@ -260,7 +260,7 @@ const plan = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
 };
 
 /** New boxes no arrow touches yet, in the order they were added. */
-const unconnectedNewBoxes = (ops: readonly AgentOp[]): string[] => {
+export const unconnectedNewBoxes = (ops: readonly AgentOp[]): string[] => {
   const linked = new Set(ops.flatMap((op) => (op.op === 'connect' ? [op.source, op.target] : [])));
   return ops.flatMap((op) => (op.op === 'addNode' && !linked.has(op.nodeId) ? [op.nodeId] : []));
 };

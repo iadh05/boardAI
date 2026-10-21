@@ -41,9 +41,15 @@ export const oneOfAKindJob = (kind: NodeKind, label: string): NodeKind | undefin
   return JOBS.find((job) => ONE_OF_A_KIND[job]?.test(label));
 };
 
-/** A label that says the database has more than one copy. */
+/** A label that says the database has more than one copy ("primary" alone doesn't). */
 const REDUNDANT =
-  /\b(replicas?|replicated|replication|cluster|shard(s|ed|ing)?|multi[- ]?az|primary|standby|failover|ha)\b/i;
+  /\b(replicas?|replicated|replication|cluster|shard(s|ed|ing)?|multi[- ]?az|standby|failover|ha)\b/i;
+
+/** A database box that is a copy of the one it is linked to (not just another database). */
+const COPY = /\b(replicas?|standby|secondary|follower|mirror)\b/i;
+
+/** A box that caches, whatever its kind or role: "Redis", "Redis cache service". */
+const caches = (n: BoardNode) => n.kind === 'cache' || ONE_OF_A_KIND.cache?.test(n.label) === true;
 
 const neighbours = (board: Board, id: string): BoardNode[] => {
   const ids = new Set(
@@ -74,9 +80,7 @@ const noLoadBalancer = (board: Board): DesignFinding[] =>
 const noCache = (board: Board): DesignFinding[] =>
   board.nodes
     .filter((n) => n.kind === 'api')
-    .filter(
-      (api) => !neighbours(board, api.id).some((n) => oneOfAKindJob(n.kind, n.label) === 'cache'),
-    )
+    .filter((api) => !neighbours(board, api.id).some(caches))
     .flatMap((api) =>
       neighbours(board, api.id)
         .filter((n) => n.kind === 'database')
@@ -95,7 +99,10 @@ const singleDatabase = (board: Board): DesignFinding[] =>
       (db) =>
         !board.nodes.some(
           (other) =>
-            other.kind === 'database' && other.id !== db.id && linked(board, db.id, other.id),
+            other.kind === 'database' &&
+            other.id !== db.id &&
+            COPY.test(other.label) &&
+            linked(board, db.id, other.id),
         ),
     )
     .map((db) => ({

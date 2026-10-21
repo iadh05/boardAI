@@ -18,6 +18,7 @@ import {
   ASK_USER,
   createDraft,
   runToolCall,
+  unconnectedNewBoxes,
   type ToolOutcome,
 } from '../domain/tools.ts';
 import { checkScope, type ScopeQuestion } from './checkScope.ts';
@@ -146,6 +147,7 @@ export const createAgent = (deps: AgentDeps) => {
       let spoke = false; // an earlier round wrote something
       let finished = false; // the answer is over: finish, ask_user, or no tool call twice
       let formatWarned = false; // sent the one format-error observation (M1-32)
+      let holding = false; // the next round answers the format error
       let ended: ToolOutcome['end']; // the model called finish or ask_user
       /** A box's name from its id in the draft, for the user's text (M1-29): "n10" → its label. */
       const labelOf = (alias: string) => {
@@ -155,20 +157,28 @@ export const createAgent = (deps: AgentDeps) => {
 
       // Valid ops so far, as one proposal: also sent when a later round fails, because the text the
       // user already read may say "I've added a cache".
-      const proposal = (): AgentEvent[] =>
-        draft.ops.length === 0
+      // An answer that ended by itself with a new box no arrow reached: that box fixes nothing and
+      // is left out (finish refuses it; this is for an answer that stood without finish — review of
+      // M1-32). Cut short (an error, the round limit), the work in progress is kept as it is.
+      const proposal = (complete = false): AgentEvent[] => {
+        const floating = new Set(complete ? unconnectedNewBoxes(draft.ops) : []);
+        const ops = draft.ops.filter(
+          (op) => !((op.op === 'addNode' || op.op === 'updateNode') && floating.has(op.nodeId)),
+        );
+        return ops.length === 0
           ? []
           : [
               {
                 type: 'proposal',
                 proposal: {
                   id: deps.newId(),
-                  summary: summarize(draft.ops, board, draft.board),
-                  ops: draft.ops,
+                  summary: summarize(ops, board, draft.board),
+                  ops,
                   ...traceOf(agent.span),
                 },
               },
             ];
+      };
 
       for (let round = 1; round <= maxRounds && !finished; round++) {
         rounds = round;
@@ -178,6 +188,9 @@ export const createAgent = (deps: AgentDeps) => {
         try {
           const calls: LlmToolCall[] = [];
           let said = '';
+          const hold = holding; // this round answers the format error: its text waits (M1-32)
+          holding = false;
+          let held = '';
           let usage: Usage | null = null;
           // The user sees names, not ids (M1-29): "n10" → "Payment Service". The model's own text
           // (`said`, sent back to it next round) keeps its ids.
@@ -200,19 +213,21 @@ export const createAgent = (deps: AgentDeps) => {
                   return; // stops reading: the gateway cancels the model call
                 }
                 // A new round's text starts a new paragraph, not glued to the last sentence.
-                if (said === '' && spoke) yield { type: 'text', delta: '\n\n' };
+                const start = said === '' && spoke ? '\n\n' : '';
                 said += chunk.delta;
-                const shown = ids.feed(chunk.delta);
-                if (shown) yield { type: 'text', delta: shown };
+                const shown = start + ids.feed(chunk.delta);
+                if (hold) held += shown;
+                else if (shown) yield { type: 'text', delta: shown };
               } else if (chunk.type === 'toolCall') calls.push(chunk.call);
               else usage = chunk.usage;
             }
             const rest = ids.flush();
-            if (rest) yield { type: 'text', delta: rest };
+            if (hold) held += rest;
+            else if (rest) yield { type: 'text', delta: rest };
           } catch (error) {
             if (!isGatewayError(error)) throw error; // a bug, not a model failure
             const rest = ids.flush(); // what was held back was already said
-            if (rest) yield { type: 'text', delta: rest };
+            if (rest && !hold) yield { type: 'text', delta: rest };
             if (error.code !== 'ABORTED') {
               markFailed(step.span, error.message);
               markFailed(agent.span, error.message);
@@ -223,7 +238,11 @@ export const createAgent = (deps: AgentDeps) => {
             yield { type: 'done' };
             return;
           }
-          spoke ||= said.trim() !== '';
+          // The round after the format error: its text goes out only with the calls it explains;
+          // without them it answers a message the user never saw ("Sure, …"), so it is dropped.
+          const kept = !hold || calls.length > 0;
+          if (hold && kept && held.trim()) yield { type: 'text', delta: held };
+          spoke ||= kept && said.trim() !== '';
 
           let toolErrors = 0;
           if (calls.length > 0) {
@@ -261,7 +280,8 @@ export const createAgent = (deps: AgentDeps) => {
             // the user must answer; a summary only when the model said nothing in words. Both go
             // through the same leak guard as any text (an attack could ask for the prompt in them).
             finished = true;
-            const shown = ended.tool === ASK_USER || !spoke ? ended.text : '';
+            // "Said nothing" is this round: a preamble two rounds ago doesn't explain the changes.
+            const shown = ended.tool === ASK_USER || said.trim() === '' ? ended.text : '';
             if (shown) {
               if (watch.feed(shown)) {
                 agent.span.setAttribute('designroom.agent.leak_stopped', true);
@@ -282,6 +302,7 @@ export const createAgent = (deps: AgentDeps) => {
             finished = formatWarned || round === maxRounds;
             if (!finished) {
               formatWarned = true;
+              holding = true;
               agent.span.setAttribute('designroom.agent.format_error', true);
               conversation.push({ role: 'assistant', content: said });
               conversation.push({ role: 'user', content: FORMAT_ERROR });
@@ -298,7 +319,7 @@ export const createAgent = (deps: AgentDeps) => {
           type: 'text',
           delta: `${spoke ? '\n\n' : ''}(I stopped here: that was the most steps I take in one answer. Ask me to continue.)`,
         };
-      yield* proposal();
+      yield* proposal(finished);
       yield { type: 'done' };
     } catch (error) {
       markFailed(agent.span, error instanceof Error ? error.message : String(error));
