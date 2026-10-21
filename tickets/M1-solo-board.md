@@ -53,14 +53,14 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-24c | Context 128k: model setting + chat budget from config | M1b | S | done |
 | M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | done |
 | M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | done |
-| M1-29 | Agent fixes from replays: duplicates, nudge, ids, board text | M1b | M | review |
+| M1-29 | Agent fixes from replays: duplicates, nudge, ids, board text | M1b | M | done |
 | M1-30 | Design checks in code: rules find the flaws, the agent explains | M1b | M | todo |
-| M1-31 | Tool calls without guessing: `no_change` tool, one reminder | M1b | S | review |
+| M1-31 | Tool calls without guessing: `no_change` tool, one reminder | M1b | S | done |
 | M1-25 | Sentry (web + server) | obs | S | done |
 | M1-25b | Local error tracking with GlitchTip (Sentry-compatible) | obs | S | done |
 | M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | done |
 | M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | done |
-| M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | review |
+| M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | done |
 | M1-26e | God eye: overview dashboard (RED + USE), alerts, runtime metrics | obs | M | done |
 | M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | todo |
 | M1-27 | ADR-006…009, demo, retro | close | S | todo |
@@ -1094,7 +1094,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - [ ] Before/after table; prompt v3 merged only with equal or better numbers.
 
 ## M1-29 — Agent fixes from replays
-**Status:** review · **Size:** M · **Depends on:** M1-28 (the model-call log the replays came from)
+**Status:** done (#70) · **Size:** M · **Depends on:** M1-28 (the model-call log the replays came from)
 
 *Why (2026-10-20):* on the Uber demo, Qwen added a second queue next to Kafka, invented changes after answering "nothing needs to change", and wrote ids (`n10`) to the user. Replaying the recorded calls separated prompt problems from code problems. Then a format test (text vs SVG vs screenshot, then five text layouts) showed the board text itself lost arrows. Numbers: [docs/evals/M1-29-board-format.md](../docs/evals/M1-29-board-format.md).
 
@@ -1115,7 +1115,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - [ ] Owner review before merge (agent PR).
 
 ## M1-31 — Tool calls without guessing
-**Status:** review · **Size:** S · **Depends on:** M1-29
+**Status:** done (#72) · **Size:** S · **Depends on:** M1-29
 
 *Why (2026-10-20):* the proposal nudge guessed from words whether an answer recommended a change (`recommendsChange`, `shouldNudge`): it missed "add an auth service", fired on "you don't need a cache", and knew no French. Real agents don't read the text: they end each turn with a tool call. `tool_choice: required` would force it, but measured on our Qwen via Ollama it is ignored (forcing `no_change` still got `add_node` 4/6).
 
@@ -1281,7 +1281,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - Counters that first appear at 1 are invisible to `increase()`: the bug counter starts at 0.
 
 ### M1-26d — Logs to Loki
-**Status:** review · **Size:** S · **Depends on:** M1-26b
+**Status:** done (#71) · **Size:** S · **Depends on:** M1-26b
 
 **Tasks**
 - [x] Send log lines to Loki over OTLP (logs SDK), as well as stdout; each line already carries `traceId`. The logger gets a `sink`; `toLogRecord` maps a line to an OTel record (severity, body, flat attributes).
