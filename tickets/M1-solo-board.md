@@ -53,17 +53,18 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-24c | Context 128k: model setting + chat budget from config | M1b | S | done |
 | M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | done |
 | M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | done |
-| M1-29 | Agent fixes from replays: duplicates, nudge, ids, board text | M1b | M | review |
+| M1-29 | Agent fixes from replays: duplicates, nudge, ids, board text | M1b | M | done |
 | M1-30 | Design checks in code: rules find the flaws, the agent explains | M1b | M | todo |
-| M1-31 | Tool calls without guessing: `no_change` tool, one reminder | M1b | S | review |
+| M1-31 | Tool calls without guessing: `no_change` tool, one reminder | M1b | S | done |
 | M1-25 | Sentry (web + server) | obs | S | done |
 | M1-25b | Local error tracking with GlitchTip (Sentry-compatible) | obs | S | done |
 | M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | done |
 | M1-26b | Metrics + Grafana LGTM + "AI reviewer" dashboard | obs | M | done |
-| M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | review |
+| M1-26d | Logs to Loki: log line → its trace in Grafana | obs | S | done |
 | M1-26e | God eye: overview dashboard (RED + USE), alerts, runtime metrics | obs | M | done |
-| M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | review |
+| M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | done |
 | M1-27 | ADR-006…009, demo, retro | close | S | todo |
+| M1-32 | Agent v2: tools to check, ask and finish; round budget per task | M1b | L | todo |
 
 *(The table is a summary — the **Status** line inside each ticket is the source of truth.)*
 
@@ -1093,7 +1094,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - [ ] Before/after table; prompt v3 merged only with equal or better numbers.
 
 ## M1-29 — Agent fixes from replays
-**Status:** review · **Size:** M · **Depends on:** M1-28 (the model-call log the replays came from)
+**Status:** done (#70) · **Size:** M · **Depends on:** M1-28 (the model-call log the replays came from)
 
 *Why (2026-10-20):* on the Uber demo, Qwen added a second queue next to Kafka, invented changes after answering "nothing needs to change", and wrote ids (`n10`) to the user. Replaying the recorded calls separated prompt problems from code problems. Then a format test (text vs SVG vs screenshot, then five text layouts) showed the board text itself lost arrows. Numbers: [docs/evals/M1-29-board-format.md](../docs/evals/M1-29-board-format.md).
 
@@ -1114,7 +1115,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - [ ] Owner review before merge (agent PR).
 
 ## M1-31 — Tool calls without guessing
-**Status:** review · **Size:** S · **Depends on:** M1-29
+**Status:** done (#72) · **Size:** S · **Depends on:** M1-29
 
 *Why (2026-10-20):* the proposal nudge guessed from words whether an answer recommended a change (`recommendsChange`, `shouldNudge`): it missed "add an auth service", fired on "you don't need a cache", and knew no French. Real agents don't read the text: they end each turn with a tool call. `tool_choice: required` would force it, but measured on our Qwen via Ollama it is ignored (forcing `no_change` still got `add_node` 4/6).
 
@@ -1280,7 +1281,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - Counters that first appear at 1 are invisible to `increase()`: the bug counter starts at 0.
 
 ### M1-26d — Logs to Loki
-**Status:** review · **Size:** S · **Depends on:** M1-26b
+**Status:** done (#71) · **Size:** S · **Depends on:** M1-26b
 
 **Tasks**
 - [x] Send log lines to Loki over OTLP (logs SDK), as well as stdout; each line already carries `traceId`. The logger gets a `sink`; `toLogRecord` maps a line to an OTel record (severity, body, flat attributes).
@@ -1290,7 +1291,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 **Result (2026-10-21):** checked end to end with the fake model. One chat request gave 6 log lines in Loki (`{service_name="designroom-server"}`), each with `trace_id` equal to our `traceId`, and the same trace in Tempo: 13 spans, from `POST /api/chat` down to each tool call.
 
 ### M1-26c — Phoenix + feedback
-**Status:** review · **Size:** M · **Depends on:** M1-26a, Docker
+**Status:** done (#73, #74) · **Size:** M · **Depends on:** M1-26a, Docker
 
 **Tasks**
 - [x] **Phoenix**: `arizephoenix/phoenix:20.19.0` in `docker-compose.yml` behind the `agent` profile (UI and OTLP on :6006, SQLite in a volume); a second trace exporter when `PHOENIX_COLLECTOR_ENDPOINT` is set. Phoenix takes OTLP in **protobuf only** (415 to JSON), so its exporter is `exporter-trace-otlp-proto`; Grafana keeps JSON. Traces filed under the project "designroom".
@@ -1306,6 +1307,52 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - [ ] Accepting a proposal shows up as positive feedback on its trace; rejecting as negative.
 
 ---
+
+## M1-32 — Agent v2: tools to check, ask and finish
+**Status:** todo · **Size:** L · **Depends on:** M1-30 (the rules), M1-31 (#72)
+
+*Why (owner, 2026-10-21):* drawn on a DesignRoom board, today's agent is naive. One loop does everything (find flaws, judge, propose, explain); it can change the board but can't **look**, **check**, **ask** or **finish**; and the decision to propose is pushed by a reminder sent as a fake user message. The owner's direction: **add tools first, then agents**. That matches the industry: one ReAct loop with good tools before multi-agent; and small models pick the wrong tool more often past ~8 tools.
+
+**Tasks**
+- [ ] Draw the v2 loop on a DesignRoom board next to today's agent; agree it with the owner before coding.
+- [ ] `check_design()`: runs M1-30's rules and returns the findings, naming the boxes ("Orders API → Postgres: no cache in front").
+- [ ] `ask_user(question)`: a clarifying question shown as a card; ends the answer.
+- [ ] `finish(summary)` replaces `no_change`, the ReAct "done". It refuses while a new box has no arrow, and says so as a tool result (an observation, not a message). `nudge.ts` and the fake user messages are deleted; a turn with no tool call gets one format-error observation.
+- [ ] A round budget per task, capped in code (e.g. review 6, question 2, draft 10), instead of a fixed 5; prompt and tool descriptions encourage several calls per round (add + connect).
+- [ ] At most 8 tools offered at once.
+- [ ] Measure against M1-31 (#72): sample boards and the Uber case 10 runs, red team. Keep only if equal or better.
+
+**Later, each its own ticket**
+- `set_requirements(users, peak, budget…)` and a requirements card the agent reads on every request (the "situation card" idea).
+- A **Critic** agent that reviews a proposal before the user sees it: only if the numbers show wrong proposals code can't catch (e.g. the LB turned into a CDN).
+- A **Planner** for "design me X": Draw mode.
+- `search_patterns` (reference architectures, A3), `simulate` (A1/A3), `annotate` (M4), `propose_removal` (ADR first).
+
+**Acceptance criteria**
+- [ ] The demo board reaches ≥ 9/10 with no fake user message in the loop.
+- [ ] Every rule the agent must follow is either in a tool's description or checked in a tool's code.
+
+## Epic — Specialist lenses (after M1-32)
+**Status:** todo (to shape with the owner) · **Depends on:** M1-32 (the tools loop every lens reuses)
+
+*Why (owner, 2026-10-21):* one generalist reviewer misses whole areas of a design. An **Architect (lead agent)** owns the design as a whole: it reads the room and the question, calls only the lenses that apply, **arbitrates their conflicts** (Cost says drop the replica, Chaos says keep it) against the user's requirements, and merges everything into **one** proposal — the user decides, the Scribe records it. Each lens = a short focused prompt + its own tools (≤ 8). **Rules and numbers come from code; the model explains, challenges and proposes.**
+
+| Lens | Job | Tools (code first) | Links |
+|---|---|---|---|
+| **Interviewer** | Asks what the user needs depending on the question, and challenges assumptions ("1M users: does every one write?") | `ask_user(question, why)`, `set_requirements`, a requirements card | M4 interview mode |
+| **Data** | Which store for what, sharding keys, replication, consistency (transactions vs events, double writes) | `check_data()` rules: single DB, no replica, cache without invalidation path | the biggest blind spot today |
+| **Security** | Auth, exposure, encryption, secrets — of the user's design | `check_security()` rules: DB reachable from a client, API without gateway/auth, no TLS | (A5 is the app's own security) |
+| **Traffic** | Load, bottlenecks, SPOFs, failover | `check_spof()` now, `simulate(load)` later | A1, A3 |
+| **Chaos** | Attacks the design: "kill Redis — what happens? Kafka down 10 min — what's lost?" | `fail(component)` on the simulator; until then, rule-based failure paths | A3 Chaos agent |
+| **Cost** (the financier) | €/month per box and total; cheaper options | `estimate_cost(region)` from a price table — **never prices from the model's memory** | G5, A4 |
+| **DevOps** | How it's built, deployed and run: CI/CD, environments, rollback, IaC, monitoring | `check_ops()` rules: no monitoring box, no deploy path; export to Bicep/Terraform | A4 |
+| **Researcher** | "Are we following best practice?" — web search with citations | `search_web`, `fetch_page`: a self-hosted SearXNG; only questions leave the machine, never the board; results are untrusted data (red-team case) | A3 |
+| **Stack & Cloud** | Picks the concrete technology and cloud service per box, with the trade-off: Redis or Memcached; ElastiCache / Azure Cache for Redis / Memorystore; Kafka / Event Hubs / Pub/Sub… | `service_catalog(kind, cloud)` — a catalogue kept in the repo (AWS, Azure, GCP); prices shared with Cost; the user's constraints (cloud, team skills, managed or not, data region) from the Interviewer | A4 (diagram → Bicep/Terraform) needs this mapping; needs a `technology` / `service` field per box (A1 node properties) |
+| **Scribe** *(kept, owner 2026-10-21: keep track of the brainstorm)* | Keeps the session's minutes: each decision, why, what was rejected; exports ADRs | `record_decision`, `export_adrs` | A7 |
+
+**Order (each its own ticket):** M1-32 → Interviewer → Data and Security as code rules (tools of the single agent first) → Cost → Stack & Cloud → Architect + lenses (multi-agent, once a single agent can't juggle them — measured) → Chaos and Traffic with the simulator → DevOps → Researcher (SearXNG) → Scribe.
+
+**Every lens:** its own eval boards with known flaws (M5), measured before it ships.
 
 ## M1-27 — ADR-006…009, demo, retro
 **Status:** todo · **Size:** S · **Depends on:** all M1 tickets
