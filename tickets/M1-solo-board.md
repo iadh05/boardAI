@@ -1257,6 +1257,27 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - [ ] The demo board reaches ≥ 9/10 with no fake user message in the loop.
 - [ ] Every rule the agent must follow is either in a tool's description or checked in a tool's code.
 
+## Epic — Specialist lenses (after M1-32)
+**Status:** todo (to shape with the owner) · **Depends on:** M1-32 (the tools loop every lens reuses)
+
+*Why (owner, 2026-10-21):* one generalist reviewer misses whole areas of a design. A **lead agent** reads the room and the question, calls only the lenses that apply, and merges their findings into **one** proposal. Each lens = a short focused prompt + its own tools (≤ 8). **Rules and numbers come from code; the model explains, challenges and proposes.**
+
+| Lens | Job | Tools (code first) | Links |
+|---|---|---|---|
+| **Interviewer** | Asks what the user needs depending on the question, and challenges assumptions ("1M users: does every one write?") | `ask_user(question, why)`, `set_requirements`, a requirements card | M4 interview mode |
+| **Data** | Which store for what, sharding keys, replication, consistency (transactions vs events, double writes) | `check_data()` rules: single DB, no replica, cache without invalidation path | the biggest blind spot today |
+| **Security** | Auth, exposure, encryption, secrets — of the user's design | `check_security()` rules: DB reachable from a client, API without gateway/auth, no TLS | (A5 is the app's own security) |
+| **Traffic** | Load, bottlenecks, SPOFs, failover | `check_spof()` now, `simulate(load)` later | A1, A3 |
+| **Chaos** | Attacks the design: "kill Redis — what happens? Kafka down 10 min — what's lost?" | `fail(component)` on the simulator; until then, rule-based failure paths | A3 Chaos agent |
+| **Cost** (the financier) | €/month per box and total; cheaper options | `estimate_cost(region)` from a price table — **never prices from the model's memory** | G5, A4 |
+| **DevOps** | How it's built, deployed and run: CI/CD, environments, rollback, IaC, monitoring | `check_ops()` rules: no monitoring box, no deploy path; export to Bicep/Terraform | A4 |
+| **Researcher** | "Are we following best practice?" — web search with citations | `search_web`, `fetch_page`: a self-hosted SearXNG; only questions leave the machine, never the board; results are untrusted data (red-team case) | A3 |
+| **Scribe** *(to decide)* | Keeps the session's minutes: each decision, why, what was rejected; exports ADRs | `record_decision`, `export_adrs` | A7 |
+
+**Order (each its own ticket):** M1-32 → Interviewer → Data and Security as code rules (tools of the single agent first) → Cost → lead agent + lenses (multi-agent, once a single agent can't juggle them — measured) → Chaos and Traffic with the simulator → DevOps → Researcher (SearXNG) → Scribe.
+
+**Every lens:** its own eval boards with known flaws (M5), measured before it ships.
+
 ## M1-27 — ADR-006…009, demo, retro
 **Status:** todo · **Size:** S · **Depends on:** all M1 tickets
 
