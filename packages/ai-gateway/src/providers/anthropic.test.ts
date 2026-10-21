@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import type { LlmError } from '../errors.ts';
 import type { ChatInput, ProviderChunk } from '../types.ts';
-import { createAnthropicProvider, type AnthropicOptions } from './anthropic.ts';
+import { createAnthropicProvider, createSpendTracker, type AnthropicOptions } from './anthropic.ts';
 
 // Claude through the official SDK (AV2-03). The SDK's own HTTP calls are replayed from a stream
 // recorded from claude-haiku-5-5 (2026-10-21), so what is tested is the real SDK parsing it.
@@ -85,6 +85,44 @@ describe('anthropic provider — reading the stream', () => {
       },
     ]);
     expect(chunks.at(-1)).toEqual({ type: 'tokens', inputTokens: 456, outputTokens: 116 });
+  });
+
+  // Review of AV2-03: with thinking on (or Sonnet's between_tools), the thinking block before a
+  // tool call must go back with it next round.
+  it('keeps the thinking block with the tool call it came before, and sends it back', async () => {
+    const thinking = [
+      'event: content_block_start',
+      'data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}}',
+      '',
+      'event: content_block_delta',
+      'data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"sig-1"}}',
+      '',
+      'event: content_block_stop',
+      'data: {"type":"content_block_stop","index":0}',
+      '',
+      '',
+    ].join('\n');
+    const body = fixture('claude-tool-call')
+      .replace(/"index":(\d+)/g, (_, i: string) => `"index":${Number(i) + 1}`)
+      .replace('event: content_block_start', `${thinking}event: content_block_start`);
+
+    const chunks = await run(replying(body));
+    const [call] = chunks.flatMap((c) => (c.type === 'toolCall' ? [c.call] : []));
+    expect(call?.providerData).toEqual({
+      claudeBlocks: [{ type: 'thinking', thinking: '', signature: 'sig-1' }],
+    });
+
+    const next = replying(fixture('claude-tool-call'));
+    await run(next, {
+      ...input,
+      messages: [
+        { role: 'user', content: 'Add a cache' },
+        { role: 'assistant', content: 'Adding one.', toolCalls: call ? [call] : [] },
+        { role: 'tool', toolCallId: call?.id ?? '', content: 'added n3' },
+      ],
+    });
+    const sent = posted(next) as { messages: { content: { type: string }[] }[] };
+    expect(sent.messages[1]?.content.map((b) => b.type)).toEqual(['thinking', 'text', 'tool_use']);
   });
 
   it('drops a tool call cut off by the token limit: its input may be incomplete', async () => {
@@ -175,6 +213,20 @@ describe('anthropic provider — the request', () => {
     });
   });
 
+  // Review of AV2-03: Haiku and Sonnet 5.5 refuse any non-default temperature (the scope check
+  // asks for 0): sent, every such call failed and silently fell back to the local model.
+  it('never sends a temperature: these models refuse a non-default one', async () => {
+    const fetchFn = replying(fixture('claude-tool-call'));
+    await run(fetchFn, { ...input, temperature: 0 });
+    expect(posted(fetchFn)).not.toHaveProperty('temperature');
+  });
+
+  it('uses the model a call asks for, when it is an allowed one', async () => {
+    const fetchFn = replying(fixture('claude-tool-call'));
+    await run(fetchFn, { ...input, model: 'claude-sonnet-5-5' });
+    expect(posted(fetchFn)).toMatchObject({ model: 'claude-sonnet-5-5' });
+  });
+
   it('thinking on: adaptive, with the effort asked for', async () => {
     const fetchFn = replying(fixture('claude-tool-call'));
     await run(fetchFn, input, { thinking: { effort: 'medium' } });
@@ -246,6 +298,31 @@ describe('anthropic provider — spend guard', () => {
     await expect(second()).rejects.toMatchObject({ code: 'BAD_REQUEST' });
     await expect(second()).rejects.toThrow(/budget/);
     expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  // Review of AV2-03: one budget per provider made three Claude roles a $15/day cap.
+  it('one budget shared by every Claude provider it is given to', async () => {
+    const spend = createSpendTracker({ dailyUsd: 0.0001, now: () => 0 });
+    const planner = provider(replying(fixture('claude-tool-call')), { spend });
+    const critic = provider(replying(fixture('claude-tool-call')), { spend });
+
+    for await (const _ of planner.stream(input)) void _;
+    const second = async () => {
+      for await (const _ of critic.stream(input)) void _;
+    };
+    await expect(second()).rejects.toThrow(/budget/);
+  });
+
+  it('counts a call the reader stopped early: it was billed', async () => {
+    // message_start already reports 456 input tokens ≈ $0.0000456 on Haiku.
+    const spend = createSpendTracker({ dailyUsd: 0.00004, now: () => 0 });
+    const guarded = provider(replying(fixture('claude-tool-call')), { spend });
+
+    for await (const chunk of guarded.stream(input)) if (chunk.type === 'text') break;
+    const again = async () => {
+      for await (const _ of guarded.stream(input)) void _;
+    };
+    await expect(again()).rejects.toThrow(/budget/);
   });
 
   it('a new day starts a new budget', async () => {

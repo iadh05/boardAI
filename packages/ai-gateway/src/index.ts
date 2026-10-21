@@ -21,6 +21,8 @@ export {
 export {
   CLAUDE_MODELS,
   createAnthropicProvider,
+  createSpendTracker,
+  type SpendTracker,
   type AnthropicOptions,
 } from './providers/anthropic.ts';
 export { createFallbackProvider, type FallbackOptions } from './providers/fallback.ts';
