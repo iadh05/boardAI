@@ -39,7 +39,7 @@
     {
       "id": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
       "kind": "service",
-      "label": "Main agent: talks with you",
+      "label": "Main agent (master): talks with you",
       "position": {
         "x": 300,
         "y": 300
@@ -48,7 +48,7 @@
     {
       "id": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
       "kind": "service",
-      "label": "Planner (Draw mode)",
+      "label": "Planner: clarifies the request, plans",
       "position": {
         "x": 600,
         "y": 100
@@ -57,7 +57,7 @@
     {
       "id": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
       "kind": "service",
-      "label": "Architect (lead): owns, arbitrates",
+      "label": "Architect: spawns the agents, merges",
       "position": {
         "x": 600,
         "y": 300
@@ -104,7 +104,7 @@
       "kind": "service",
       "label": "Data",
       "position": {
-        "x": 960,
+        "x": 1260,
         "y": 120
       }
     },
@@ -113,7 +113,7 @@
       "kind": "service",
       "label": "Security",
       "position": {
-        "x": 960,
+        "x": 1260,
         "y": 240
       }
     },
@@ -122,7 +122,7 @@
       "kind": "service",
       "label": "Traffic",
       "position": {
-        "x": 960,
+        "x": 1260,
         "y": 360
       }
     },
@@ -131,7 +131,7 @@
       "kind": "service",
       "label": "Chaos",
       "position": {
-        "x": 960,
+        "x": 1260,
         "y": 480
       }
     },
@@ -140,7 +140,7 @@
       "kind": "service",
       "label": "Cost (financier)",
       "position": {
-        "x": 960,
+        "x": 1260,
         "y": 600
       }
     },
@@ -149,7 +149,7 @@
       "kind": "service",
       "label": "DevOps",
       "position": {
-        "x": 960,
+        "x": 1260,
         "y": 720
       }
     },
@@ -158,7 +158,7 @@
       "kind": "service",
       "label": "Researcher (web)",
       "position": {
-        "x": 960,
+        "x": 1260,
         "y": 840
       }
     },
@@ -167,7 +167,7 @@
       "kind": "service",
       "label": "Stack & Cloud (AWS/Azure/GCP)",
       "position": {
-        "x": 960,
+        "x": 1260,
         "y": 960
       }
     },
@@ -190,75 +190,12 @@
       }
     },
     {
-      "id": "6c6b0455-2a82-4d59-84d8-69a7fe31e9fe",
-      "kind": "custom",
-      "label": "F1 Question: \"what is a CDN?\"",
+      "id": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "kind": "queue",
+      "label": "Task queue: one at a time",
       "position": {
-        "x": 280,
-        "y": -500
-      }
-    },
-    {
-      "id": "5d388de4-dec5-457c-981c-152a0c1de30d",
-      "kind": "custom",
-      "label": "F2 Review: \"review my design\"",
-      "position": {
-        "x": 600,
-        "y": -500
-      }
-    },
-    {
-      "id": "2e8ce542-2364-4551-9363-688094c00b72",
-      "kind": "custom",
-      "label": "F3 Draft: \"design me Uber Eats\"",
-      "position": {
-        "x": 280,
-        "y": -390
-      }
-    },
-    {
-      "id": "607e6b40-1071-48f5-9844-a5719097f614",
-      "kind": "custom",
-      "label": "F4 Change: \"add a cache\"",
-      "position": {
-        "x": 600,
-        "y": -390
-      }
-    },
-    {
-      "id": "3d5745b8-eb3b-43b4-805f-9bb35ecda433",
-      "kind": "custom",
-      "label": "F5 Deep dive: \"is it secure?\"",
-      "position": {
-        "x": 280,
-        "y": -280
-      }
-    },
-    {
-      "id": "57e1731c-0329-44cb-a11f-142c1364b48f",
-      "kind": "custom",
-      "label": "F6 Decision: Accept / Reject",
-      "position": {
-        "x": 600,
-        "y": -280
-      }
-    },
-    {
-      "id": "43cff4a9-8d79-4bcd-9287-d21c85030cb1",
-      "kind": "custom",
-      "label": "F7 Disagree: \"keep RabbitMQ\"",
-      "position": {
-        "x": 280,
-        "y": -170
-      }
-    },
-    {
-      "id": "4c180838-a6ce-4664-bc31-04090fc86111",
-      "kind": "custom",
-      "label": "F8 Recall: \"what did we decide?\"",
-      "position": {
-        "x": 600,
-        "y": -170
+        "x": 960,
+        "y": 300
       }
     }
   ],
@@ -281,18 +218,6 @@
       "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
       "target": "1f19ab20-e1c9-4d8c-b1fc-aaaba51249eb",
       "label": "retrieve"
-    },
-    {
-      "id": "24759b04-cdba-43e7-931a-66edb1005f5d",
-      "source": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
-      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
-      "label": "question"
-    },
-    {
-      "id": "8a883208-7139-498b-9084-6586ff78c453",
-      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
-      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "label": "plan"
     },
     {
       "id": "0268b6ae-9ad1-492e-9aac-cd718bc6bbcb",
@@ -327,47 +252,6 @@
       "label": "every agent calls it"
     },
     {
-      "id": "4758ae41-54cc-4a78-a9a0-85d7864b12a6",
-      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "target": "548886f8-01ea-4bb5-aa13-a83691838b82"
-    },
-    {
-      "id": "b7405409-1853-4164-b832-5c9dec5678db",
-      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "target": "aedd827a-1417-4ac4-bfdf-1981c257ea42"
-    },
-    {
-      "id": "a2fd70ea-1d26-44e1-a5fc-3a265e81aea3",
-      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "target": "3345c732-09c1-4d2e-8db8-4c20b90645f0"
-    },
-    {
-      "id": "a7aff0a9-7d49-4f7b-83f9-1118d7a119a9",
-      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "target": "1eb02d00-4e57-42e7-bb6d-62ac059845ad"
-    },
-    {
-      "id": "6e67175a-d9c1-41f3-8860-80db66d56487",
-      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "target": "d1adca11-3255-4b9a-9f11-f94724323bc7"
-    },
-    {
-      "id": "0d908d70-64dc-4119-89a0-85a6408d48f1",
-      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "target": "bf3f4d6e-4097-496e-bfa9-2d31afdb900b"
-    },
-    {
-      "id": "1df99620-cb3e-4300-acd8-f100560e052f",
-      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "target": "1753943d-5797-4ef7-b569-7d86c04d545b"
-    },
-    {
-      "id": "a050144a-705c-49da-8aa1-502bde1a8c64",
-      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "target": "c9f25358-0652-4be4-afbb-acd06a67db15",
-      "label": "which tech?"
-    },
-    {
       "id": "3d27ceb9-e798-44dc-ab18-e45518773e7c",
       "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
       "target": "cdb01535-76fb-464e-ace4-7fced575a467",
@@ -387,98 +271,154 @@
       "mode": "async"
     },
     {
-      "id": "9a951b9e-b81e-47a0-acc4-b40fb98d4845",
+      "id": "6ceb880d-4d74-43ab-9e99-0bc89197d698",
+      "source": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
+      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "label": "question"
+    },
+    {
+      "id": "1540548f-4520-443d-9ef1-3e1714ff7348",
       "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
-      "target": "6c6b0455-2a82-4d59-84d8-69a7fe31e9fe"
+      "target": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
+      "label": "answer, progress",
+      "mode": "async"
     },
     {
-      "id": "e20c1731-286c-48eb-9faa-ccea5a0ac19a",
-      "source": "6c6b0455-2a82-4d59-84d8-69a7fe31e9fe",
-      "target": "1753943d-5797-4ef7-b569-7d86c04d545b",
-      "label": "best practice?"
-    },
-    {
-      "id": "5b0c2826-4b2f-4650-a6d7-2036102546bf",
+      "id": "c1a86d9b-d0f8-45dc-a90b-bd29899d935b",
       "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
-      "target": "5d388de4-dec5-457c-981c-152a0c1de30d"
-    },
-    {
-      "id": "25256c50-fa05-4d8c-a6bf-858d6caeab8e",
-      "source": "5d388de4-dec5-457c-981c-152a0c1de30d",
-      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "label": "all specialists"
-    },
-    {
-      "id": "57eb3dd5-000d-43d4-9a47-2d3961979cad",
-      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
-      "target": "2e8ce542-2364-4551-9363-688094c00b72"
-    },
-    {
-      "id": "411a80e7-0220-4d5d-995a-cfd447aa5c32",
-      "source": "2e8ce542-2364-4551-9363-688094c00b72",
       "target": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
-      "label": "needs first"
+      "label": "your request"
     },
     {
-      "id": "22ab1cdb-146d-4dba-81e2-77d7d1fbfc7d",
-      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
-      "target": "607e6b40-1071-48f5-9844-a5719097f614"
+      "id": "2b6b2bc2-a089-4fda-9f1a-59e70d5d9567",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "label": "question back (ambiguous)",
+      "mode": "async"
     },
     {
-      "id": "80ecfe10-6463-43eb-9ed4-2252b1b5cd5f",
-      "source": "607e6b40-1071-48f5-9844-a5719097f614",
+      "id": "7223851d-9888-460e-b3fa-5a727d610ecb",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "cdb01535-76fb-464e-ace4-7fced575a467",
+      "label": "needs"
+    },
+    {
+      "id": "0b6084cf-6206-4de3-9fac-38e5493b6640",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
       "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "label": "just that, checked"
+      "label": "plan: flow + tasks"
     },
     {
-      "id": "e39c90ec-e0ee-4975-9253-7b256d6a1b9f",
-      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
-      "target": "3d5745b8-eb3b-43b4-805f-9bb35ecda433"
+      "id": "4b4d70a9-f83d-472e-9876-38e0a120fc7b",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "label": "spawn tasks"
     },
     {
-      "id": "c060ba3f-fa18-4337-8c49-97651b353b36",
-      "source": "3d5745b8-eb3b-43b4-805f-9bb35ecda433",
-      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "label": "one specialist"
+      "id": "2a327870-6af0-4c65-997d-4f503a2fb1c7",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "548886f8-01ea-4bb5-aa13-a83691838b82"
     },
     {
-      "id": "dc423762-c0ac-4177-aa25-08ef9a7d680d",
-      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
-      "target": "57e1731c-0329-44cb-a11f-142c1364b48f"
+      "id": "d1f1eec1-e7b5-4a77-94a0-5630deec4ef6",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "aedd827a-1417-4ac4-bfdf-1981c257ea42"
     },
     {
-      "id": "b1f89ccd-889e-44f1-944a-d51ea094187c",
-      "source": "57e1731c-0329-44cb-a11f-142c1364b48f",
-      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
-      "label": "record"
+      "id": "81273601-9b46-445c-8038-767b3c7892dc",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "3345c732-09c1-4d2e-8db8-4c20b90645f0"
     },
     {
-      "id": "7fd37e9c-f940-49a2-b28d-304fde6dc98c",
-      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
-      "target": "43cff4a9-8d79-4bcd-9287-d21c85030cb1"
+      "id": "bfe1a324-a1de-4007-8364-69a6df33dece",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "1eb02d00-4e57-42e7-bb6d-62ac059845ad"
     },
     {
-      "id": "59f466c0-3378-41a4-8128-e6deb1189f9b",
-      "source": "43cff4a9-8d79-4bcd-9287-d21c85030cb1",
-      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
-      "label": "with memory"
+      "id": "684c5563-342a-49d7-805f-8ef7e1184d37",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "d1adca11-3255-4b9a-9f11-f94724323bc7"
     },
     {
-      "id": "61a2f4a8-df7d-499f-948b-2bc3492cbf4f",
-      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
-      "target": "4c180838-a6ce-4664-bc31-04090fc86111"
+      "id": "a9d6775f-2446-40b1-a483-96f711d992e6",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "bf3f4d6e-4097-496e-bfa9-2d31afdb900b"
     },
     {
-      "id": "19fc08bf-a4f7-45b3-856b-9a2c4ee15ed7",
-      "source": "4c180838-a6ce-4664-bc31-04090fc86111",
-      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
-      "label": "decision log"
+      "id": "ded49437-208c-4f68-8f66-a3165d971ab3",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "1753943d-5797-4ef7-b569-7d86c04d545b"
     },
     {
-      "id": "89897695-146e-4b0a-a81d-3a0cfb05a918",
-      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "id": "47f492a8-d495-4038-8c23-eac1ad8d0ecf",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "c9f25358-0652-4be4-afbb-acd06a67db15"
+    },
+    {
+      "id": "f71a5792-19aa-4064-a2da-f37d471698fb",
+      "source": "548886f8-01ea-4bb5-aa13-a83691838b82",
       "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
-      "label": "keeps the thread",
+      "mode": "async"
+    },
+    {
+      "id": "30946f2c-8373-4977-a672-3ad9ca5c8dbf",
+      "source": "aedd827a-1417-4ac4-bfdf-1981c257ea42",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "b817ed5c-446c-48d0-8319-a3c6ce943057",
+      "source": "3345c732-09c1-4d2e-8db8-4c20b90645f0",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "ba1c777b-d786-4280-972f-5861aed1ffce",
+      "source": "1eb02d00-4e57-42e7-bb6d-62ac059845ad",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "c44529ae-35ba-4844-92c1-53c18a895888",
+      "source": "d1adca11-3255-4b9a-9f11-f94724323bc7",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "4839feae-3c7f-4b7c-a630-fe11644831fc",
+      "source": "bf3f4d6e-4097-496e-bfa9-2d31afdb900b",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "d9a3a061-f62e-4eed-ba03-a4cd59cdf604",
+      "source": "1753943d-5797-4ef7-b569-7d86c04d545b",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "22da9633-9757-4d21-b958-cc181138e191",
+      "source": "c9f25358-0652-4be4-afbb-acd06a67db15",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "02cec902-8ed4-4d95-8219-ffd861811777",
+      "source": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "typed findings"
+    },
+    {
+      "id": "95411da7-64bb-47ac-9b9b-a3951238a13a",
+      "source": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "label": "checked proposal"
+    },
+    {
+      "id": "f6759742-be33-4c0f-9c8f-6c916381abda",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "label": "Accept / Reject",
       "mode": "async"
     }
   ],
@@ -509,7 +449,7 @@
     },
     {
       "id": "7c50bbcf-aa38-430e-95e6-1e5c71150b6f",
-      "label": "Main agent (understands, asks, explains)",
+      "label": "Main agent",
       "position": {
         "x": 260,
         "y": 240
@@ -545,9 +485,9 @@
     },
     {
       "id": "1c7e4a2c-54cf-46c5-8e9d-21616d788dc8",
-      "label": "Lenses (their tools: Lenses board)",
+      "label": "Specialist agents (one task at a time)",
       "position": {
-        "x": 920,
+        "x": 1220,
         "y": -60
       },
       "size": {
@@ -556,15 +496,15 @@
       }
     },
     {
-      "id": "bfecf212-7220-4c06-bc2b-f33fc78907a5",
-      "label": "Flows (what you ask → who works)",
+      "id": "bcb6e7ca-abcf-435b-9be3-a96f24a57490",
+      "label": "Task queue",
       "position": {
-        "x": 240,
-        "y": -560
+        "x": 920,
+        "y": 200
       },
       "size": {
-        "width": 680,
-        "height": 470
+        "width": 280,
+        "height": 260
       }
     }
   ]
