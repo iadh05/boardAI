@@ -356,9 +356,9 @@ describe('mistakes the model makes', () => {
 });
 
 describe('the tool list', () => {
-  it('offers add, update and connect — and nothing that deletes', () => {
+  it('offers add, update, connect and no_change — and nothing that deletes', () => {
     const names = AGENT_TOOLS.map((t) => t.name);
-    expect(names).toEqual(['add_node', 'update_node', 'connect_nodes']);
+    expect(names).toEqual(['add_node', 'update_node', 'connect_nodes', 'no_change']);
     expect(names.some((n) => /delete|remove/.test(n))).toBe(false);
   });
 
@@ -382,5 +382,24 @@ describe('the tool list', () => {
 
     const applied = applyOps(board, draft.ops);
     expect(applied.ok).toBe(true);
+  });
+});
+
+describe('no_change (M1-31)', () => {
+  it('records nothing and hands back the reason', () => {
+    const outcome = runToolCall(
+      createDraft(board),
+      call('no_change', { reason: 'The design fits the load.' }),
+      ids(),
+    );
+
+    expect(outcome).toMatchObject({ ok: true, noChange: 'The design fits the load.' });
+    expect(outcome.draft.ops).toEqual([]);
+  });
+
+  it('needs a reason', () => {
+    const outcome = runToolCall(createDraft(board), call('no_change', { reason: '' }), ids());
+    expect(outcome.ok).toBe(false);
+    expect(outcome.reply).toMatch(/reason/);
   });
 });

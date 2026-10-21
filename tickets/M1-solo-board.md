@@ -55,6 +55,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | done |
 | M1-29 | Agent fixes from replays: duplicates, nudge, ids, board text | M1b | M | review |
 | M1-30 | Design checks in code: rules find the flaws, the agent explains | M1b | M | todo |
+| M1-31 | Tool calls without guessing: `no_change` tool, one reminder | M1b | S | review |
 | M1-25 | Sentry (web + server) | obs | S | done |
 | M1-25b | Local error tracking with GlitchTip (Sentry-compatible) | obs | S | done |
 | M1-26a | Traces: OTel SDK, span tree, trace id in logs | obs | M | done |
@@ -1110,6 +1111,22 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 **Acceptance criteria**
 - [x] Numbers in the eval note and the PR.
 - [x] **Owner's decision (2026-10-20): ship below the bar on the demo boards.** Stop prompt-tuning; the demo flaws move to code (M1-30).
+- [ ] Owner review before merge (agent PR).
+
+## M1-31 — Tool calls without guessing
+**Status:** review · **Size:** S · **Depends on:** M1-29
+
+*Why (2026-10-20):* the proposal nudge guessed from words whether an answer recommended a change (`recommendsChange`, `shouldNudge`): it missed "add an auth service", fired on "you don't need a cache", and knew no French. Real agents don't read the text: they end each turn with a tool call. `tool_choice: required` would force it, but measured on our Qwen via Ollama it is ignored (forcing `no_change` still got `add_node` 4/6).
+
+**Tasks**
+- [x] A `no_change(reason)` tool: the model's way to say nothing on the board should change.
+- [x] The prompt: every answer ends with a tool call, the changes or `no_change`.
+- [x] The loop: an answer with no tool call at all is reminded once ("propose, or no_change"), in any language; `no_change` ends the answer, and its reason is shown when the model wrote nothing else.
+- [x] The word lists are deleted.
+- [x] Measured against M1-29 (#70): [eval note](../docs/evals/M1-31-no-change-tool.md). no-cache 9/10, no-lb 9/10, Uber 10/10 with 0 duplicates; red team level with `main` on 5 runs.
+
+**Acceptance criteria**
+- [x] Equal or better than #70 on no-cache, no-lb and Uber duplicates; red team no regression.
 - [ ] Owner review before merge (agent PR).
 
 ## M1-30 — Design checks in code

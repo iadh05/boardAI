@@ -108,7 +108,14 @@ describe('createApp', () => {
       logger,
       llmProvider: createFakeProvider([
         [{ type: 'text', delta: 'DESIGN' }],
-        [{ type: 'text', delta: 'Looks fine.' }],
+        [
+          { type: 'text', delta: 'Looks fine.' },
+          // Every answer ends with a tool call (M1-31): here, nothing to change.
+          {
+            type: 'toolCall',
+            call: { id: 'c1', name: 'no_change', arguments: { reason: 'The design fits.' } },
+          },
+        ],
       ]),
     });
 
