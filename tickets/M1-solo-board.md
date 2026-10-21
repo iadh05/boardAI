@@ -1272,7 +1272,7 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 | **Cost** (the financier) | €/month per box and total; cheaper options | `estimate_cost(region)` from a price table — **never prices from the model's memory** | G5, A4 |
 | **DevOps** | How it's built, deployed and run: CI/CD, environments, rollback, IaC, monitoring | `check_ops()` rules: no monitoring box, no deploy path; export to Bicep/Terraform | A4 |
 | **Researcher** | "Are we following best practice?" — web search with citations | `search_web`, `fetch_page`: a self-hosted SearXNG; only questions leave the machine, never the board; results are untrusted data (red-team case) | A3 |
-| **Scribe** *(to decide)* | Keeps the session's minutes: each decision, why, what was rejected; exports ADRs | `record_decision`, `export_adrs` | A7 |
+| **Scribe** *(kept, owner 2026-10-21: keep track of the brainstorm)* | Keeps the session's minutes: each decision, why, what was rejected; exports ADRs | `record_decision`, `export_adrs` | A7 |
 
 **Order (each its own ticket):** M1-32 → Interviewer → Data and Security as code rules (tools of the single agent first) → Cost → lead agent + lenses (multi-agent, once a single agent can't juggle them — measured) → Chaos and Traffic with the simulator → DevOps → Researcher (SearXNG) → Scribe.
 
