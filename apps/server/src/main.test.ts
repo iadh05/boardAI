@@ -196,6 +196,7 @@ describe('createApp', () => {
       'Data running · 1 left',
       'Data ✓ · Security running',
       'Data ✓ · Security ✓',
+      'Writing the answer…',
     ]);
     expect(
       events
