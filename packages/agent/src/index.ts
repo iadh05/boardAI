@@ -30,6 +30,7 @@ export {
   type OrchestratorInput,
   type Specialist,
 } from './application/orchestrator.ts';
+export { RULE_SPECIALISTS } from './application/specialists.ts';
 export { type TaskResult, type TaskStatus, type Timer } from './application/taskQueue.ts';
 export {
   FindingSchema,
