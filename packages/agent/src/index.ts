@@ -49,3 +49,10 @@ export {
   type Progress,
   type TaskCard,
 } from './domain/tasks.ts';
+// Agent V2's chain (AV2-07): Main, Planner, Architect.
+export {
+  createReviewerV2,
+  type ReviewerV2Deps,
+  type ReviewerV2Event,
+} from './application/reviewerV2.ts';
+export { FALLBACK_PLAN, makePlan, type Flow, type Plan } from './application/planner.ts';
