@@ -56,8 +56,34 @@ You ⇄ Main agent ──▶ Planner ──▶ Architect ──▶ Task queue �
 | Evals explode | One specialist at a time, each with its eval boards (M5) |
 | Built before measured | **M1-32 first** (one agent + tools); then the Planner and Main; then specialists one by one, measured |
 
-## Still open
+## Proposed defaults (to confirm with the owner)
 
-1. The queue: in memory per request now; a shared queue across rooms (Redis, M3) when several people use the agent at once?
-2. Which flows ship first? Suggestion: F2, F6, F1, then F4, F5, F3, F7, F8.
-3. Does the Planner always run, or does the Main agent answer trivial turns ("thanks") alone?
+All drawn on the V2 board. Each is a starting value, changed by measurement.
+
+| # | Part | Default | Why |
+|---|---|---|---|
+| D1 | **Flows** | The Planner picks one of F1–F8 for each request; drawn next to it, each pointing to who handles it | One path per kind of request, testable on its own |
+| D2 | **Clarify loop** (Planner ⇄ Main) | At most **2 rounds**, at most **3 questions** per round, only for what changes the answer (scale, read/write, budget, cloud, region); then proceed with **stated assumptions** | Asking forever is as bad as guessing |
+| D3 | **Trivial turns** ("thanks", "ok") | The Main agent answers alone, no Planner | No call wasted |
+| D4 | **Task card** | `{ id, specialist, boxIds, question, budgetMs }` | The specialist gets only the boxes and the question it needs: a small context for a 9B model |
+| D5 | **Queue limits** | ≤ **6 tasks** per request, **60 s** per task, **Stop** cancels the running and waiting tasks; the queue lives in memory, per request (a shared queue across rooms comes with Redis, M3) | One GPU; bounded wait |
+| D6 | **Progress** | The queue sends progress to the Main agent, which shows it ("Security ✓ · Cost running · 2 left") | Long work must look alive |
+| D7 | **Finding** (the contract) | `{ specialist, boxIds, severity: info/warn/critical, problem, fix?, confidence }`, zod-checked; stored on the blackboard with the board version | The Architect merges data, not prose |
+| D8 | **Merge** | In code: dedupe by box + problem type, sort by severity, a conflict table (e.g. Cost "drop the replica" vs Chaos "keep it" → keep, with the trade-off for the user) | The hardest reasoning stays deterministic |
+| D9 | **Critic** | Code checks first (applyOps, no duplicates, every box connected, no kind changed); a failing proposal goes back to the Architect **once**; an LLM Critic later, only if measured useful | Same 9B can't catch its own blind spots |
+| D10 | **Sub-agents** | A specialist's sub-agents (Stack / Cloud; Data model / storage / consistency) are **sub-tasks in the same queue**, counted in the budget | One queue, one budget, one place to watch |
+| D11 | **Flows first** | F2 (review), F6 (decision), F1 (question); then F4, F5, F3, F7, F8 | F2 is today's agent; F6 and F1 are small |
+
+## Build plan (each step measured before the next)
+
+| Step | What | Done when |
+|---|---|---|
+| **S0 — M1-32** | Today's agent gets real tools: `check_design` (rules), `ask_user`, `finish`; nudges deleted | Demo boards ≥ 9/10 with no fake user message |
+| **S1 — The orchestrator** | Our own small orchestrator (no LangGraph): typed state, the task queue (D4–D6), findings on the blackboard (D7), merge rules (D8), every step a span in Phoenix | Unit tests with a fake LLM; a review runs through the queue with one specialist |
+| **S2 — Main + Planner** | The Main agent and the Planner with the clarify loop (D2, D3); flows F2, F6, F1 | Eval: ambiguous prompts get ≤ 2 rounds of questions; F2 at least as good as S0 |
+| **S3 — First specialists** | Data and Security (rules first, then the agent explains), then Cost and Stack & Cloud (catalogue + prices in code) | Each with its eval boards; no regression on F2 |
+| **S4 — More flows** | F4 (change), F5 (deep dive), F3 (draft, with the Planner and Draw mode) | Each flow has its e2e journey (fake LLM) and its eval |
+| **S5 — Critic and Scribe** | Code Critic (D9), Scribe with the decision log and ADR export, F7, F8 | Accept/Reject feedback in Phoenix shows fewer rejections |
+| **S6 — The rest** | Chaos and Traffic (with the A1 simulator), DevOps, Researcher (SearXNG), memory with RAG | Per specialist, measured |
+
+Each step is its own ticket (or a few), written when we get there.

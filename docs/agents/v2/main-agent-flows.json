@@ -66,7 +66,7 @@
     {
       "id": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
       "kind": "service",
-      "label": "Critic (checks the proposal)",
+      "label": "Critic: code checks (LLM later)",
       "position": {
         "x": 600,
         "y": 500
@@ -196,6 +196,123 @@
       "position": {
         "x": 960,
         "y": 300
+      }
+    },
+    {
+      "id": "ecd7cc77-5839-4c55-bb42-4b0a19d96673",
+      "kind": "custom",
+      "label": "F1 Question: \"what is a CDN?\"",
+      "position": {
+        "x": 280,
+        "y": -600
+      }
+    },
+    {
+      "id": "94216542-d1cf-4a4b-9bfc-57affa2d4447",
+      "kind": "custom",
+      "label": "F2 Review: \"review my design\"",
+      "position": {
+        "x": 600,
+        "y": -600
+      }
+    },
+    {
+      "id": "406afc62-173b-479b-8bc5-60f3df380097",
+      "kind": "custom",
+      "label": "F3 Draft: \"design me Uber Eats\"",
+      "position": {
+        "x": 280,
+        "y": -490
+      }
+    },
+    {
+      "id": "52a29bf2-991a-45bc-8b5f-34ebad7b71a6",
+      "kind": "custom",
+      "label": "F4 Change: \"add a cache\"",
+      "position": {
+        "x": 600,
+        "y": -490
+      }
+    },
+    {
+      "id": "e2786ea0-4a59-4333-8e57-9b356b6406cc",
+      "kind": "custom",
+      "label": "F5 Deep dive: \"is it secure?\"",
+      "position": {
+        "x": 280,
+        "y": -380
+      }
+    },
+    {
+      "id": "c9c236b5-9f61-45d0-82c0-75b0121dcc85",
+      "kind": "custom",
+      "label": "F6 Decision: Accept / Reject",
+      "position": {
+        "x": 600,
+        "y": -380
+      }
+    },
+    {
+      "id": "aab7949d-8f9e-4395-9aa1-b3a5e51f6039",
+      "kind": "custom",
+      "label": "F7 Disagree: \"keep RabbitMQ\"",
+      "position": {
+        "x": 280,
+        "y": -270
+      }
+    },
+    {
+      "id": "dfa8e420-31a4-473a-bb10-833944b0393d",
+      "kind": "custom",
+      "label": "F8 Recall: \"what did we decide?\"",
+      "position": {
+        "x": 600,
+        "y": -270
+      }
+    },
+    {
+      "id": "b9a9253a-0266-4344-8f65-43deba24f65a",
+      "kind": "custom",
+      "label": "Clarify: ≤ 2 rounds · ≤ 3 questions · then assume + say so",
+      "position": {
+        "x": 280,
+        "y": -40
+      }
+    },
+    {
+      "id": "56e67456-cec1-493e-8d49-a2114b3f770d",
+      "kind": "storage",
+      "label": "Task card: specialist, boxes, question",
+      "position": {
+        "x": 960,
+        "y": 420
+      }
+    },
+    {
+      "id": "b44d54ae-0865-4e98-8f0d-ea0344727a74",
+      "kind": "custom",
+      "label": "Limits: ≤ 6 tasks · 60 s each · Stop cancels all",
+      "position": {
+        "x": 960,
+        "y": 540
+      }
+    },
+    {
+      "id": "2dac2ab9-bedd-4489-8ee4-6b65ff465644",
+      "kind": "storage",
+      "label": "Finding: specialist, boxes, severity, problem, fix",
+      "position": {
+        "x": 960,
+        "y": 820
+      }
+    },
+    {
+      "id": "3655c38b-9715-44f4-a374-caafbdd88696",
+      "kind": "custom",
+      "label": "Merge rules: dedupe, severity, conflicts",
+      "position": {
+        "x": 960,
+        "y": 960
       }
     }
   ],
@@ -420,6 +537,138 @@
       "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
       "label": "Accept / Reject",
       "mode": "async"
+    },
+    {
+      "id": "a88bbb17-5c75-4c9f-bf11-32fb562b62a8",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "ecd7cc77-5839-4c55-bb42-4b0a19d96673"
+    },
+    {
+      "id": "c046986a-8056-4cb7-8252-3796a2ab0b44",
+      "source": "ecd7cc77-5839-4c55-bb42-4b0a19d96673",
+      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "label": "answer"
+    },
+    {
+      "id": "199d05d0-2993-4f1a-a866-0c9cb61960b9",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "94216542-d1cf-4a4b-9bfc-57affa2d4447"
+    },
+    {
+      "id": "a7c24ee4-f6d6-48be-a6af-7395a926fa58",
+      "source": "94216542-d1cf-4a4b-9bfc-57affa2d4447",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b"
+    },
+    {
+      "id": "18d80607-e945-4d44-a9e4-542229c01f5d",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "406afc62-173b-479b-8bc5-60f3df380097"
+    },
+    {
+      "id": "c7a8c503-dd16-4864-893d-8589f6b25237",
+      "source": "406afc62-173b-479b-8bc5-60f3df380097",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "needs first"
+    },
+    {
+      "id": "5f301e1f-2d98-47e8-b4a2-957660b2f25a",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "52a29bf2-991a-45bc-8b5f-34ebad7b71a6"
+    },
+    {
+      "id": "16520f77-c9b3-4ad1-bcbc-d96af7bbd5b8",
+      "source": "52a29bf2-991a-45bc-8b5f-34ebad7b71a6",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "just that"
+    },
+    {
+      "id": "823b943a-def9-4ac7-b7bc-a40f0bb8f490",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "e2786ea0-4a59-4333-8e57-9b356b6406cc"
+    },
+    {
+      "id": "5b0d1fd8-ac54-4655-8ab1-6da655e692e8",
+      "source": "e2786ea0-4a59-4333-8e57-9b356b6406cc",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "one specialist"
+    },
+    {
+      "id": "003fa2c6-a895-4e7b-a05a-49e959bd0553",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "c9c236b5-9f61-45d0-82c0-75b0121dcc85"
+    },
+    {
+      "id": "0495733e-6dbb-4f3d-940a-0670e61cf33f",
+      "source": "c9c236b5-9f61-45d0-82c0-75b0121dcc85",
+      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34"
+    },
+    {
+      "id": "882d1081-0388-4f15-8430-e87afa1a590e",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "aab7949d-8f9e-4395-9aa1-b3a5e51f6039"
+    },
+    {
+      "id": "39f9166a-7732-489f-bf47-87e4a4e23bd4",
+      "source": "aab7949d-8f9e-4395-9aa1-b3a5e51f6039",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "with memory"
+    },
+    {
+      "id": "ee060ca6-74be-49df-b646-35d9c62e85be",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "dfa8e420-31a4-473a-bb10-833944b0393d"
+    },
+    {
+      "id": "71f7c2d0-49ab-45d5-beb7-9c3344f7ba60",
+      "source": "dfa8e420-31a4-473a-bb10-833944b0393d",
+      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34"
+    },
+    {
+      "id": "9ede245f-c3d5-4248-8c1f-709fbd38fd37",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "56e67456-cec1-493e-8d49-a2114b3f770d",
+      "label": "one per task"
+    },
+    {
+      "id": "15bdeed9-689d-4442-853f-3fd56c197853",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "label": "progress",
+      "mode": "async"
+    },
+    {
+      "id": "0593a329-3e9c-4f6f-a7b1-c35c64cf4609",
+      "source": "2dac2ab9-bedd-4489-8ee4-6b65ff465644",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "label": "stored as",
+      "mode": "async"
+    },
+    {
+      "id": "9d059c45-6ed0-40ce-b0fb-2f24802eadde",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "3655c38b-9715-44f4-a374-caafbdd88696",
+      "label": "merge"
+    },
+    {
+      "id": "6e9f99b9-e7f5-400a-8940-5cce50b941a5",
+      "source": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "fails → fix once",
+      "mode": "async"
+    },
+    {
+      "id": "66d9526d-e75c-4066-b75a-5bd4194f8e1a",
+      "source": "c9f25358-0652-4be4-afbb-acd06a67db15",
+      "target": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "label": "sub-tasks",
+      "mode": "async"
+    },
+    {
+      "id": "a8aff186-e108-4d3d-b480-1b829d51dfa5",
+      "source": "548886f8-01ea-4bb5-aa13-a83691838b82",
+      "target": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "label": "sub-tasks",
+      "mode": "async"
     }
   ],
   "zones": [
@@ -504,7 +753,31 @@
       },
       "size": {
         "width": 280,
-        "height": 260
+        "height": 520
+      }
+    },
+    {
+      "id": "8b86bf78-9381-4d3d-b87d-aac4670bf1f3",
+      "label": "Flows (picked by the Planner)",
+      "position": {
+        "x": 240,
+        "y": -660
+      },
+      "size": {
+        "width": 680,
+        "height": 520
+      }
+    },
+    {
+      "id": "70dec1b6-6558-4f05-8846-9ff81a62c3db",
+      "label": "Contracts (code)",
+      "position": {
+        "x": 920,
+        "y": 760
+      },
+      "size": {
+        "width": 280,
+        "height": 340
       }
     }
   ]
