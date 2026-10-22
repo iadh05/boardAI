@@ -6,7 +6,7 @@
 import { makePlan, type Flow } from '../packages/agent/src/index.ts';
 import { createAliases } from '../packages/agent/src/domain/aliases.ts';
 import { boardToText } from '../packages/agent/src/domain/boardToText.ts';
-import { assertOnGpu, boardOf, connectRealModel } from './lib/realModel.ts';
+import { assertOnGpu, boardOf, gatewayOf, type ProviderName } from './lib/realModel.ts';
 
 const args = process.argv.slice(2);
 const flag = (name: string, fallback: string) => {
@@ -15,6 +15,9 @@ const flag = (name: string, fallback: string) => {
 };
 const RUNS = Number(flag('--runs', '2'));
 const MODEL = flag('--model', 'designroom-qwen');
+// The Planner on a hosted model too, thinking on or off: --provider groq --think.
+const PROVIDER = flag('--provider', 'ollama') as ProviderName;
+const THINK = args.includes('--think');
 const out = (line = '') => process.stdout.write(`${line}\n`);
 
 const { board } = boardOf(
@@ -46,8 +49,8 @@ const CASES: [request: string, flow: Flow, needs: ('data' | 'security')[]][] = [
   ['Why would we need a cache?', 'question', []],
 ];
 
-const { llm } = connectRealModel(MODEL);
-await assertOnGpu(MODEL);
+const llm = gatewayOf(MODEL, PROVIDER, THINK);
+if (PROVIDER === 'ollama') await assertOnGpu(MODEL);
 out(`Planner, model ${MODEL}, ${RUNS} run(s) per request\n`);
 out('| Request | Expected | Got | Passed | Asked |');
 out('|---|---|---|---|---|');

@@ -25,3 +25,16 @@ Earlier the same night, V1 (AV2-01) scored 47/50 and 45/50 on 10 runs per board;
 1. Add eval boards for what V2 adds: Security (a client reaching a data store, no gateway), data deep dives ("will Postgres survive a crash?"), questions that need the Planner to ask back. Without them, no eval can show V2 is better.
 2. Measure the Planner's questions on large boards (uber): ask less, state assumptions more.
 3. Turn the Critic's LLM on (`LLM_ROLE_CRITIC`, another model family) only with boards where code checks pass but the proposal is still wrong.
+
+## The Planner on its own (2026-10-22)
+
+`node --env-file=apps/server/.env scripts/plan-samples.ts --runs 3 [--provider groq|gemini --model … --think]` — 10 requests on the demo board, right flow and specialists:
+
+| Planner model | Right plans | Asked questions |
+|---|---|---|
+| **Groq Qwen3.8 27B, thinking on** | **30/30** | 4/30 |
+| **Gemini 3.5 Flash-Lite** | **30/30** | 2/30 |
+| Local Qwen 3.5 9B, thinking off | 26/30 | 7/30 |
+| Gemini 3.5 Flash | 21/30 | 0/30 — all 9 misses are exactly the fallback plan: its answer probably isn't read (thinking on by default), to check in the gateway before judging the model |
+
+A hosted Planner plans perfectly where the local 9B doesn't: D13 holds. Groq Qwen3.8 and Gemini Flash-Lite are equal; the choice is the free-tier limits (Gemini 15 requests/min; Groq 7,000 input tokens/min).
