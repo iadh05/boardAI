@@ -1,14 +1,13 @@
 import {
-  createAnthropicProvider,
-  createSpendTracker,
   createFallbackProvider,
+  createHostedProvider,
   createOpenAiCompatibleProvider,
   createScenarioProvider,
+  createSpendTracker,
   ScenarioFileSchema,
   type LlmError,
   type LlmProvider,
   type ScenarioFile,
-  type SpendTracker,
 } from '@designroom/ai-gateway';
 import { ROLES, type LlmConfig, type Role, type RoleModel } from './config.ts';
 
@@ -56,37 +55,6 @@ export const createLlmProvider = (
         llm.scenarioFile ? loadScenarios(llm.scenarioFile, readFile) : NO_SCENARIOS,
       );
 
-const OPENAI_COMPATIBLE_URLS = {
-  groq: 'https://api.groq.com/openai/v1',
-  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
-} as const;
-
-/** One hosted model, as its provider speaks (AV2-02, AV2-03). */
-const hostedProvider = (
-  spec: RoleModel,
-  spend: SpendTracker,
-  fetchFn?: typeof fetch,
-): LlmProvider => {
-  const injected = fetchFn ? { fetch: fetchFn } : {};
-  if (spec.provider === 'claude')
-    return createAnthropicProvider({
-      apiKey: spec.apiKey,
-      model: spec.model,
-      spend,
-      ...(spec.thinking ? { thinking: { effort: 'medium' } } : {}),
-      ...injected,
-    });
-  // Thinking off as each model takes it: gpt-oss can't turn it off; some Gemini refuse "none".
-  const off = spec.provider === 'gemini' ? null : spec.model.includes('gpt-oss') ? 'low' : 'none';
-  return createOpenAiCompatibleProvider({
-    baseUrl: OPENAI_COMPATIBLE_URLS[spec.provider],
-    model: spec.model,
-    apiKey: spec.apiKey,
-    reasoningEffort: spec.thinking ? 'medium' : off,
-    ...injected,
-  });
-};
-
 export type RoleProviderDeps = {
   /** Told when a hosted role couldn't answer and the local model did: for the log. */
   onFallback?: (role: Role, error: LlmError) => void;
@@ -110,7 +78,12 @@ export const createRoleProviders = (
     ROLES.map((role) => {
       const spec = roles[role];
       if (!spec) return [role, local];
-      const hosted = hostedProvider(spec, spend, deps.fetch);
+      // Built from the gateway's catalogue: URLs and thinking settings live there, not here.
+      const hosted = createHostedProvider({
+        ...spec,
+        spend,
+        ...(deps.fetch ? { fetch: deps.fetch } : {}),
+      });
       return [
         role,
         createFallbackProvider(hosted, local, {
