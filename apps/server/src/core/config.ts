@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { CLAUDE_MODELS } from '@designroom/ai-gateway';
+import {
+  HOSTED_PROVIDER_NAMES,
+  HOSTED_PROVIDERS,
+  MODELS,
+  type HostedProviderName,
+} from '@designroom/ai-gateway';
 import { LOG_LEVELS, type LogLevel } from './logger.ts';
 
 // The only file that reads the environment (docs/rules/backend.md). Validated at startup: a bad
@@ -10,24 +15,35 @@ export const ROLES = ['main', 'planner', 'specialist', 'critic'] as const;
 export type Role = (typeof ROLES)[number];
 const roleVar = (role: Role) => `LLM_ROLE_${role.toUpperCase()}`;
 
-type HostedProvider = 'groq' | 'gemini' | 'claude';
-const KEY_VARS = {
-  groq: 'GROQ_API_KEY',
-  gemini: 'GEMINI_API_KEY',
-  claude: 'CLAUDE_API_KEY',
-} as const satisfies Record<HostedProvider, string>;
+/** The env variable with a provider's key: the gateway's catalogue says which. */
+const keyVarOf = (provider: HostedProviderName) => HOSTED_PROVIDERS[provider].keyVar;
+/** The models the catalogue lists for a provider (Claude allows only those: the $100 budget). */
+const listedModels = (provider: HostedProviderName) =>
+  Object.keys(MODELS).filter((id) => MODELS[id]?.provider === provider);
+
+const isHostedProvider = (name: string): name is HostedProviderName =>
+  (HOSTED_PROVIDER_NAMES as readonly string[]).includes(name);
+const THINK_SUFFIX = '+think';
 
 /** "groq:qwen/qwen3.8-27b+think" → provider, model, thinking. Split on the first ":" only. */
 const RoleSpecSchema = z
   .string()
-  .regex(/^(groq|gemini|claude):[^\s+]+(\+think)?$/, 'expected provider:model[+think]')
+  .refine(
+    (spec) => {
+      const at = spec.indexOf(':');
+      const model = spec.slice(at + 1).replace(THINK_SUFFIX, '');
+      return at > 0 && isHostedProvider(spec.slice(0, at)) && model !== '' && !/\s/.test(model);
+    },
+    `expected provider:model[${THINK_SUFFIX}], provider one of ${HOSTED_PROVIDER_NAMES.join(', ')}`,
+  )
   .transform((spec) => {
     const at = spec.indexOf(':');
     const rest = spec.slice(at + 1);
+    const thinking = rest.endsWith(THINK_SUFFIX);
     return {
-      provider: spec.slice(0, at) as HostedProvider,
-      model: rest.replace(/\+think$/, ''),
-      thinking: rest.endsWith('+think'),
+      provider: spec.slice(0, at) as HostedProviderName,
+      model: thinking ? rest.slice(0, -THINK_SUFFIX.length) : rest,
+      thinking,
     };
   });
 type RoleSpec = z.infer<typeof RoleSpecSchema>;
@@ -72,26 +88,30 @@ const EnvSchema = z
     ...Object.fromEntries(ROLES.map((role) => [roleVar(role), RoleSpecSchema.optional()])),
     // "off": every role back on the local model, nothing leaves the PC (architecture-v2 § Privacy).
     LLM_HOSTED: z.enum(['on', 'off']).default('on'),
-    GROQ_API_KEY: z.string().min(1).optional(),
-    GEMINI_API_KEY: z.string().min(1).optional(),
-    CLAUDE_API_KEY: z.string().min(1).optional(),
+    // The hosted providers' keys, named by the catalogue (GROQ_API_KEY, GEMINI_API_KEY…).
+    ...Object.fromEntries(
+      HOSTED_PROVIDER_NAMES.map((p) => [keyVarOf(p), z.string().min(1).optional()]),
+    ),
   })
   .superRefine((env, ctx) => {
+    const read = env as Record<string, unknown>;
     for (const role of env.LLM_HOSTED === 'off' ? [] : ROLES) {
-      const spec = (env as Record<string, unknown>)[roleVar(role)] as RoleSpec | undefined;
-      if (!spec) continue;
-      const keyVar = KEY_VARS[spec.provider];
-      if (!env[keyVar])
+      const spec = read[roleVar(role)] as RoleSpec | string | undefined;
+      // A spec its own schema refused is still the raw string here: already reported.
+      if (!spec || typeof spec === 'string') continue;
+      const keyVar = keyVarOf(spec.provider);
+      if (!read[keyVar])
         ctx.addIssue({
           code: 'custom',
           path: [keyVar],
           message: `is required by ${roleVar(role)} (${spec.provider})`,
         });
-      if (spec.provider === 'claude' && !CLAUDE_MODELS.includes(spec.model as never))
+      const listed = listedModels(spec.provider);
+      if ('listedModelsOnly' in HOSTED_PROVIDERS[spec.provider] && !listed.includes(spec.model))
         ctx.addIssue({
           code: 'custom',
           path: [roleVar(role)],
-          message: `Claude models allowed: ${CLAUDE_MODELS.join(', ')} (the $100 budget)`,
+          message: `${spec.provider} models allowed: ${listed.join(', ')} (the owner's budget)`,
         });
     }
     if (env.PHOENIX_COLLECTOR_ENDPOINT && !env.OTEL_EXPORTER_OTLP_ENDPOINT) {
@@ -189,7 +209,9 @@ export const loadConfig = (env: Record<string, string | undefined>): Config => {
     roles: Object.fromEntries(
       ROLES.map((role) => {
         const spec = e[roleVar(role) as keyof typeof e] as RoleSpec | undefined;
-        const apiKey = spec ? e[KEY_VARS[spec.provider]] : undefined;
+        const apiKey = spec
+          ? ((e as Record<string, unknown>)[keyVarOf(spec.provider)] as string | undefined)
+          : undefined;
         return [role, spec && apiKey && e.LLM_HOSTED === 'on' ? { ...spec, apiKey } : null];
       }),
     ) as Record<Role, RoleModel | null>,
