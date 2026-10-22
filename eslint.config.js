@@ -3,9 +3,11 @@ import prettier from 'eslint-config-prettier';
 import boundaries from 'eslint-plugin-boundaries';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
+import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import { designroomPlugin } from './tooling/lint/src/index.ts';
+import { READABILITY_DEBT } from './tooling/lint/src/readabilityDebt.ts';
 
 // ─── Architecture rules (docs/architecture.md §3, §5.2, §6.1) ────────────────────────────
 // Proven by the fixture tests in tooling/lint (`pnpm --filter @designroom/lint test`).
@@ -275,6 +277,17 @@ const appRules = {
 
 // ─── Full config ──────────────────────────────────────────────────────────────────────────
 
+// Readability guardrails (ADR-014): what a reviewer would otherwise catch by reading. A function
+// over 80 lines or 15 of cognitive complexity, or a file over 300 lines, fails — tests excepted
+// (a describe block is long by nature). Files already over a limit when the rules arrived
+// (2026-10-22) only warn, and leave this list when they're fixed (ticket CI-02): it only shrinks.
+const READABILITY_RULES = (level) => ({
+  'sonarjs/cognitive-complexity': [level, 15],
+  'max-lines-per-function': [level, { max: 80, skipBlankLines: true, skipComments: true }],
+  'max-lines': [level, { max: 300, skipBlankLines: true, skipComments: true }],
+});
+const NOT_TESTS = ['**/*.test.{ts,tsx}', 'apps/web/e2e/**', '**/fixtures/**'];
+
 export default tseslint.config(
   {
     ignores: [
@@ -433,5 +446,14 @@ export default tseslint.config(
     files: ['**/*.js'],
     ...tseslint.configs.disableTypeChecked,
   },
+  {
+    files: ['**/*.{ts,tsx}'],
+    ignores: NOT_TESTS,
+    plugins: { sonarjs },
+    rules: READABILITY_RULES('error'),
+  },
+  ...(READABILITY_DEBT.length > 0
+    ? [{ files: READABILITY_DEBT, ignores: NOT_TESTS, rules: READABILITY_RULES('warn') }]
+    : []),
   prettier,
 );

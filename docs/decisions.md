@@ -324,3 +324,27 @@ A proposal is a **list of changes** the user accepts or rejects **one by one**. 
 - **Easier:** keeping the good part of an answer; precise feedback per agent; fewer Architect rounds when nothing conflicts.
 - **Harder:** a new proposal contract (domain, server, web, e2e); dependency tracking between changes; the card and the board's ghost layer grow.
 - **Replaces:** architecture §4.3's "all-or-nothing" and §5.4's single Accept / Reject for agent V2. V1 keeps one proposal (one change) until V2 is the default.
+
+## ADR-014 — CI reads the code: readability and PR-size guardrails
+
+- **Date:** 2026-10-22
+- **Status:** accepted (the owner)
+- **Milestone:** M1 (setup)
+
+### Context
+
+The owner works spec-driven: they review specs, rules and architecture, and rely on CI rather than reading every line. CI checked conformance (lint, types, boundaries, tests, coverage) but not readability or size: the V2 stack (#91) went in green with a 200-line function, a cognitive complexity of 106 in `runAgent.ts`, and 4,032 changed lines of code — and was then found unreadable.
+
+### Decision
+
+What a reviewer would catch by eye becomes a check:
+- **Lint:** functions ≤ 80 lines and ≤ 15 cognitive complexity (`eslint-plugin-sonarjs`), files ≤ 300 lines; tests excepted.
+- **Debt list:** the 20 files over a limit on 2026-10-22 only warn (`tooling/lint/src/readabilityDebt.ts`); a test keeps the list shrinking and drops fixed files. New code must pass.
+- **PR size:** a `pr-size` workflow fails above 400 changed lines of code (lockfile, fixtures, JSON, docs, tickets not counted); the owner's `large-ok` label lets one PR through on purpose. Checked on history: it would have stopped #91 (4,032 lines).
+
+### Consequences
+
+- **Easier:** "no need to review every line" holds for size and readability, not only for rules and types.
+- **Harder:** bigger tickets must be split before they're built; the debt list needs paying down (CI-02).
+- **Owner's step:** add `pr-size` to `main`'s required checks (branch protection).
+- **Not yet:** acceptance criteria ↔ tests (ticket CI-03).

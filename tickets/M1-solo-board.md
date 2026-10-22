@@ -1387,3 +1387,23 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - [ ] Full demo script (12 steps); short video.
 - [ ] Retro + Self-check answers in the learning log.
 - [ ] Tick M1 in [MILESTONES.md](../MILESTONES.md); tag `m1-done`.
+
+## CI-02 — Pay down the readability debt (ADR-014)
+**Status:** todo · **Size:** S per file
+
+The 20 files in `tooling/lint/src/readabilityDebt.ts`, worst first: `runAgent.ts` (cognitive complexity 106), `openAiCompatible.ts` (49), `reviewerV2.ts` and `tools.ts` (32). One file per PR: split the long function into named steps, behaviour unchanged (tests stay green), remove the file from the list and lower `DEBT_AT_START`.
+
+**Acceptance criteria**
+- [ ] The list is empty; the warn block is gone from `eslint.config.js`.
+
+## CI-03 — Every acceptance criterion has a test
+**Status:** todo · **Size:** S
+
+The owner reviews specs, not code (ADR-014): CI should show that each ticket's acceptance criteria are tested.
+
+**Tasks**
+- [ ] A convention: each acceptance criterion gets an id (`AC-AV2-14-2`) and the test that covers it names it in its title.
+- [ ] A script in CI: for tickets marked done, every criterion id appears in some test title; the missing ones are listed.
+
+**Acceptance criteria**
+- [ ] A done ticket with an untested criterion fails CI, naming the criterion.

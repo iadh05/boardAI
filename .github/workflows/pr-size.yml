@@ -1,0 +1,26 @@
+name: pr-size
+
+# ADR-014: a PR changes at most 400 lines of code, unless the owner labels it large-ok. Its own
+# workflow, so adding or removing the label re-runs only this check, not the whole CI.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-size:
+    name: pr-size
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the PR's base must be there to diff against
+      - name: At most 400 changed lines of code
+        run: bash .github/scripts/pr-size.sh
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          LARGE_OK: ${{ contains(github.event.pull_request.labels.*.name, 'large-ok') }}
