@@ -20,6 +20,10 @@ The build plan of [architecture-v2.md](../docs/agents/architecture-v2.md#build-p
 | AV2-08 | S5 | Critic: code checks, then an LLM on another model | M | in review — #87 (off by default) |
 | AV2-09 | wiring | V2 behind `AGENT_MODE=v2`: server, progress events, e2e | M | in review — #88 (no V2 e2e: see its PR) |
 | AV2-10 | eval | V1 vs V2 on every sample board; keep or not | S | in review — #89 (V2 = V1 on these boards: keep v1) |
+| AV2-11a | spike | Our state machine vs LangGraph.js, on the hardest flow; ADR | S | todo (added 2026-10-22) |
+| AV2-11 | S1+ | State machine + request tracker (built the way AV2-11a decides) | M | todo |
+| AV2-12 | D17 | Ad-hoc expert: proposed by the Planner, runs after your Accept | M | todo |
+| AV2-13 | D10 | Sub-specialists: one level under a specialist, as briefs | M | todo |
 
 What was built, drawn: [docs/agents/v2/built-2026-10-22.json](../docs/agents/v2/built-2026-10-22.json) (`node scripts/board-snapshot.mjs load docs/agents/v2/built-2026-10-22.json`).
 
@@ -158,6 +162,57 @@ Later (not tonight): M1-32b round budget, M1-32c question card (folded into AV2-
 - [ ] `review-samples.ts --mode v1|v2`: every sample board, 5 runs each; local only, then with hosted roles.
 - [ ] One table in `docs/evals/` and architecture-v2 § Models: pass rate, wrong proposals, time p50/p95, cost.
 - [ ] Recommendation for the owner: switch the default, or not yet and why.
+
+## AV2-11a — Spike: our state machine vs LangGraph.js
+**Status:** todo · **Size:** S · **Depends on:** AV2-09 merged
+
+**Why:** the ad-hoc expert (AV2-12) needs a request to **pause for your Accept and resume on your next message**, and sub-specialists (AV2-13) need the Planner to decide the number of tasks at runtime. `reviewerV2.ts` is a straight line of `if`s with no saved state, so it can do neither. LangGraph's checkpointer, `interrupt()` and `Send` solve exactly this; S1 chose "our own, no LangGraph" before these needs existed. Decide with code, not opinions.
+
+**Tasks**
+- [ ] The same flow built twice, on a throwaway branch, both with the fake LLM: Planner → ad-hoc expert proposed → pause for Accept → resume → 2 sub-brief cards → merge → Architect.
+- [ ] A: our own: a state union + pure `transition()` + an in-memory tracker (≈ 150 lines).
+- [ ] B: LangGraph.js: state with reducers, nodes calling our gateway (no LangChain model wrappers), `interrupt()`, `Send`, in-memory checkpointer. Check the current API first: what we know of it is from memory.
+- [ ] Compare: lines of code, TDD with the fake LLM, Stop/timeout, the Phoenix trace, dependency size, how hard it is to explain.
+- [ ] ADR in `docs/decisions.md`: the choice and why.
+
+**Acceptance criteria**
+- [ ] Both versions pass the same tests (pause, resume, reject, Stop during a task, a 2-sub-card fan-out).
+- [ ] The ADR is co-written with the owner.
+
+## AV2-11 — State machine + request tracker
+**Status:** todo · **Size:** M · **Depends on:** AV2-11a
+
+**Tasks**
+- [ ] Named states: `scoping → planning → asking | awaiting_approval → running → writing → critiquing → done`, and `stopped | failed` from any state. A wrong transition is a test failure.
+- [ ] The state is kept per conversation (in memory now, the Yjs room doc in M2): your next message resumes it.
+- [ ] Tracker: per request, the plan, each card (with `parent` and `brief`), status, timing, findings; per ad-hoc definition, proposed / accepted / used.
+- [ ] Structured `task` events to the web: a live checklist instead of a progress sentence.
+
+**Acceptance criteria**
+- [ ] Unit tests: every transition, resume after a pause, Stop in every state.
+- [ ] e2e: a review shows the checklist.
+
+## AV2-12 — Ad-hoc expert (D17)
+**Status:** todo · **Size:** M · **Depends on:** AV2-11
+
+**Tasks**
+- [ ] The Planner may propose an expert `{ role, focus, boxIds }` when no specialist fits, as a top-level card or a sub-brief under a specialist.
+- [ ] `awaiting_approval`: the chat shows an Accept / Reject card; Reject continues without it.
+- [ ] `createAdhocExpert(brief)`: the specialist model, **no tools**, read-only, the finding contract, counted in the 6-task budget.
+
+**Acceptance criteria**
+- [ ] Unit + e2e: proposed → accepted → its findings reach the Architect; rejected → the review goes on without it.
+
+## AV2-13 — Sub-specialists (D10)
+**Status:** todo · **Size:** M · **Depends on:** AV2-11, Data/Security as LLM agents
+
+**Tasks**
+- [ ] The Planner picks sub-briefs (Data → model · storage · consistency; Stack & Cloud → stack · cloud) as cards with `parent`.
+- [ ] The queue stays flat: one card at a time, ≤ 6 in all. A specialist never spawns agents; it may return "needs a deeper look", and the Architect adds the card if the budget allows (depth ≤ 1).
+- [ ] Merge sub-cards under their parent first, then with the others.
+
+**Acceptance criteria**
+- [ ] Unit tests: a 3-sub-brief Data review stays within budget; a "deeper look" request beyond the budget is refused and said.
 
 ---
 
