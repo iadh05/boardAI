@@ -163,34 +163,35 @@ Later (not tonight): M1-32b round budget, M1-32c question card (folded into AV2-
 - [ ] One table in `docs/evals/` and architecture-v2 § Models: pass rate, wrong proposals, time p50/p95, cost.
 - [ ] Recommendation for the owner: switch the default, or not yet and why.
 
-## AV2-11a — Spike: our state machine vs LangGraph.js
-**Status:** todo · **Size:** S · **Depends on:** AV2-09 merged
+## AV2-11a — Read LangGraph.js's API, copy its shapes
+**Status:** todo · **Size:** XS · **Depends on:** —
 
-**Why:** the ad-hoc expert (AV2-12) needs a request to **pause for your Accept and resume on your next message**, and sub-specialists (AV2-13) need the Planner to decide the number of tasks at runtime. `reviewerV2.ts` is a straight line of `if`s with no saved state, so it can do neither. LangGraph's checkpointer, `interrupt()` and `Send` solve exactly this; S1 chose "our own, no LangGraph" before these needs existed. Decide with code, not opinions.
-
-**Tasks**
-- [ ] The same flow built twice, on a throwaway branch, both with the fake LLM: Planner → ad-hoc expert proposed → pause for Accept → resume → 2 sub-brief cards → merge → Architect.
-- [ ] A: our own: a state union + pure `transition()` + an in-memory tracker (≈ 150 lines).
-- [ ] B: LangGraph.js: state with reducers, nodes calling our gateway (no LangChain model wrappers), `interrupt()`, `Send`, in-memory checkpointer. Check the current API first: what we know of it is from memory.
-- [ ] Compare: lines of code, TDD with the fake LLM, Stop/timeout, the Phoenix trace, dependency size, how hard it is to explain.
-- [ ] ADR in `docs/decisions.md`: the choice and why.
-
-**Acceptance criteria**
-- [ ] Both versions pass the same tests (pause, resume, reject, Stop during a task, a 2-sub-card fan-out).
-- [ ] The ADR is co-written with the owner.
-
-## AV2-11 — State machine + request tracker
-**Status:** todo · **Size:** M · **Depends on:** AV2-11a
+**Why:** the ad-hoc expert (AV2-12) needs a request to **pause for your Accept and resume on your next message**, and sub-specialists (AV2-13) need the Planner to decide the number of tasks at runtime. `reviewerV2.ts` is a straight line of `if`s with no saved state, so it can do neither. **Decided by the owner (2026-10-22, ADR-011): our own state graph, shaped like LangGraph, no LangGraph dependency.** So no two-way spike: read the current LangGraph.js docs so our names and shapes match theirs (what we know of the API is from memory).
 
 **Tasks**
-- [ ] Named states: `scoping → planning → asking | awaiting_approval → running → writing → critiquing → done`, and `stopped | failed` from any state. A wrong transition is a test failure.
-- [ ] The state is kept per conversation (in memory now, the Yjs room doc in M2): your next message resumes it.
-- [ ] Tracker: per request, the plan, each card (with `parent` and `brief`), status, timing, findings; per ad-hoc definition, proposed / accepted / used.
-- [ ] Structured `task` events to the web: a live checklist instead of a progress sentence.
+- [ ] Read the current docs for `StateGraph`, reducers/annotations, `addConditionalEdges`, `interrupt()` + `Command({ resume })`, `Send`, checkpointers and stream modes; note anything ADR-011's design gets wrong.
+- [ ] Update ADR-011's design section with the owner; set it to accepted.
 
 **Acceptance criteria**
-- [ ] Unit tests: every transition, resume after a pause, Stop in every state.
-- [ ] e2e: a review shows the checklist.
+- [ ] ADR-011 accepted, co-written with the owner.
+
+## AV2-11 — Our state graph: runtime, checkpoints, interrupts, streaming
+**Status:** todo · **Size:** M (split if the diff passes ~400 lines: runtime first, then V2 moved onto it) · **Depends on:** AV2-11a, AV2-09 merged
+
+**Tasks**
+- [ ] A small runtime in `packages/agent` (TDD, fake LLM): `StateGraph` with a zod-typed state and reducers, `addNode`, `addEdge`, `addConditionalEdges`, `interrupt()`, `compile({ checkpointer })`, `stream()`.
+- [ ] Named states: `scoping → planning → asking | awaiting_approval → running → writing → critiquing → done`, and `stopped | failed` from any state. An edge not in the graph is a test failure.
+- [ ] Checkpoint after every node, per conversation (in memory now, the Yjs room doc in M2): your next message resumes a paused request.
+- [ ] Interrupts: `asking` and `awaiting_approval` end the request with a `paused` event; resume with the next message.
+- [ ] Streaming: `node_started`, `text`, `card`, `finding`, `node_done` over the existing SSE stream (zod schemas in `@designroom/domain`); the chat shows a live checklist instead of a progress sentence.
+- [ ] Tracker (from the checkpoints): per request, the plan, each card (with `parent` and `brief`), status, timing, findings; per ad-hoc definition, proposed / accepted / used.
+- [ ] One Phoenix span per node, with the state's version.
+- [ ] Move `reviewerV2.ts` onto the graph; V1 untouched.
+
+**Acceptance criteria**
+- [ ] Unit tests: every transition, resume after a pause, Stop in every state, a 2-card fan-out within the 6-card budget.
+- [ ] e2e: a review shows the live checklist; a paused request resumes on the next message.
+- [ ] AV2-10's eval: V2 on the graph no worse than before.
 
 ## AV2-12 — Ad-hoc expert (D17)
 **Status:** todo · **Size:** M · **Depends on:** AV2-11

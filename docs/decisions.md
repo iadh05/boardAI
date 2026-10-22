@@ -212,3 +212,45 @@ Yjs. The board is three `Y.Map`s (`nodes`, `edges`, `zones`); each item is a `Y.
 - **Easier:** live edits, offline edits and undo of only your own changes (`Y.UndoManager` with tracked origins) come from the library.
 - **Harder:** the document can briefly hold a state no single op would produce, so the read side must repair it; the server becomes stateful (rooms in memory until M3); binary updates are not human-readable in logs.
 - **Same field, same time:** the last write (in Yjs order) wins for that field — two people dragging the same box end at one of the two positions, the same on every screen.
+
+## ADR-011 — The agents run on our own state graph, shaped like LangGraph
+
+- **Date:** 2026-10-22
+- **Status:** proposed (to co-write with the owner in the PR review)
+- **Milestone:** M1c (agent V2)
+
+### Context
+
+V2 (`reviewerV2.ts`, AV2-05 … AV2-09) runs the agents as a straight line of steps with a task queue and no saved state. That is enough for one review that runs start to finish, not for what comes next:
+
+- **Pause and resume:** the Planner asks you a question, or an ad-hoc expert (D17) waits for your Accept. Today the request ends and the next message starts from nothing.
+- **Decisions at runtime:** the Planner decides how many tasks and sub-briefs to run (D10, AV2-13).
+- **Visibility:** you should see where each agent is ("Security ✓ · Cost running · 2 left", D6), and a failed run should be replayable step by step.
+
+These are exactly what LangGraph is built around: a typed state, nodes and conditional edges, a checkpoint after each step, `interrupt()` to pause for a human, and streamed events. The owner's direction (2026-10-21, again 2026-10-22): **build it ourselves, without LangGraph, using the same ideas.**
+
+### Options considered
+
+1. **LangGraph.js** (`@langchain/langgraph`) — mature: checkpointers, interrupts, `Send` for fan-out, streaming modes, LangGraph Studio. But it brings `@langchain/core` and its own way to call models next to our ai-gateway; we would learn its API more than the ideas.
+2. **XState** — very good state machines and a visual inspector. Not made for LLM agents: checkpoints, streaming to the chat and the agent contracts would still be ours.
+3. **Our own graph runtime, LangGraph-shaped** — a small TDD'd package: a typed state, nodes, conditional edges, a checkpointer, interrupts and an event stream, using LangGraph's names (`StateGraph`, `addNode`, `addConditionalEdges`, `interrupt`, `stream`). Fits our gateway, zod contracts, Phoenix spans and fake-LLM tests; we maintain it.
+
+### Decision
+
+Option 3: our own state graph with LangGraph's concepts and names, and **no LangGraph or LangChain dependency** — for the graph and for the context (D12 stays our own code). The owner's call, twice.
+
+### Design (first version)
+
+- **State:** one zod-typed object per request: `{ status, plan, cards[], findings[], proposal?, pending? }`. Nodes return a partial update; reducers merge it (e.g. findings are appended).
+- **States:** `scoping → planning → asking | awaiting_approval → running → writing → critiquing → done`, and `stopped | failed` from any state. An edge not in the graph is a test failure.
+- **Checkpoints:** the state is saved after every node, per conversation: in memory now, in the room's Yjs document in M2, in Postgres in M3. Your next message resumes a paused request from its checkpoint.
+- **Interrupts:** `asking` (the Planner's questions) and `awaiting_approval` (ad-hoc expert, later your Accept / Reject) end the HTTP request with a `paused` event; the resume comes with the next message.
+- **Streaming:** every node emits `node_started`, `text`, `card` (a task's status), `finding`, `node_done` over the existing SSE stream; the chat shows a live checklist (AV2-11).
+- **Observability:** one Phoenix span per node, with the state's version; a checkpoint list makes a run replayable.
+- **Limits stay in code:** ≤ 6 cards, 60 s per card, Stop cancels the running node and drops the waiting ones.
+
+### Consequences
+
+- **Easier:** pausing for the user, runtime fan-out, a live checklist, replaying a failed run, and testing every transition with the fake LLM.
+- **Harder:** we own the runtime (≈ 300–400 lines plus tests) and its bugs; checkpoint storage has to follow the room (M2, M3).
+- **Revisit:** only if our runtime becomes the bottleneck (parallel branches on hosted models, long-running background graphs). Using the same names keeps that door open without walking through it.
