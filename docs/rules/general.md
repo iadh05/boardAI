@@ -41,6 +41,14 @@ Apply everywhere: `apps/*` and `packages/*`. Frontend and backend specifics: [fr
 - MUST: cross a module or pod boundary only through its `index.ts`.
 - MUST NOT: circular imports.
 
+## Readability (ADR-014)
+
+The owner reviews specs, rules and architecture; CI reads the code for them. So what a reviewer would catch by eye is a lint error:
+
+- MUST: a function stays under **80 lines** and **15 of cognitive complexity** (`sonarjs/cognitive-complexity`); a file under **300 lines** (blank lines and comments not counted; tests excepted).
+- MUST: files over a limit when the rules arrived are listed in `tooling/lint/src/readabilityDebt.ts` and only warn. The list only shrinks: a test fails if it grows, or if a listed file is no longer over a limit (then it leaves the list). Paying it down: ticket CI-02.
+- MUST NOT: add a file to the debt list, or raise a limit, to make a PR pass. Split the function instead.
+
 ## Testing (TDD)
 
 - MUST: logic is written test-first: red → green → refactor.
@@ -70,7 +78,7 @@ Apply everywhere: `apps/*` and `packages/*`. Frontend and backend specifics: [fr
 
 - Branch per ticket: `m1-05-board-types`.
 - Commits: [Conventional Commits](https://www.conventionalcommits.org) with the ticket id — `feat(domain): M1-05 add board schemas`, `test(agent): M1-18 loop stops after max rounds`, `fix(review): rename prop per review`.
-- MUST: small PRs — one ticket per PR; if a ticket's diff passes ~400 lines, split the ticket.
+- MUST: small PRs — one ticket per PR; if a ticket's diff passes ~400 lines, split the ticket. CI's `pr-size` check fails above 400 changed lines of code (lockfile, fixtures, JSON, docs and tickets not counted); only the owner's `large-ok` label lets one through (ADR-014).
 - MUST: `main` only changes through a green PR; squash merge. The PR title follows the same commit format (it becomes the commit on `main`).
 - Enforced by commitlint: locally by the Lefthook `commit-msg` hook, in CI by the `commitlint` job.
 - Process details: [workflow.md](../workflow.md).
