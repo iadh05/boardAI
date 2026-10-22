@@ -54,7 +54,7 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-24d | Guardrails v2: injection, prompt leaks, red-team set | M1b | M | done |
 | M1-24e | Prompt v3: XML sections, solution-architect persona, compact | M1b | M | done |
 | M1-29 | Agent fixes from replays: duplicates, nudge, ids, board text | M1b | M | done |
-| M1-30 | Design checks in code: rules find the flaws, the agent explains | M1b | M | todo |
+| M1-30 | Design checks in code: rules find the flaws, the agent explains | M1b | M | doing |
 | M1-31 | Tool calls without guessing: `no_change` tool, one reminder | M1b | S | done |
 | M1-25 | Sentry (web + server) | obs | S | done |
 | M1-25b | Local error tracking with GlitchTip (Sentry-compatible) | obs | S | done |
@@ -64,7 +64,9 @@ Spec: [docs/specs/M1-solo-board.md](../docs/specs/M1-solo-board.md) · Architect
 | M1-26e | God eye: overview dashboard (RED + USE), alerts, runtime metrics | obs | M | done |
 | M1-26c | Phoenix: agent traces, OpenInference content, Accept/Reject feedback | obs | M | done |
 | M1-27 | ADR-006…009, demo, retro | close | S | todo |
-| M1-32 | Agent v2: tools to check, ask and finish; round budget per task | M1b | L | todo |
+| M1-32a | Agent v2: tools to check, ask and finish (+ M1-30's rules) | M1b | M | doing |
+| M1-32b | Round budget per task | M1b | S | todo |
+| M1-32c | The question as a card in the chat | M1b | S | todo |
 
 *(The table is a summary — the **Status** line inside each ticket is the source of truth.)*
 
@@ -1131,14 +1133,14 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 - [ ] Owner review before merge (agent PR).
 
 ## M1-30 — Design checks in code
-**Status:** todo (to co-write with the owner) · **Size:** M · **Depends on:** M1-29
+**Status:** doing (built inside M1-32a, night of 2026-10-21) · **Size:** M · **Depends on:** M1-29
 
 *Why (2026-10-20):* after two days of prompt work, the demo-board flaws (no cache in front of a database, one database, an API without a load balancer, a second queue) still depend on a 9B model's judgement: 5–6/10 on 10-run samples. These are facts code can detect every time. Owner's call: rules find the flaws, the agent explains them against the requirements and proposes the fix (same pattern as the nudges, the 3-box cap and the duplicate guard: every fix that held was code).
 
-**Tasks** (draft, to co-write)
-- [ ] Rules in `@designroom/domain` (pure, TDD): missing cache in front of a read path, single database, API reachable without a load balancer, duplicates; each finding names the boxes involved.
-- [ ] The findings go to the agent as data next to the board ("Checks found: …"); the prompt asks it to explain and propose fixes for them, weighed against the requirements.
-- [ ] Eval: the demo boards ≥ 9/10 again; the Uber board has no false findings.
+**Tasks**
+- [x] Rules in `@designroom/domain` (pure, TDD), `checkDesign(board)`: a client calling an API/service directly (no load balancer), an API reading a database with no cache next to it, a database with one copy (its label doesn't say replica / cluster / sharded / multi-AZ, and no database box is linked to it), two boxes doing a one-of-a-kind job (the duplicate guard's rule, moved here from the agent), a box with no arrow. Each finding names its boxes, the problem and the fix.
+- [ ] ~~The findings go to the agent as data next to the board~~ → changed by M1-32: the agent **calls** them as its `check_design` tool, on the draft, so it can check again after its fix.
+- [ ] Eval: the demo boards ≥ 9/10 again; the Uber board has no false findings (with M1-32a).
 
 **Acceptance criteria**
 - [ ] The M1 demo ("it points out the missing cache and proposes it") passes 10/10.
@@ -1309,18 +1311,37 @@ Key ideas: the system prompt is **not a secret and not a security control** (OWA
 ---
 
 ## M1-32 — Agent v2: tools to check, ask and finish
-**Status:** todo · **Size:** L · **Depends on:** M1-30 (the rules), M1-31 (#72)
+**Status:** doing (split in three for the night of 2026-10-21, ~400 lines per PR) · **Size:** L · **Depends on:** M1-30 (the rules), M1-31 (#72)
 
 *Why (owner, 2026-10-21):* drawn on a DesignRoom board, today's agent is naive. One loop does everything (find flaws, judge, propose, explain); it can change the board but can't **look**, **check**, **ask** or **finish**; and the decision to propose is pushed by a reminder sent as a fake user message. The owner's direction: **add tools first, then agents**. That matches the industry: one ReAct loop with good tools before multi-agent; and small models pick the wrong tool more often past ~8 tools.
 
-**Tasks**
-- [ ] Draw the v2 loop on a DesignRoom board next to today's agent; agree it with the owner before coding.
-- [ ] `check_design()`: runs M1-30's rules and returns the findings, naming the boxes ("Orders API → Postgres: no cache in front").
-- [ ] `ask_user(question)`: a clarifying question shown as a card; ends the answer.
-- [ ] `finish(summary)` replaces `no_change`, the ReAct "done". It refuses while a new box has no arrow, and says so as a tool result (an observation, not a message). `nudge.ts` and the fake user messages are deleted; a turn with no tool call gets one format-error observation.
-- [ ] A round budget per task, capped in code (e.g. review 6, question 2, draft 10), instead of a fixed 5; prompt and tool descriptions encourage several calls per round (add + connect).
-- [ ] At most 8 tools offered at once.
-- [ ] Measure against M1-31 (#72): sample boards and the Uber case 10 runs, red team. Keep only if equal or better.
+| Part | What | PR |
+|---|---|---|
+| **M1-32a** | M1-30's rules + the tools `check_design`, `ask_user`, `finish`; nudges deleted; prompt v4; evals | agent PR — the owner reviews, no auto-merge |
+| **M1-32b** | Round budget per task (review 6, draft 10), capped by `chatPolicy` | small, stacked on 32a |
+| **M1-32c** | The question as a **card** in the chat: a `question` event in the contract, a card in the conversation pod, its e2e journey | web PR, stacked on 32a |
+
+### M1-32a — tools to check, ask and finish
+- [ ] Draw the v2 loop on a DesignRoom board next to today's agent (`docs/agents/m1-32-loop.json`, `node scripts/board-snapshot.mjs load …`) — *drawn after the fact for the owner's review: the V2 doc (PR #77) already agreed S0 = these tools.*
+- [x] `check_design()`: runs M1-30's rules **on the draft** and returns the findings, naming the boxes (`n3 "Orders API" -> n4 "Postgres": every read goes straight to the database: no cache in front. Fix: …`). Labels JSON-quoted with `<` `>` escaped, like the board listing: still data.
+- [x] `ask_user(question)`: ends the answer; the question is shown to the user (as text until M1-32c), after the leak guard and the id rewriter.
+- [x] `finish(summary)` replaces `no_change`, the ReAct "done". It refuses while a new box has no arrow, and says so as a tool result (an observation, not a message).
+- [ ] `nudge.ts` and the fake user messages are deleted; a turn with no tool call gets one **format-error observation** (`[format error] …`, worded as the runtime's error, never as the user).
+- [ ] Prompt v4: start a review with `check_design`; several calls per round (add + connect); end with `finish` or `ask_user`.
+- [x] At most 8 tools offered at once (a test): 6 today.
+- [ ] e2e: the fake scenarios end with `finish`; a new journey "a review that needs numbers asks a question" (fake LLM: `ask_user`), shown in the chat.
+- [ ] `docs/architecture.md` §7: tools, loop, no nudges.
+- [ ] Measure against M1-31 (#72): `node scripts/review-samples.ts --runs 5` (baseline 22/25, architecture-v2 § Models), the demo board (no-cache) 10 runs, red team. Keep only if equal or better.
+
+### M1-32b — round budget per task
+- [ ] `roundBudget(board)` in the agent: a draft (empty or nearly empty board) 10 rounds, a review 6; `chatPolicy.maxRounds` (raised to 10) stays the hard cap. "question 2" waits for the Planner (S2), which knows what kind of request it is.
+- [ ] Unit tests with the fake LLM; the eval's time p50 / p95 next to 32a's.
+
+### M1-32c — the question card
+- [ ] `ChatEvent` gets `{ type: 'question', question }` (zod, `@designroom/domain`); the agent emits it for `ask_user` instead of text; the server streams it.
+- [ ] The conversation pod shows it as a card (atoms from `core/ui`), and the input says "Answer the question…"; no Accept/Reject on it.
+- [ ] e2e: the journey from 32a now sees the card (role-based locator).
+- [ ] `docs/architecture.md` §4.4: the new event.
 
 **Later, each its own ticket**
 - `set_requirements(users, peak, budget…)` and a requirements card the agent reads on every request (the "situation card" idea).

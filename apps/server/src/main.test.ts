@@ -114,7 +114,7 @@ describe('createApp', () => {
           // Every answer ends with a tool call (M1-31): here, nothing to change.
           {
             type: 'toolCall',
-            call: { id: 'c1', name: 'no_change', arguments: { reason: 'The design fits.' } },
+            call: { id: 'c1', name: 'finish', arguments: { summary: 'The design fits.' } },
           },
         ],
       ]),

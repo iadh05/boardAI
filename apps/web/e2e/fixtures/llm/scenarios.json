@@ -50,6 +50,32 @@
           {
             "type": "text",
             "delta": "I propose a cache between the API and the database."
+          },
+          {
+            "type": "toolCall",
+            "name": "finish",
+            "arguments": {
+              "summary": "Proposed a cache between the API and the database."
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "name": "asks-numbers",
+      "when": "launch day",
+      "rounds": [
+        [
+          {
+            "type": "text",
+            "delta": "It depends on how much traffic you expect."
+          },
+          {
+            "type": "toolCall",
+            "name": "ask_user",
+            "arguments": {
+              "question": "How many users do you expect at peak on launch day?"
+            }
           }
         ]
       ]

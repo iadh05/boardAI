@@ -1,17 +1,24 @@
 import type { ToolDefinition } from '@designroom/ai-gateway';
 import {
   applyOps,
+  checkDesign,
   EdgeModeSchema,
   MAX_OPS_PER_PROPOSAL,
   NodeKindSchema,
+  oneOfAKindJob,
   type AgentOp,
   type Board,
+  type DesignFinding,
   type NodeKind,
 } from '@designroom/domain';
 import { z } from 'zod';
 import { createAliases, type Aliases } from './aliases.ts';
+import { quote } from './boardToText.ts';
 
-// The agent's tools (architecture §7): add_node, update_node, connect_nodes — and no delete.
+// The agent's tools (architecture §7, M1-32): look (check_design), change (add_node, update_node,
+// connect_nodes — and no delete), ask (ask_user) and end (finish). Every rule the model must follow
+// is in a tool's description or checked in its code, and a refusal is a tool result: an
+// observation the model reads next round, never a message pretending to be the user.
 // Flat arguments on purpose: small local models call simple tools much more reliably.
 // Each call is checked twice: its arguments with zod, then the resulting op with applyOps on a
 // draft of the board — the same code the browser runs on Accept. A failure goes back to the model
@@ -31,8 +38,8 @@ export type ToolOutcome = {
   draft: Draft;
   ok: boolean;
   reply: string;
-  /** The model said nothing should change (no_change): its reason. */
-  noChange?: string;
+  /** The model ended its answer: with finish (its summary) or ask_user (its question). */
+  end?: { tool: typeof FINISH | typeof ASK_USER; text: string };
 };
 export type ToolDeps = {
   /** New node and edge ids. The agent chooses them, never the model (M1-08 review). */
@@ -67,23 +74,48 @@ const toParameters = (schema: z.ZodType): Record<string, unknown> => {
   return parameters;
 };
 
-/**
- * The model's way to say "nothing to change" (M1-31). With it, every answer can end with a tool
- * call, and the loop no longer guesses from words whether an answer recommended something.
- */
-export const NO_CHANGE = 'no_change';
-const NoChangeArgs = z.object({
-  reason: z
+/** Looks at the draft board with the design rules (M1-30): what code can see every time. */
+export const CHECK_DESIGN = 'check_design';
+const CheckDesignArgs = z.object({});
+
+/** A clarifying question for the user; it ends the answer (M1-32). */
+export const ASK_USER = 'ask_user';
+const AskUserArgs = z.object({
+  question: z
     .string()
     .min(1)
     .max(500)
-    .describe('Why nothing on the board should change now, in one or two sentences.'),
+    .describe(
+      'One short question about what would change your advice (users, peak load, budget…).',
+    ),
+});
+
+/**
+ * The ReAct "done" (M1-32, replaces M1-31's no_change): every answer ends with a tool call, so the
+ * loop never guesses from words whether the model meant to propose something.
+ */
+export const FINISH = 'finish';
+const FinishArgs = z.object({
+  summary: z
+    .string()
+    .min(1)
+    .max(500)
+    .describe(
+      'One or two sentences for the user: what you propose and why, or why nothing should change.',
+    ),
 });
 
 export const AGENT_TOOLS: ToolDefinition[] = [
   {
+    name: CHECK_DESIGN,
+    description:
+      'Run the design checks on the board, including the changes you proposed so far: single points of failure, a missing cache or load balancer, duplicates, unconnected boxes. Call it first in a review, and again after your changes to see they fixed the findings.',
+    parameters: toParameters(CheckDesignArgs),
+  },
+  {
     name: 'add_node',
-    description: 'Propose a new component on the board.',
+    description:
+      'Propose a new component on the board. Connect it in the same answer: you can call add_node and connect_nodes together.',
     parameters: toParameters(AddNodeArgs),
   },
   {
@@ -97,10 +129,16 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     parameters: toParameters(ConnectArgs),
   },
   {
-    name: NO_CHANGE,
+    name: ASK_USER,
     description:
-      'Say that nothing on the board should change now (the design is fine, or you only answered a question). Call it instead of proposing.',
-    parameters: toParameters(NoChangeArgs),
+      'Ask the user one short question when the answer changes your advice (scale, read or write heavy, budget). It ends your answer: propose what you can first.',
+    parameters: toParameters(AskUserArgs),
+  },
+  {
+    name: FINISH,
+    description:
+      'End your answer. Call it last, after your proposed changes, or alone when nothing on the board should change. Every new box must have an arrow first.',
+    parameters: toParameters(FinishArgs),
   },
 ];
 
@@ -109,35 +147,10 @@ const TOOL_NAMES = AGENT_TOOLS.map((t) => t.name).join(', ');
 /** New boxes in one proposal: a review proposes the few fixes that matter (owner's call, M1-24e). */
 export const MAX_NEW_BOXES = 3;
 
-/**
- * Kinds a design needs once: a second one is a duplicate (M1-29: a RabbitMQ queue next to Kafka).
- * The words catch the same thing added as a custom or service box ("RabbitMQ broker").
- */
-const ONE_OF_A_KIND: Partial<Record<NodeKind, RegExp>> = {
-  queue: /\b(queue|kafka|rabbit ?mq|broker|sqs|event (bus|stream)|pub ?\/? ?sub)\b/i,
-  cache: /\b(cache|redis|memcached)\b/i,
-  loadBalancer: /\b(load ?balancer)\b/i,
-  cdn: /\bcdn\b/i,
-};
-
-/** A box that works *with* a queue or cache, not one: "Order queue worker", "Kafka consumer". */
-const ROLE = /\b(worker|consumer|processor|service|warmer|api)\b/i;
-const JOBS = Object.keys(ONE_OF_A_KIND) as NodeKind[];
-
-/**
- * Which one-of-a-kind job a box does: its kind, or what its label names whatever its kind (a
- * custom "Kafka", a storage "Analytics cache"; review of #70). None for the boxes around it.
- */
-const jobOf = (kind: NodeKind, label: string): NodeKind | undefined => {
-  if (kind in ONE_OF_A_KIND) return kind;
-  if (ROLE.test(label)) return undefined;
-  return JOBS.find((job) => ONE_OF_A_KIND[job]?.test(label));
-};
-
 /** The box already doing the job of the one the model wants to add, if any. */
 const alreadyThere = (board: Board, kind: NodeKind, label: string) => {
-  const job = jobOf(kind, label);
-  return job && board.nodes.find((n) => jobOf(n.kind, n.label) === job);
+  const job = oneOfAKindJob(kind, label);
+  return job && board.nodes.find((n) => oneOfAKindJob(n.kind, n.label) === job);
 };
 
 type Planned = { op: AgentOp; aliases: Aliases; describe: (board: Board) => string };
@@ -200,7 +213,7 @@ const plan = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
       const existing = alreadyThere(draft.board, args.data.kind, args.data.label);
       if (existing)
         return refuse(
-          `There is already a ${jobOf(existing.kind, existing.label) ?? existing.kind}: ${nodeLine(draft.board, existing.id, draft.aliases)}. Do not add a second one: connect to it, or rename it with update_node to show it does more (e.g. "Redis (cluster, 3 nodes)").`,
+          `There is already a ${oneOfAKindJob(existing.kind, existing.label) ?? existing.kind}: ${nodeLine(draft.board, existing.id, draft.aliases)}. Do not add a second one: connect to it, or rename it with update_node to show it does more (e.g. "Redis (cluster, 3 nodes)").`,
         );
       const near = args.data.near === undefined ? undefined : resolve(args.data.near);
       if (args.data.near !== undefined && near === undefined) return unknown(args.data.near);
@@ -246,6 +259,33 @@ const plan = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
   }
 };
 
+/** New boxes no arrow touches yet, in the order they were added. */
+export const unconnectedNewBoxes = (ops: readonly AgentOp[]): string[] => {
+  const linked = new Set(ops.flatMap((op) => (op.op === 'connect' ? [op.source, op.target] : [])));
+  return ops.flatMap((op) => (op.op === 'addNode' && !linked.has(op.nodeId) ? [op.nodeId] : []));
+};
+
+/** `n3 "Orders API"`: how a tool result names a box. Labels quoted: they are user text. */
+const boxName = (draft: Draft, id: string) => {
+  const node = draft.board.nodes.find((n) => n.id === id);
+  return `${draft.aliases.nodeAlias(id) ?? '?'} ${quote(node?.label ?? '')}`;
+};
+
+/** Rules about a link name it `from -> to`; the others list their boxes. */
+const LINK_RULES = new Set<DesignFinding['rule']>(['no-load-balancer', 'no-cache']);
+
+const findingsText = (findings: readonly DesignFinding[], draft: Draft) => {
+  if (findings.length === 0)
+    return 'No findings: the checks pass. Judge the rest against the requirements.';
+  const lines = findings.map((f) => {
+    const boxes = f.nodeIds
+      .map((id) => boxName(draft, id))
+      .join(LINK_RULES.has(f.rule) ? ' -> ' : ', ');
+    return `- ${boxes}: ${f.problem}. Fix: ${f.fix}.`;
+  });
+  return [`${findings.length} finding${findings.length === 1 ? '' : 's'}:`, ...lines].join('\n');
+};
+
 /** Runs one tool call against the draft. Never throws: every failure is a reply for the model. */
 export const runToolCall = (draft: Draft, call: ToolCallInput, deps: ToolDeps): ToolOutcome => {
   const refused = (reply: string): ToolOutcome => ({ draft, ok: false, reply });
@@ -258,10 +298,29 @@ export const runToolCall = (draft: Draft, call: ToolCallInput, deps: ToolDeps): 
     return refused(
       `${call.name}: arguments must be a JSON object, e.g. {"kind": "cache", "label": "Redis"}.`,
     );
-  if (call.name === NO_CHANGE) {
-    const args = NoChangeArgs.safeParse(call.arguments);
+  // Looking, asking and ending change nothing: they work on a full proposal too.
+  if (call.name === CHECK_DESIGN) {
+    const args = CheckDesignArgs.safeParse(call.arguments);
     if (!args.success) return refused(argsError(call.name, args.error));
-    return { draft, ok: true, reply: 'Noted: no change.', noChange: args.data.reason };
+    return { draft, ok: true, reply: findingsText(checkDesign(draft.board), draft) };
+  }
+  if (call.name === ASK_USER) {
+    const args = AskUserArgs.safeParse(call.arguments);
+    if (!args.success) return refused(argsError(call.name, args.error));
+    const end = { tool: ASK_USER, text: args.data.question } as const;
+    return { draft, ok: true, reply: 'Asked: your answer ends here.', end };
+  }
+  if (call.name === FINISH) {
+    const args = FinishArgs.safeParse(call.arguments);
+    if (!args.success) return refused(argsError(call.name, args.error));
+    // A floating box fixes nothing (M1-24e measured it often); refused here, as the tool's result.
+    const floating = unconnectedNewBoxes(draft.ops);
+    if (floating.length > 0)
+      return refused(
+        `finish refused: ${floating.map((id) => boxName(draft, id)).join(', ')} has no arrow yet. Connect each new box to the boxes it works with (connect_nodes), then call finish.`,
+      );
+    const end = { tool: FINISH, text: args.data.summary } as const;
+    return { draft, ok: true, reply: 'Finished.', end };
   }
   if (draft.ops.length >= MAX_OPS_PER_PROPOSAL)
     return refused(

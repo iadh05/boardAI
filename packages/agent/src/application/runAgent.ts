@@ -10,11 +10,17 @@ import type { Board, ChatMessage, Proposal } from '@designroom/domain';
 import { boardToText, inventoryText } from '../domain/boardToText.ts';
 import { createIdRewriter } from '../domain/idRewriter.ts';
 import { createLeakWatch } from '../domain/leakWatch.ts';
-import { connectNudge, PROPOSE_NUDGE, unconnectedNewBoxes } from '../domain/nudge.ts';
 import { buildMessages, REFUSAL_WORDING, SYSTEM_PROMPT } from '../domain/prompt.ts';
 import { OUT_OF_SCOPE_REPLY, type Scope } from '../domain/scope.ts';
 import { summarize } from '../domain/summary.ts';
-import { AGENT_TOOLS, createDraft, runToolCall } from '../domain/tools.ts';
+import {
+  AGENT_TOOLS,
+  ASK_USER,
+  createDraft,
+  runToolCall,
+  unconnectedNewBoxes,
+  type ToolOutcome,
+} from '../domain/tools.ts';
 import { checkScope, type ScopeQuestion } from './checkScope.ts';
 import { createAgentMetrics, markFailed, startSpan, toolLabel } from './telemetry.ts';
 
@@ -54,6 +60,13 @@ export type AgentDeps = {
 /** Said instead of the rest of an answer that started giving the system prompt away. */
 export const LEAK_STOPPED_REPLY =
   'I don’t share my instructions. Ask me about the architecture on your board.';
+
+/**
+ * The one observation for an answer with no tool call (M1-32). Worded as the runtime's error, not
+ * as the user: a chat API has no other slot for it, since there is no tool call to answer.
+ */
+export const FORMAT_ERROR =
+  '[format error] Your answer had no tool call. End every answer with a tool call: the changes you propose followed by finish(summary), finish alone if nothing should change, or ask_user(question).';
 
 export type AgentInput = {
   board: Board;
@@ -132,32 +145,40 @@ export const createAgent = (deps: AgentDeps) => {
         ...(deps.canary ? { canary: deps.canary } : {}),
       });
       let spoke = false; // an earlier round wrote something
-      let finished = false; // the model stopped calling tools by itself
-      let nudged = false; // reminded once to end with a tool call (M1-24e, M1-31)
-      let noChange: string | undefined; // the model called no_change: its reason (M1-31)
+      let finished = false; // the answer is over: finish, ask_user, or no tool call twice
+      let formatWarned = false; // sent the one format-error observation (M1-32)
+      let holding = false; // the next round answers the format error
+      let ended: ToolOutcome['end']; // the model called finish or ask_user
       /** A box's name from its id in the draft, for the user's text (M1-29): "n10" → its label. */
       const labelOf = (alias: string) => {
         const id = draft.aliases.nodeId(alias);
         return id ? draft.board.nodes.find((n) => n.id === id)?.label : undefined;
       };
-      let connectNudged = false; // asked once to connect the boxes it left floating (M1-24e)
 
       // Valid ops so far, as one proposal: also sent when a later round fails, because the text the
       // user already read may say "I've added a cache".
-      const proposal = (): AgentEvent[] =>
-        draft.ops.length === 0
+      // An answer that ended by itself with a new box no arrow reached: that box fixes nothing and
+      // is left out (finish refuses it; this is for an answer that stood without finish — review of
+      // M1-32). Cut short (an error, the round limit), the work in progress is kept as it is.
+      const proposal = (complete = false): AgentEvent[] => {
+        const floating = new Set(complete ? unconnectedNewBoxes(draft.ops) : []);
+        const ops = draft.ops.filter(
+          (op) => !((op.op === 'addNode' || op.op === 'updateNode') && floating.has(op.nodeId)),
+        );
+        return ops.length === 0
           ? []
           : [
               {
                 type: 'proposal',
                 proposal: {
                   id: deps.newId(),
-                  summary: summarize(draft.ops, board, draft.board),
-                  ops: draft.ops,
+                  summary: summarize(ops, board, draft.board),
+                  ops,
                   ...traceOf(agent.span),
                 },
               },
             ];
+      };
 
       for (let round = 1; round <= maxRounds && !finished; round++) {
         rounds = round;
@@ -167,6 +188,9 @@ export const createAgent = (deps: AgentDeps) => {
         try {
           const calls: LlmToolCall[] = [];
           let said = '';
+          const hold = holding; // this round answers the format error: its text waits (M1-32)
+          holding = false;
+          let held = '';
           let usage: Usage | null = null;
           // The user sees names, not ids (M1-29): "n10" → "Payment Service". The model's own text
           // (`said`, sent back to it next round) keeps its ids.
@@ -189,19 +213,21 @@ export const createAgent = (deps: AgentDeps) => {
                   return; // stops reading: the gateway cancels the model call
                 }
                 // A new round's text starts a new paragraph, not glued to the last sentence.
-                if (said === '' && spoke) yield { type: 'text', delta: '\n\n' };
+                const start = said === '' && spoke ? '\n\n' : '';
                 said += chunk.delta;
-                const shown = ids.feed(chunk.delta);
-                if (shown) yield { type: 'text', delta: shown };
+                const shown = start + ids.feed(chunk.delta);
+                if (hold) held += shown;
+                else if (shown) yield { type: 'text', delta: shown };
               } else if (chunk.type === 'toolCall') calls.push(chunk.call);
               else usage = chunk.usage;
             }
             const rest = ids.flush();
-            if (rest) yield { type: 'text', delta: rest };
+            if (hold) held += rest;
+            else if (rest) yield { type: 'text', delta: rest };
           } catch (error) {
             if (!isGatewayError(error)) throw error; // a bug, not a model failure
             const rest = ids.flush(); // what was held back was already said
-            if (rest) yield { type: 'text', delta: rest };
+            if (rest && !hold) yield { type: 'text', delta: rest };
             if (error.code !== 'ABORTED') {
               markFailed(step.span, error.message);
               markFailed(agent.span, error.message);
@@ -212,7 +238,11 @@ export const createAgent = (deps: AgentDeps) => {
             yield { type: 'done' };
             return;
           }
-          spoke ||= said.trim() !== '';
+          // The round after the format error: its text goes out only with the calls it explains;
+          // without them it answers a message the user never saw ("Sure, …"), so it is dropped.
+          const kept = !hold || calls.length > 0;
+          if (hold && kept && held.trim()) yield { type: 'text', delta: held };
+          spoke ||= kept && said.trim() !== '';
 
           let toolErrors = 0;
           if (calls.length > 0) {
@@ -222,7 +252,7 @@ export const createAgent = (deps: AgentDeps) => {
               const used = startSpan(`tool ${name}`, 'TOOL', step.inside, { 'tool.name': name });
               const outcome = runToolCall(draft, call, deps);
               draft = outcome.draft;
-              if (outcome.noChange !== undefined) noChange = outcome.noChange;
+              ended = outcome.end;
               // The arguments and the reply can quote labels: in the trace only with content on
               // (local Phoenix, M1-26c).
               if (deps.recordContent)
@@ -237,6 +267,7 @@ export const createAgent = (deps: AgentDeps) => {
               used.span.end();
               metered.toolCall(name, outcome.ok);
               conversation.push({ role: 'tool', toolCallId: call.id, content: outcome.reply });
+              if (ended) break; // the answer is over: calls after finish or ask_user don't run
             }
           }
           step.span.setAttributes({
@@ -244,49 +275,38 @@ export const createAgent = (deps: AgentDeps) => {
             'designroom.agent.tool_errors': toolErrors,
           });
           yield { type: 'round', round, usage, toolCalls: calls.length, toolErrors };
-          // no_change ends the answer: the model decided, nothing more to ask (M1-31).
-          finished = calls.length === 0 || noChange !== undefined;
-          if (noChange !== undefined && !spoke) {
-            // It said nothing in words: its reason is the answer the user reads — through the same
-            // leak guard as any text (an attack could ask for the prompt in the reason).
-            if (watch.feed(noChange)) {
-              agent.span.setAttribute('designroom.agent.leak_stopped', true);
-              yield { type: 'text', delta: LEAK_STOPPED_REPLY };
-              yield { type: 'done' };
-              return;
+          if (ended) {
+            // finish or ask_user ended the answer (M1-32). A question is always shown — it's what
+            // the user must answer; a summary only when the model said nothing in words. Both go
+            // through the same leak guard as any text (an attack could ask for the prompt in them).
+            finished = true;
+            // "Said nothing" is this round: a preamble two rounds ago doesn't explain the changes.
+            const shown = ended.tool === ASK_USER || said.trim() === '' ? ended.text : '';
+            if (shown) {
+              if (watch.feed(shown)) {
+                agent.span.setAttribute('designroom.agent.leak_stopped', true);
+                yield { type: 'text', delta: `${spoke ? '\n\n' : ''}${LEAK_STOPPED_REPLY}` };
+                yield { type: 'done' };
+                return;
+              }
+              const named = createIdRewriter(labelOf);
+              yield {
+                type: 'text',
+                delta: `${spoke ? '\n\n' : ''}${named.feed(shown)}${named.flush()}`,
+              };
+              spoke = true;
             }
-            const reason = createIdRewriter(labelOf);
-            yield { type: 'text', delta: reason.feed(noChange) + reason.flush() };
-            spoke = true;
-          }
-          // No tool call at all, nothing proposed: remind once to end with one (M1-31) — propose,
-          // or no_change. No guessing from words what the answer recommended.
-          // Only with a round left: otherwise the user would read "I stopped here" for nothing.
-          if (
-            finished &&
-            !nudged &&
-            round < maxRounds &&
-            draft.ops.length === 0 &&
-            noChange === undefined
-          ) {
-            nudged = true;
-            finished = false;
-            agent.span.setAttribute('designroom.agent.nudged', true);
-            conversation.push({ role: 'assistant', content: said });
-            conversation.push({ role: 'user', content: PROPOSE_NUDGE });
-          }
-          // New boxes left floating: ask once to connect them, by name (M1-24e).
-          const floating = unconnectedNewBoxes(draft.ops);
-          if (finished && !connectNudged && round < maxRounds && floating.length > 0) {
-            connectNudged = true;
-            finished = false;
-            agent.span.setAttribute('designroom.agent.connect_nudged', true);
-            const names = floating.map((id) => {
-              const label = draft.board.nodes.find((n) => n.id === id)?.label ?? '';
-              return `${draft.aliases.nodeAlias(id) ?? id} ${JSON.stringify(label)}`;
-            });
-            conversation.push({ role: 'assistant', content: said });
-            conversation.push({ role: 'user', content: connectNudge(names) });
+          } else if (calls.length === 0) {
+            // No tool call: one format-error observation, then the answer stands as it is (M1-32).
+            // Only with a round left: otherwise the user would read "I stopped here" for nothing.
+            finished = formatWarned || round === maxRounds;
+            if (!finished) {
+              formatWarned = true;
+              holding = true;
+              agent.span.setAttribute('designroom.agent.format_error', true);
+              conversation.push({ role: 'assistant', content: said });
+              conversation.push({ role: 'user', content: FORMAT_ERROR });
+            }
           }
         } finally {
           step.span.end();
@@ -299,7 +319,7 @@ export const createAgent = (deps: AgentDeps) => {
           type: 'text',
           delta: `${spoke ? '\n\n' : ''}(I stopped here: that was the most steps I take in one answer. Ask me to continue.)`,
         };
-      yield* proposal();
+      yield* proposal(finished);
       yield { type: 'done' };
     } catch (error) {
       markFailed(agent.span, error instanceof Error ? error.message : String(error));
