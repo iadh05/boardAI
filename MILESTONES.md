@@ -34,7 +34,7 @@ Each milestone ends with something you can demo. Do not start the next one until
 - [ ] Agent tools: `add_node`, `update_node`, `connect_nodes` (no delete)
 - [ ] Chat side panel with streaming replies
 - [ ] Proposals as ghost nodes; Accept / Reject
-- [ ] Sentry (web + server); OpenTelemetry + Grafana dashboard for the AI path; Phoenix for agent traces + Accept/Reject feedback
+- [ ] Error tracking (web + server): GlitchTip, self-hosted, through the Sentry SDKs; OpenTelemetry + Grafana dashboard for the AI path; Phoenix for agent traces + Accept/Reject feedback
 - [ ] `docs/decisions.md`: modular monolith; AI gateway; proposals instead of direct edits; observability
 
 **Done when:** you draw "Client → Load Balancer → API → Database", ask the AI to review it, it points out the missing cache and proposes a Cache node connected to the API, and you accept it.
