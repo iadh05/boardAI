@@ -13,7 +13,7 @@ import {
   boardOf,
   connectRealModel,
   oneLine,
-  PROVIDERS,
+  PROVIDER_NAMES,
   runReview,
   type ProviderName,
   type Run,
@@ -27,8 +27,8 @@ const flag = (name: string, fallback: string) => {
 const RUNS = Number(flag('--runs', '3'));
 const MODEL = flag('--model', 'designroom-qwen');
 const PROVIDER = flag('--provider', 'ollama');
-if (!(PROVIDER in PROVIDERS))
-  throw new Error(`--provider must be one of ${Object.keys(PROVIDERS).join(', ')}`);
+if (!(PROVIDER_NAMES as readonly string[]).includes(PROVIDER))
+  throw new Error(`--provider must be one of ${PROVIDER_NAMES.join(', ')}`);
 const VERBOSE = args.includes('--verbose');
 const out = (line = '') => process.stdout.write(`${line}\n`);
 

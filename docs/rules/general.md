@@ -28,6 +28,13 @@ Apply everywhere: `apps/*` and `packages/*`. Frontend and backend specifics: [fr
 
 - MUST NOT: folders or files named `shared`, `common`, `misc`, `utils.ts`, `helpers.ts`. Name things by what they are. (ESLint checks code files; a test in `tooling/lint` checks every file git tracks.)
 
+## No magic strings
+
+- MUST NOT: model ids (`claude-haiku-5-5`, `qwen/qwen3.8-27b`…), provider URLs or provider names written in code. They live as data in **one** place, the gateway's catalogue (`packages/ai-gateway/src/catalogue.ts`); code reads them there. Which model a role uses is configuration (`LLM_ROLE_*`), never code. (Lint checks model ids and provider URLs; tests and recorded fixtures may name a model.)
+- MUST NOT: behaviour that branches on a name (`if (model === 'claude-sonnet-5-5')`, `model.startsWith('openai/gpt-oss')`). Put what differs in the catalogue's entry (a field) and read the field.
+- MUST NOT: the same knowledge in two places (a URL, a list of providers, a "this model can't turn thinking off" rule). The second copy is a reason to promote it (frontend.md's promotion rule applies everywhere).
+- SHOULD: other repeated literals that mean something (a limit, a timeout, a header name) become a named constant next to the code that owns them, with a comment saying why that value.
+
 ## Imports and boundaries
 
 - MUST: respect the dependency rules in [architecture.md §3](../architecture.md#3-repo-layout-and-dependency-rules), [§5.2](../architecture.md#52-rules), [§6.1](../architecture.md#61-structure). Lint enforces them.

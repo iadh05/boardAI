@@ -5,7 +5,10 @@ import { randomUUID } from 'node:crypto';
 import { createAgent } from '../../packages/agent/src/index.ts';
 import {
   createGateway,
+  createHostedProvider,
   createOpenAiCompatibleProvider,
+  HOSTED_PROVIDER_NAMES,
+  HOSTED_PROVIDERS,
 } from '../../packages/ai-gateway/src/index.ts';
 import type { AgentOp, Board, ChatMessage, NodeKind } from '../../packages/domain/src/index.ts';
 
@@ -34,35 +37,25 @@ export const boardOf = (
 };
 
 /**
- * Where a model runs (AV2-02). Hosted keys come from the environment, e.g.
- * `node --env-file=apps/server/.env scripts/review-samples.ts --provider groq --model qwen/qwen3.8-27b`.
+ * Where a model runs: the local Ollama, or a hosted provider from the gateway's catalogue (AV2-02).
+ * Hosted keys come from the environment: `node --env-file=apps/server/.env scripts/… --provider …`.
  */
-export const PROVIDERS = {
-  ollama: { baseUrl: `${OLLAMA}/v1`, key: undefined },
-  groq: { baseUrl: 'https://api.groq.com/openai/v1', key: 'GROQ_API_KEY' },
-  gemini: {
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    key: 'GEMINI_API_KEY',
-  },
-} as const;
-export type ProviderName = keyof typeof PROVIDERS;
+export const PROVIDER_NAMES = ['ollama', ...HOSTED_PROVIDER_NAMES] as const;
+export type ProviderName = (typeof PROVIDER_NAMES)[number];
 
-/** Thinking off, as each model takes it: gpt-oss can't turn it off; Gemini refuses "none". */
-const reasoningEffortOf = (provider: ProviderName, model: string): string | null =>
-  provider === 'gemini' ? null : model.startsWith('openai/gpt-oss') ? 'low' : 'none';
+const providerOf = (provider: ProviderName, model: string) => {
+  if (provider === 'ollama')
+    return createOpenAiCompatibleProvider({ baseUrl: `${OLLAMA}/v1`, model });
+  const { keyVar } = HOSTED_PROVIDERS[provider];
+  const apiKey = process.env[keyVar];
+  if (!apiKey) throw new Error(`${keyVar} is not set (use --env-file).`);
+  return createHostedProvider({ provider, model, apiKey });
+};
 
 /** The model, through the same gateway and agent the server uses. */
 export const connectRealModel = (model: string, provider: ProviderName = 'ollama') => {
-  const where = PROVIDERS[provider];
-  const apiKey = where.key ? process.env[where.key] : undefined;
-  if (where.key && !apiKey) throw new Error(`${where.key} is not set (use --env-file).`);
   const llm = createGateway({
-    provider: createOpenAiCompatibleProvider({
-      baseUrl: where.baseUrl,
-      model,
-      reasoningEffort: reasoningEffortOf(provider, model),
-      ...(apiKey ? { apiKey } : {}),
-    }),
+    provider: providerOf(provider, model),
     timeoutMs: 60_000,
     // Hosted free tiers answer 429 with a wait (Groq up to ~25 s, Gemini ~31 s, measured): an eval
     // can wait a whole minute for one; the server doesn't (the gateway's 20 s default).
