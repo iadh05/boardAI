@@ -54,7 +54,9 @@ export {
   createReviewerV2,
   type ReviewerV2Deps,
   type ReviewerV2Event,
+  type ReviewState,
 } from './application/reviewerV2.ts';
+export { decideNext, type NextStep } from './application/nextStep.ts';
 export { FALLBACK_PLAN, makePlan, type Flow, type Plan } from './application/planner.ts';
 // The Critic (AV2-08).
 export { reviewProposal, type CriticVerdict } from './application/critic.ts';
