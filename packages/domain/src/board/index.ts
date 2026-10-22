@@ -3,3 +3,5 @@ export * from './board.ts';
 export * from './ops.ts';
 export * from './zones.ts';
 export * from './designChecks.ts';
+export * from './securityChecks.ts';
+export * from './critique.ts';

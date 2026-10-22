@@ -69,6 +69,27 @@ describe('sendMessage', () => {
     expect(chat()).toMatchObject({ streaming: false, error: null });
   });
 
+  // Agent V2 (AV2-09): where the specialists are, while the answer has no text yet.
+  it('shows the specialists’ progress until the answer’s first word', async () => {
+    const { deps, chat } = setup(
+      sse(
+        { type: 'progress', text: 'Data running · 1 left' },
+        { type: 'progress', text: 'Data ✓ · Security running' },
+        { type: 'text', delta: 'Postgres needs a copy.' },
+        { type: 'done' },
+      ),
+    );
+    const seen: (string | null)[] = [];
+    deps.chat.subscribe((s) => {
+      if (seen.at(-1) !== s.progress) seen.push(s.progress);
+    });
+
+    await sendMessage('Review my design', deps);
+
+    expect(seen).toEqual([null, 'Data running · 1 left', 'Data ✓ · Security running', null]);
+    expect(chat().messages.at(-1)?.content).toBe('Postgres needs a copy.');
+  });
+
   it('shows the server’s error event to the user', async () => {
     const { deps, chat } = setup(
       sse(

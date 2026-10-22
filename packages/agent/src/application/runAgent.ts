@@ -7,7 +7,8 @@ import type {
   Usage,
 } from '@designroom/ai-gateway';
 import type { Board, ChatMessage, Proposal } from '@designroom/domain';
-import { boardToText, inventoryText } from '../domain/boardToText.ts';
+import { boardToText, inventoryText, quote } from '../domain/boardToText.ts';
+import type { MergedFinding } from '../domain/findings.ts';
 import { createIdRewriter } from '../domain/idRewriter.ts';
 import { createLeakWatch } from '../domain/leakWatch.ts';
 import { buildMessages, REFUSAL_WORDING, SYSTEM_PROMPT } from '../domain/prompt.ts';
@@ -19,6 +20,7 @@ import {
   createDraft,
   runToolCall,
   unconnectedNewBoxes,
+  type Draft,
   type ToolOutcome,
 } from '../domain/tools.ts';
 import { checkScope, type ScopeQuestion } from './checkScope.ts';
@@ -72,7 +74,27 @@ export type AgentInput = {
   board: Board;
   messages: readonly ChatMessage[];
   signal?: AbortSignal;
+  /** The specialists' merged findings (agent V2, AV2-07): the agent explains and fixes them. */
+  findings?: readonly MergedFinding[];
+  /** The caller already ran the scope guard (agent V2's Main): not asked twice. */
+  scoped?: boolean;
+  /** The Critic's issues with a first proposal (AV2-08): the agent proposes again without them. */
+  critique?: readonly string[];
 };
+
+/** Findings as the model reads them: `- [critical] n2 "Postgres" (data): problem. Fix: fix.` */
+const findingsText = (findings: readonly MergedFinding[], draft: Draft) =>
+  findings
+    .map((f) => {
+      const boxes = f.boxIds
+        .map((id) => {
+          const node = draft.board.nodes.find((n) => n.id === id);
+          return `${draft.aliases.nodeAlias(id) ?? '?'} ${quote(node?.label ?? '')}`;
+        })
+        .join(', ');
+      return `- [${f.severity}] ${boxes} (${f.from.join(', ')}): ${f.problem}.${f.fix ? ` Fix: ${f.fix}.` : ''}`;
+    })
+    .join('\n');
 
 const DEFAULT_MAX_ROUNDS = 5;
 
@@ -99,7 +121,7 @@ export const createAgent = (deps: AgentDeps) => {
   const metered = createAgentMetrics();
 
   async function* review(
-    { board, messages, signal }: AgentInput,
+    { board, messages, signal, findings, scoped, critique }: AgentInput,
     parent: Context,
   ): AsyncIterable<AgentEvent> {
     const agent = startSpan('agent', 'AGENT', parent);
@@ -110,20 +132,22 @@ export const createAgent = (deps: AgentDeps) => {
       // (with its tools) never runs. Enforced here, in code — not left to the prompt.
       const question = messages.findLast((m) => m.role === 'user')?.content ?? '';
       const previousAnswer = messages.findLast((m) => m.role === 'assistant')?.content;
-      const guard = startSpan('scope check', 'GUARDRAIL', agent.inside);
-      let scope: Scope;
-      try {
-        scope = await context.with(guard.inside, () =>
-          (deps.checkScope ?? ((q) => checkScope(deps.llm, q)))({
-            question,
-            ...(previousAnswer === undefined ? {} : { previousAnswer }),
-            ...(signal ? { signal } : {}),
-          }),
-        );
-        guard.span.setAttribute('designroom.agent.scope', scope);
-        metered.scope(scope);
-      } finally {
-        guard.span.end();
+      let scope: Scope = 'in'; // the caller (agent V2's Main) already checked it: `scoped`
+      if (!scoped) {
+        const guard = startSpan('scope check', 'GUARDRAIL', agent.inside);
+        try {
+          scope = await context.with(guard.inside, () =>
+            (deps.checkScope ?? ((q) => checkScope(deps.llm, q)))({
+              question,
+              ...(previousAnswer === undefined ? {} : { previousAnswer }),
+              ...(signal ? { signal } : {}),
+            }),
+          );
+          guard.span.setAttribute('designroom.agent.scope', scope);
+          metered.scope(scope);
+        } finally {
+          guard.span.end();
+        }
       }
       if (scope === 'out') {
         yield { type: 'text', delta: OUT_OF_SCOPE_REPLY };
@@ -136,7 +160,13 @@ export const createAgent = (deps: AgentDeps) => {
       const boardText = [inventoryText(board, draft.aliases), boardToText(board, draft.aliases)]
         .filter(Boolean)
         .join('\n\n');
-      const conversation: LlmMessage[] = buildMessages(boardText, messages, deps.canary);
+      const conversation: LlmMessage[] = buildMessages(
+        boardText,
+        messages,
+        deps.canary,
+        findings?.length ? findingsText(findings, draft) : undefined,
+        critique?.length ? critique.map((issue) => `- ${issue}`).join('\n') : undefined,
+      );
       // Output guard: the answer is cut where it starts reciting the prompt (OWASP LLM07).
       const watch = createLeakWatch({
         prompt: SYSTEM_PROMPT,

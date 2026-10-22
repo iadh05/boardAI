@@ -15,6 +15,8 @@ const config = {
   traceContent: false,
   debugRoutes: false,
   llmCallLog: null,
+  roles: { main: null, planner: null, specialist: null, critic: null },
+  agent: { mode: 'v1', critic: false },
 } as const;
 const logger = createLogger({ level: 'error', write: () => {} });
 const app = createApp({ config, logger });
@@ -145,5 +147,63 @@ describe('createApp', () => {
     expect(new Set(read().map((r) => r.requestId))).toEqual(
       new Set([res.headers.get('X-Request-Id')]),
     );
+  });
+
+  // AV2-09: agent V2 behind AGENT_MODE=v2 — the same chat API, plus progress events.
+  it('with AGENT_MODE=v2, a review streams the specialists’ progress, then the answer', async () => {
+    const v2 = createApp({
+      config: { ...config, agent: { mode: 'v2', critic: false } },
+      logger,
+      // One local model plays every role, in call order: scope, planner, the Architect.
+      llmProvider: createFakeProvider([
+        [{ type: 'text', delta: 'DESIGN' }],
+        [
+          {
+            type: 'toolCall',
+            call: { id: 'p', name: 'make_plan', arguments: { flow: 'review', specialists: [] } },
+          },
+        ],
+        [
+          { type: 'text', delta: 'Postgres is a single point of failure.' },
+          {
+            type: 'toolCall',
+            call: { id: 'f', name: 'finish', arguments: { summary: 'Explained.' } },
+          },
+        ],
+      ]),
+    });
+
+    const res = await v2.request('/api/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        board: {
+          nodes: [
+            { id: 'api', kind: 'api', label: 'API', position: { x: 0, y: 0 } },
+            { id: 'db', kind: 'database', label: 'Postgres', position: { x: 300, y: 0 } },
+          ],
+          edges: [{ id: 'e1', source: 'api', target: 'db' }],
+        },
+        messages: [{ role: 'user', content: 'Review my design' }],
+      }),
+    });
+    const events = (await res.text())
+      .split('\n')
+      .filter((l) => l.startsWith('data: '))
+      .map((l) => JSON.parse(l.slice(6)) as { type: string; text?: string; delta?: string });
+
+    expect(events.filter((e) => e.type === 'progress').map((e) => e.text)).toEqual([
+      'Data running · 1 left',
+      'Data ✓ · Security running',
+      'Data ✓ · Security ✓',
+      'Writing the answer…',
+    ]);
+    expect(
+      events
+        .filter((e) => e.type === 'text')
+        .map((e) => e.delta)
+        .join(''),
+    ).toBe('Postgres is a single point of failure.');
+    expect(events.at(-1)).toEqual({ type: 'done' });
   });
 });

@@ -32,6 +32,8 @@ const config = {
   traceContent: false,
   debugRoutes: false,
   llmCallLog: null,
+  roles: { main: null, planner: null, specialist: null, critic: null },
+  agent: { mode: 'v1', critic: false },
 } as const;
 
 const chat = async (script: Parameters<typeof createFakeProvider>[0], lines: string[] = []) => {

@@ -64,6 +64,9 @@ const readAnswer = async (
         case 'proposal':
           showProposal(event.data.proposal);
           break;
+        case 'progress':
+          chat.getState().setProgress(event.data.text);
+          break;
         case 'error':
           failed = true;
           fail(event.data.message);

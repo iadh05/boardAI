@@ -85,6 +85,7 @@ describe('ChatEventSchema', () => {
     [{ type: 'text', delta: 'There is ' }],
     [{ type: 'error', message: 'The model is not reachable' }],
     [{ type: 'done' }],
+    [{ type: 'progress', text: 'Data ✓ · Security running' }], // agent V2 (AV2-09)
     [
       {
         type: 'proposal',

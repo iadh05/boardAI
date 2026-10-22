@@ -18,6 +18,13 @@ export {
   createOpenAiCompatibleProvider,
   type OpenAiCompatibleOptions,
 } from './providers/openAiCompatible.ts';
+export {
+  createAnthropicProvider,
+  createSpendTracker,
+  type SpendTracker,
+  type AnthropicOptions,
+} from './providers/anthropic.ts';
+export { createFallbackProvider, type FallbackOptions } from './providers/fallback.ts';
 export { createFakeProvider, type FakeProvider, type FakeStep } from './providers/fake.ts';
 export {
   createScenarioProvider,
@@ -25,6 +32,7 @@ export {
   type ScenarioFile,
 } from './providers/scenario.ts';
 export {
+  CLAUDE_MODELS,
   HOSTED_PROVIDER_NAMES,
   HOSTED_PROVIDERS,
   MODELS,

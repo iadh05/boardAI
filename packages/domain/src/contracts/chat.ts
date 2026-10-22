@@ -46,6 +46,8 @@ export const ChatEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('proposal'), proposal: ProposalSchema }),
   z.object({ type: z.literal('error'), message: z.string() }),
   z.object({ type: z.literal('done') }),
+  // Agent V2 (AV2-09): where the specialists are, shown while they work (D6).
+  z.object({ type: z.literal('progress'), text: z.string().max(300) }),
 ]);
 export type ChatEvent = z.infer<typeof ChatEventSchema>;
 

@@ -22,3 +22,39 @@ export {
   type ToolDeps,
   type ToolOutcome,
 } from './domain/tools.ts';
+// Agent V2 (AV2-05): the orchestrator, its task queue and the finding contract.
+export {
+  createOrchestrator,
+  type OrchestratorDeps,
+  type OrchestratorEvent,
+  type OrchestratorInput,
+  type Specialist,
+} from './application/orchestrator.ts';
+export { RULE_SPECIALISTS } from './application/specialists.ts';
+export { type TaskResult, type TaskStatus, type Timer } from './application/taskQueue.ts';
+export {
+  FindingSchema,
+  mergeFindings,
+  SEVERITIES,
+  type Conflict,
+  type Finding,
+  type MergedFinding,
+  type Severity,
+} from './domain/findings.ts';
+export {
+  MAX_TASKS,
+  progressText,
+  TASK_TIMEOUT_MS,
+  TaskCardSchema,
+  type Progress,
+  type TaskCard,
+} from './domain/tasks.ts';
+// Agent V2's chain (AV2-07): Main, Planner, Architect.
+export {
+  createReviewerV2,
+  type ReviewerV2Deps,
+  type ReviewerV2Event,
+} from './application/reviewerV2.ts';
+export { FALLBACK_PLAN, makePlan, type Flow, type Plan } from './application/planner.ts';
+// The Critic (AV2-08).
+export { reviewProposal, type CriticVerdict } from './application/critic.ts';

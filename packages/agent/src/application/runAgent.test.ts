@@ -589,6 +589,57 @@ describe('what the model is sent', () => {
     expect(last).toMatch(/ids .*replace any/i); // aliases may have changed since earlier messages
     expect(last.endsWith('Done, what next?')).toBe(true);
   });
+
+  // AV2-07: as the Architect, the agent gets the specialists' merged findings, as data.
+  it('the specialists’ findings, after the board, naming boxes by id and label', async () => {
+    const { agent, fake } = setup([[text('ok'), finish()]]);
+
+    const events = agent.run({
+      board,
+      messages: [{ role: 'user', content: 'Review my design' }],
+      findings: [
+        {
+          specialist: 'data',
+          kind: 'single-database',
+          boxIds: ['uuid-db'],
+          severity: 'critical',
+          problem: 'one copy of the data',
+          fix: 'a replica',
+          confidence: 1,
+          from: ['data'],
+        },
+      ],
+    });
+    for await (const event of events) void event;
+
+    const last = fake.calls[0]?.messages.at(-1)?.content ?? '';
+    expect(last).toMatch(
+      /<\/board>\s+[^]*<findings>\n- \[critical\] n2 "Postgres" \(data\): one copy of the data\. Fix: a replica\.\n<\/findings>/,
+    );
+    expect(last.endsWith('Review my design')).toBe(true);
+  });
+
+  it('skips its own scope check when the caller already ran it', async () => {
+    const { llm } = scriptedLlm([[text('ok'), finish()]]);
+    let asked = 0;
+    const agent = createAgent({
+      llm,
+      newId: () => 'id',
+      checkScope: () => {
+        asked++;
+        return Promise.resolve('in');
+      },
+    });
+
+    for await (const event of agent.run({
+      board,
+      messages: [{ role: 'user', content: 'Hi' }],
+      scoped: true,
+    }))
+      void event;
+
+    expect(asked).toBe(0);
+  });
 });
 
 describe('tracing', () => {

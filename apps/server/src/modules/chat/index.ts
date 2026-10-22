@@ -36,5 +36,9 @@ export const createChatModule = ({
 });
 
 export type { ReviewAgent } from './application/reviewBoard.ts';
-export { createReviewAgent } from './infra/createReviewAgent.ts';
+export {
+  createReviewAgent,
+  createReviewAgentV2,
+  type RoleGateways,
+} from './infra/createReviewAgent.ts';
 export { createPhoenixFeedback } from './infra/phoenixFeedback.ts';

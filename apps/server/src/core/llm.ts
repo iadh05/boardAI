@@ -1,11 +1,15 @@
 import {
+  createFallbackProvider,
+  createHostedProvider,
   createOpenAiCompatibleProvider,
   createScenarioProvider,
+  createSpendTracker,
   ScenarioFileSchema,
+  type LlmError,
   type LlmProvider,
   type ScenarioFile,
 } from '@designroom/ai-gateway';
-import type { LlmConfig } from './config.ts';
+import { ROLES, type LlmConfig, type Role, type RoleModel } from './config.ts';
 
 // Which model the server talks to, from config: Ollama (or any OpenAI-compatible API), or the
 // fake model playing scripted conversations — the e2e runs in CI, which has no GPU (M1-19b).
@@ -50,3 +54,42 @@ export const createLlmProvider = (
     : createScenarioProvider(
         llm.scenarioFile ? loadScenarios(llm.scenarioFile, readFile) : NO_SCENARIOS,
       );
+
+export type RoleProviderDeps = {
+  /** Told when a hosted role couldn't answer and the local model did: for the log. */
+  onFallback?: (role: Role, error: LlmError) => void;
+  /** Injected in tests: the hosted calls never reach the network. */
+  fetch?: typeof fetch;
+};
+
+/**
+ * A provider per agent role (AV2-04, D13): the role's hosted model with the local one behind it,
+ * or the local one alone. The local model answers whenever the hosted can't (offline, rate-limited,
+ * silent, budget spent): a request never fails because a hosted model is down. One Claude budget
+ * for all roles: the daily cap is the cap, however many roles use Claude (review of AV2-04).
+ */
+export const createRoleProviders = (
+  roles: Record<Role, RoleModel | null>,
+  local: LlmProvider,
+  deps: RoleProviderDeps = {},
+): Record<Role, LlmProvider> => {
+  const spend = createSpendTracker();
+  return Object.fromEntries(
+    ROLES.map((role) => {
+      const spec = roles[role];
+      if (!spec) return [role, local];
+      // Built from the gateway's catalogue: URLs and thinking settings live there, not here.
+      const hosted = createHostedProvider({
+        ...spec,
+        spend,
+        ...(deps.fetch ? { fetch: deps.fetch } : {}),
+      });
+      return [
+        role,
+        createFallbackProvider(hosted, local, {
+          onFallback: (error) => deps.onFallback?.(role, error),
+        }),
+      ];
+    }),
+  ) as Record<Role, LlmProvider>;
+};

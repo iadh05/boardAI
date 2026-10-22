@@ -1,8 +1,55 @@
 import { z } from 'zod';
+import {
+  HOSTED_PROVIDER_NAMES,
+  HOSTED_PROVIDERS,
+  MODELS,
+  type HostedProviderName,
+} from '@designroom/ai-gateway';
 import { LOG_LEVELS, type LogLevel } from './logger.ts';
 
 // The only file that reads the environment (docs/rules/backend.md). Validated at startup: a bad
 // setting stops the server with a clear message, instead of failing later on some request.
+
+/** The agent roles that may each run on their own model (architecture-v2 § Three levels). */
+export const ROLES = ['main', 'planner', 'specialist', 'critic'] as const;
+export type Role = (typeof ROLES)[number];
+const roleVar = (role: Role) => `LLM_ROLE_${role.toUpperCase()}`;
+
+/** The env variable with a provider's key: the gateway's catalogue says which. */
+const keyVarOf = (provider: HostedProviderName) => HOSTED_PROVIDERS[provider].keyVar;
+/** The models the catalogue lists for a provider (Claude allows only those: the $100 budget). */
+const listedModels = (provider: HostedProviderName) =>
+  Object.keys(MODELS).filter((id) => MODELS[id]?.provider === provider);
+
+const isHostedProvider = (name: string): name is HostedProviderName =>
+  (HOSTED_PROVIDER_NAMES as readonly string[]).includes(name);
+const THINK_SUFFIX = '+think';
+
+/** "groq:qwen/qwen3.8-27b+think" → provider, model, thinking. Split on the first ":" only. */
+const RoleSpecSchema = z
+  .string()
+  .refine(
+    (spec) => {
+      const at = spec.indexOf(':');
+      const model = spec.slice(at + 1).replace(THINK_SUFFIX, '');
+      return at > 0 && isHostedProvider(spec.slice(0, at)) && model !== '' && !/\s/.test(model);
+    },
+    `expected provider:model[${THINK_SUFFIX}], provider one of ${HOSTED_PROVIDER_NAMES.join(', ')}`,
+  )
+  .transform((spec) => {
+    const at = spec.indexOf(':');
+    const rest = spec.slice(at + 1);
+    const thinking = rest.endsWith(THINK_SUFFIX);
+    return {
+      provider: spec.slice(0, at) as HostedProviderName,
+      model: thinking ? rest.slice(0, -THINK_SUFFIX.length) : rest,
+      thinking,
+    };
+  });
+type RoleSpec = z.infer<typeof RoleSpecSchema>;
+
+/** A hosted model for one role, with the key its provider needs. Null: the local model. */
+export type RoleModel = RoleSpec & { apiKey: string };
 
 const EnvSchema = z
   .object({
@@ -36,8 +83,42 @@ const EnvSchema = z
     // Every model call, exactly as sent and answered, appended to this local file (JSON Lines):
     // for diagnosing the agent (M1-28). Holds boards and conversations: off unless set; dev only.
     LLM_CALL_LOG: z.string().min(1).optional(),
+    // A model per agent role (AV2-04, D13): "provider:model", "+think" for thinking on, e.g.
+    // LLM_ROLE_PLANNER=groq:qwen/qwen3.8-27b+think. Unset: the role runs on the local model.
+    ...Object.fromEntries(ROLES.map((role) => [roleVar(role), RoleSpecSchema.optional()])),
+    // "off": every role back on the local model, nothing leaves the PC (architecture-v2 § Privacy).
+    LLM_HOSTED: z.enum(['on', 'off']).default('on'),
+    // Agent V1 (one agent) or V2 (Main, Planner, specialists, Architect — AV2-09). V1 until the V1
+    // vs V2 eval says otherwise (AV2-10).
+    AGENT_MODE: z.enum(['v1', 'v2']).default('v1'),
+    // V2's Critic (AV2-08): checks each proposal before the user sees it. Off until measured.
+    AGENT_CRITIC: z.enum(['on', 'off']).default('off'),
+    // The hosted providers' keys, named by the catalogue (GROQ_API_KEY, GEMINI_API_KEY…).
+    ...Object.fromEntries(
+      HOSTED_PROVIDER_NAMES.map((p) => [keyVarOf(p), z.string().min(1).optional()]),
+    ),
   })
   .superRefine((env, ctx) => {
+    const read = env as Record<string, unknown>;
+    for (const role of env.LLM_HOSTED === 'off' ? [] : ROLES) {
+      const spec = read[roleVar(role)] as RoleSpec | string | undefined;
+      // A spec its own schema refused is still the raw string here: already reported.
+      if (!spec || typeof spec === 'string') continue;
+      const keyVar = keyVarOf(spec.provider);
+      if (!read[keyVar])
+        ctx.addIssue({
+          code: 'custom',
+          path: [keyVar],
+          message: `is required by ${roleVar(role)} (${spec.provider})`,
+        });
+      const listed = listedModels(spec.provider);
+      if ('listedModelsOnly' in HOSTED_PROVIDERS[spec.provider] && !listed.includes(spec.model))
+        ctx.addIssue({
+          code: 'custom',
+          path: [roleVar(role)],
+          message: `${spec.provider} models allowed: ${listed.join(', ')} (the owner's budget)`,
+        });
+    }
     if (env.PHOENIX_COLLECTOR_ENDPOINT && !env.OTEL_EXPORTER_OTLP_ENDPOINT) {
       ctx.addIssue({
         code: 'custom',
@@ -84,6 +165,10 @@ export type Config = {
   debugRoutes: boolean;
   /** Where to record every model call (M1-28); null: not recorded. */
   llmCallLog: string | null;
+  /** The model each agent role runs on (AV2-04); null: the local model (`llm`). */
+  roles: Record<Role, RoleModel | null>;
+  /** Which agent answers (AV2-09) and whether V2's Critic checks its proposals. */
+  agent: { mode: 'v1' | 'v2'; critic: boolean };
 };
 
 /** Parses an environment: process.env in production, a plain object in tests. */
@@ -128,6 +213,16 @@ export const loadConfig = (env: Record<string, string | undefined>): Config => {
     traceContent: e.TRACE_CONTENT === 'true',
     debugRoutes: e.ENABLE_DEBUG_ROUTES === 'true',
     llmCallLog: e.LLM_CALL_LOG ?? null,
+    agent: { mode: e.AGENT_MODE, critic: e.AGENT_CRITIC === 'on' },
+    roles: Object.fromEntries(
+      ROLES.map((role) => {
+        const spec = e[roleVar(role) as keyof typeof e] as RoleSpec | undefined;
+        const apiKey = spec
+          ? ((e as Record<string, unknown>)[keyVarOf(spec.provider)] as string | undefined)
+          : undefined;
+        return [role, spec && apiKey && e.LLM_HOSTED === 'on' ? { ...spec, apiKey } : null];
+      }),
+    ) as Record<Role, RoleModel | null>,
   };
 };
 
