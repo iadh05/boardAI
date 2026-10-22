@@ -103,7 +103,7 @@ const collect = async <T>(events: AsyncIterable<T>) => {
   return all;
 };
 
-const INITIAL: ReviewState = {
+export const INITIAL: ReviewState = {
   answered: false,
   todo: [],
   ran: [],
@@ -114,14 +114,26 @@ const INITIAL: ReviewState = {
   revised: false,
 };
 
-export const createReviewerV2 = (deps: ReviewerV2Deps) => {
+/** Answered, failed or stopped: nothing more runs. */
+export const over = (s: ReviewState) => s.answered || s.error !== undefined;
+
+/** What the user gets after the last node: V1's ending for an error; done after a short answer. */
+export const endEvents = (s: ReviewState): ReviewerV2Event[] =>
+  s.error
+    ? [{ type: 'error', code: s.error.code, message: s.error.message }, { type: 'done' }]
+    : s.answered
+      ? [{ type: 'done' }]
+      : [];
+
+/** The six nodes of the chain, for one request (shared by the harnesses: our graph, the spike). */
+export const createChainNodes = (deps: ReviewerV2Deps) => {
   const orchestrator = createOrchestrator({
     specialists: deps.specialists,
     ...(deps.timer ? { timer: deps.timer } : {}),
   });
 
-  /** The chain for one request: nodes close over its input (the board, the chat, Stop). */
-  const graphFor = (input: AgentInput, root: Context) => {
+  /** The nodes close over the request's input (the board, the chat, Stop). */
+  return (input: AgentInput, root: Context) => {
     const { board, messages, signal } = input;
     const question = messages.findLast((m) => m.role === 'user')?.content ?? '';
     const previousAnswer = messages.findLast((m) => m.role === 'assistant')?.content;
@@ -276,7 +288,15 @@ export const createReviewerV2 = (deps: ReviewerV2Deps) => {
       return {};
     });
 
-    const over = (s: ReviewState) => s.answered || s.error !== undefined;
+    return { scope, plan, tasks, next, architect, critic };
+  };
+};
+
+export const createReviewerV2 = (deps: ReviewerV2Deps) => {
+  const nodesFor = createChainNodes(deps);
+
+  const graphFor = (input: AgentInput, root: Context) => {
+    const { scope, plan, tasks, next, architect, critic } = nodesFor(input, root);
     return createGraph<ReviewState>()
       .addNode('scope', scope)
       .addNode('plan', plan)
@@ -317,7 +337,7 @@ export const createReviewerV2 = (deps: ReviewerV2Deps) => {
           markFailed(root.span, event.error);
           throw new Error(event.error); // a bug in a node, not a model failing
         } else if (event.type === 'done') {
-          const { plan, ran, answered, error, revised } = event.state;
+          const { plan, ran, revised } = event.state;
           if (plan)
             root.span.setAttributes({
               'designroom.v2.flow': plan.flow,
@@ -325,11 +345,8 @@ export const createReviewerV2 = (deps: ReviewerV2Deps) => {
               'designroom.v2.questions': plan.questions.length,
             });
           if (revised) root.span.setAttribute('designroom.v2.critic_revised', true);
-          if (error) {
-            // A model failing, or the user's Stop: ended as V1 ends (review of AV2-05..09).
-            yield { type: 'error', code: error.code, message: error.message };
-            yield { type: 'done' };
-          } else if (answered) yield { type: 'done' };
+          // A model failing, or the user's Stop: ended as V1 ends (review of AV2-05..09).
+          yield* endEvents(event.state);
         }
       }
     } finally {
