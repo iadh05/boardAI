@@ -1,0 +1,296 @@
+{
+  "nodes": [
+    {
+      "id": "18a33aba-1774-457e-b4c1-9a5c28b4b77c",
+      "kind": "client",
+      "label": "Chat panel",
+      "position": {
+        "x": 0,
+        "y": 100
+      }
+    },
+    {
+      "id": "7ea208a3-50d7-4d10-a2ee-c0670ffb0330",
+      "kind": "client",
+      "label": "Board + ghost boxes",
+      "position": {
+        "x": 0,
+        "y": 320
+      }
+    },
+    {
+      "id": "0bef3eec-b8dc-46f8-b46a-287b089217c9",
+      "kind": "api",
+      "label": "POST /api/chat",
+      "position": {
+        "x": 320,
+        "y": 100
+      }
+    },
+    {
+      "id": "1ea45cfb-fc1f-422b-89fe-21ae27078659",
+      "kind": "api",
+      "label": "POST /api/chat/feedback",
+      "position": {
+        "x": 320,
+        "y": 320
+      }
+    },
+    {
+      "id": "71eae0be-bc05-4655-9458-5e4e96ddff41",
+      "kind": "service",
+      "label": "Scope guard",
+      "position": {
+        "x": 660,
+        "y": 0
+      }
+    },
+    {
+      "id": "c8176cc1-9fc3-42c4-b626-0607ac3b63ca",
+      "kind": "service",
+      "label": "Agent loop (≤5 rounds)",
+      "position": {
+        "x": 660,
+        "y": 140
+      }
+    },
+    {
+      "id": "436b09dd-f2f7-4a06-9cf1-b6c26f84110f",
+      "kind": "service",
+      "label": "Tool runner + guards",
+      "position": {
+        "x": 660,
+        "y": 280
+      }
+    },
+    {
+      "id": "d6b4a1bf-993a-469d-a064-04dc398ecca3",
+      "kind": "storage",
+      "label": "Draft board",
+      "position": {
+        "x": 660,
+        "y": 420
+      }
+    },
+    {
+      "id": "045bb6de-9877-4ace-ade7-d3fad8fdb855",
+      "kind": "service",
+      "label": "Output guards",
+      "position": {
+        "x": 660,
+        "y": 560
+      }
+    },
+    {
+      "id": "bf588920-3374-45e6-9146-f3d5095b4d6b",
+      "kind": "service",
+      "label": "AI gateway",
+      "position": {
+        "x": 1020,
+        "y": 140
+      }
+    },
+    {
+      "id": "e46c4cb4-e339-44fe-9598-5e70b0b321b4",
+      "kind": "custom",
+      "label": "Ollama (tools ↔ XML)",
+      "position": {
+        "x": 1020,
+        "y": 280
+      }
+    },
+    {
+      "id": "7b2cd4f7-6e7f-4c15-83df-e2453e925895",
+      "kind": "custom",
+      "label": "Qwen3.5 9B",
+      "position": {
+        "x": 1020,
+        "y": 420
+      }
+    },
+    {
+      "id": "dca000b1-40f0-4c87-881a-6b1617c12615",
+      "kind": "custom",
+      "label": "Grafana (Loki/Tempo/Prom)",
+      "position": {
+        "x": 1380,
+        "y": 140
+      }
+    },
+    {
+      "id": "f06e3247-b924-4327-9573-5daa97bb0869",
+      "kind": "custom",
+      "label": "Phoenix",
+      "position": {
+        "x": 1380,
+        "y": 320
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "79d96000-52cf-4952-86cc-d7732878d20b",
+      "source": "18a33aba-1774-457e-b4c1-9a5c28b4b77c",
+      "target": "0bef3eec-b8dc-46f8-b46a-287b089217c9",
+      "label": "board + messages"
+    },
+    {
+      "id": "85ee4b13-2f0e-4fac-907e-e4ec17d0cda3",
+      "source": "0bef3eec-b8dc-46f8-b46a-287b089217c9",
+      "target": "71eae0be-bc05-4655-9458-5e4e96ddff41",
+      "label": "question"
+    },
+    {
+      "id": "941ffca0-e961-454e-9a36-aaf6db95602f",
+      "source": "0bef3eec-b8dc-46f8-b46a-287b089217c9",
+      "target": "c8176cc1-9fc3-42c4-b626-0607ac3b63ca",
+      "label": "review"
+    },
+    {
+      "id": "c51f741f-0980-4009-b763-0f7734480901",
+      "source": "71eae0be-bc05-4655-9458-5e4e96ddff41",
+      "target": "bf588920-3374-45e6-9146-f3d5095b4d6b",
+      "label": "classify"
+    },
+    {
+      "id": "f64811ce-19a6-4251-af65-74b719e1e1c7",
+      "source": "c8176cc1-9fc3-42c4-b626-0607ac3b63ca",
+      "target": "bf588920-3374-45e6-9146-f3d5095b4d6b",
+      "label": "messages + tools"
+    },
+    {
+      "id": "fe8691c3-2735-420b-a94a-5c3c6faec40e",
+      "source": "bf588920-3374-45e6-9146-f3d5095b4d6b",
+      "target": "e46c4cb4-e339-44fe-9598-5e70b0b321b4",
+      "label": "timeout, retry, 2048 tokens"
+    },
+    {
+      "id": "eb873507-c7f2-40f9-ad46-d924b84bebd1",
+      "source": "e46c4cb4-e339-44fe-9598-5e70b0b321b4",
+      "target": "7b2cd4f7-6e7f-4c15-83df-e2453e925895",
+      "label": "prompt with <tools>"
+    },
+    {
+      "id": "3431e988-8ebc-425b-bf62-d41bd7d04797",
+      "source": "c8176cc1-9fc3-42c4-b626-0607ac3b63ca",
+      "target": "436b09dd-f2f7-4a06-9cf1-b6c26f84110f",
+      "label": "tool calls"
+    },
+    {
+      "id": "782bb3dc-dcd5-486a-8129-fdbe8b9ce069",
+      "source": "436b09dd-f2f7-4a06-9cf1-b6c26f84110f",
+      "target": "d6b4a1bf-993a-469d-a064-04dc398ecca3",
+      "label": "apply"
+    },
+    {
+      "id": "b2b7f1ee-9a2c-4da9-b59a-557b78aea25c",
+      "source": "c8176cc1-9fc3-42c4-b626-0607ac3b63ca",
+      "target": "045bb6de-9877-4ace-ade7-d3fad8fdb855",
+      "label": "text"
+    },
+    {
+      "id": "3e2308eb-5c8d-4651-9ea1-ac5c00404532",
+      "source": "045bb6de-9877-4ace-ade7-d3fad8fdb855",
+      "target": "18a33aba-1774-457e-b4c1-9a5c28b4b77c",
+      "label": "SSE stream",
+      "mode": "async"
+    },
+    {
+      "id": "76468594-7373-491e-8be2-1b1091789d43",
+      "source": "045bb6de-9877-4ace-ade7-d3fad8fdb855",
+      "target": "7ea208a3-50d7-4d10-a2ee-c0670ffb0330",
+      "label": "proposal",
+      "mode": "async"
+    },
+    {
+      "id": "db768ef8-73c3-4a74-aaf0-d0e9d595f17f",
+      "source": "7ea208a3-50d7-4d10-a2ee-c0670ffb0330",
+      "target": "1ea45cfb-fc1f-422b-89fe-21ae27078659",
+      "label": "Accept / Reject",
+      "mode": "async"
+    },
+    {
+      "id": "2b8594c9-e0c0-4925-9f97-237e0ff5bfe8",
+      "source": "1ea45cfb-fc1f-422b-89fe-21ae27078659",
+      "target": "f06e3247-b924-4327-9573-5daa97bb0869",
+      "label": "annotation",
+      "mode": "async"
+    },
+    {
+      "id": "8198ed35-5e79-407b-84f6-64f4c41d5ce4",
+      "source": "c8176cc1-9fc3-42c4-b626-0607ac3b63ca",
+      "target": "f06e3247-b924-4327-9573-5daa97bb0869",
+      "label": "traces",
+      "mode": "async"
+    },
+    {
+      "id": "53762af2-abff-46ba-a941-84903c2bd5d8",
+      "source": "c8176cc1-9fc3-42c4-b626-0607ac3b63ca",
+      "target": "dca000b1-40f0-4c87-881a-6b1617c12615",
+      "label": "traces, metrics, logs",
+      "mode": "async"
+    }
+  ],
+  "zones": [
+    {
+      "id": "f908dc76-dd23-47f4-a29d-3aaf24d34bed",
+      "label": "Browser (apps/web)",
+      "position": {
+        "x": -40,
+        "y": 40
+      },
+      "size": {
+        "width": 300,
+        "height": 380
+      }
+    },
+    {
+      "id": "d3297aa6-bd90-4601-82bc-95d3cd64b732",
+      "label": "Server (apps/server)",
+      "position": {
+        "x": 280,
+        "y": 40
+      },
+      "size": {
+        "width": 300,
+        "height": 380
+      }
+    },
+    {
+      "id": "d01b3dc3-fe8f-4505-b136-7f74292c1382",
+      "label": "Agent (packages/agent)",
+      "position": {
+        "x": 620,
+        "y": -60
+      },
+      "size": {
+        "width": 320,
+        "height": 720
+      }
+    },
+    {
+      "id": "f8bb48f3-3372-43f9-872a-0da7991ab3b3",
+      "label": "Model",
+      "position": {
+        "x": 980,
+        "y": 80
+      },
+      "size": {
+        "width": 320,
+        "height": 440
+      }
+    },
+    {
+      "id": "f2498d5a-b4c9-44d3-b9e5-289c653c227a",
+      "label": "Observability",
+      "position": {
+        "x": 1340,
+        "y": 80
+      },
+      "size": {
+        "width": 320,
+        "height": 340
+      }
+    }
+  ]
+}
