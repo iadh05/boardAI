@@ -1,0 +1,419 @@
+{
+  "nodes": [
+    {
+      "id": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "kind": "storage",
+      "label": "Blackboard: findings this session",
+      "position": {
+        "x": -20,
+        "y": 1240
+      }
+    },
+    {
+      "id": "fbcc280f-d920-4713-ac9f-fc6c4b08cdcc",
+      "kind": "storage",
+      "label": "Board history (Yjs)",
+      "position": {
+        "x": -20,
+        "y": 1380
+      }
+    },
+    {
+      "id": "1f19ab20-e1c9-4d8c-b1fc-aaaba51249eb",
+      "kind": "storage",
+      "label": "Past decisions + patterns (RAG)",
+      "position": {
+        "x": -20,
+        "y": 1520
+      }
+    },
+    {
+      "id": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
+      "kind": "client",
+      "label": "You (chat + board)",
+      "position": {
+        "x": 0,
+        "y": 300
+      }
+    },
+    {
+      "id": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "kind": "service",
+      "label": "Router: question / review / draft",
+      "position": {
+        "x": 300,
+        "y": 300
+      }
+    },
+    {
+      "id": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "kind": "service",
+      "label": "Planner (Draw mode)",
+      "position": {
+        "x": 600,
+        "y": 100
+      }
+    },
+    {
+      "id": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "kind": "service",
+      "label": "Architect (lead): owns, arbitrates",
+      "position": {
+        "x": 600,
+        "y": 300
+      }
+    },
+    {
+      "id": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "kind": "service",
+      "label": "Critic (checks the proposal)",
+      "position": {
+        "x": 600,
+        "y": 500
+      }
+    },
+    {
+      "id": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "kind": "service",
+      "label": "Scribe (decisions, why)",
+      "position": {
+        "x": 600,
+        "y": 700
+      }
+    },
+    {
+      "id": "f95fbd2a-d7db-4033-aaec-39b0451df2b1",
+      "kind": "storage",
+      "label": "Draft board",
+      "position": {
+        "x": 600,
+        "y": 900
+      }
+    },
+    {
+      "id": "dc13c8cb-86e9-4ccd-a0c7-77139e5a948c",
+      "kind": "custom",
+      "label": "AI gateway → Qwen",
+      "position": {
+        "x": 300,
+        "y": 900
+      }
+    },
+    {
+      "id": "a94ab7d2-5b6c-4cea-a7f0-36a029f3d1ca",
+      "kind": "service",
+      "label": "Interviewer",
+      "position": {
+        "x": 960,
+        "y": 0
+      }
+    },
+    {
+      "id": "548886f8-01ea-4bb5-aa13-a83691838b82",
+      "kind": "service",
+      "label": "Data",
+      "position": {
+        "x": 960,
+        "y": 120
+      }
+    },
+    {
+      "id": "aedd827a-1417-4ac4-bfdf-1981c257ea42",
+      "kind": "service",
+      "label": "Security",
+      "position": {
+        "x": 960,
+        "y": 240
+      }
+    },
+    {
+      "id": "3345c732-09c1-4d2e-8db8-4c20b90645f0",
+      "kind": "service",
+      "label": "Traffic",
+      "position": {
+        "x": 960,
+        "y": 360
+      }
+    },
+    {
+      "id": "1eb02d00-4e57-42e7-bb6d-62ac059845ad",
+      "kind": "service",
+      "label": "Chaos",
+      "position": {
+        "x": 960,
+        "y": 480
+      }
+    },
+    {
+      "id": "d1adca11-3255-4b9a-9f11-f94724323bc7",
+      "kind": "service",
+      "label": "Cost (financier)",
+      "position": {
+        "x": 960,
+        "y": 600
+      }
+    },
+    {
+      "id": "bf3f4d6e-4097-496e-bfa9-2d31afdb900b",
+      "kind": "service",
+      "label": "DevOps",
+      "position": {
+        "x": 960,
+        "y": 720
+      }
+    },
+    {
+      "id": "1753943d-5797-4ef7-b569-7d86c04d545b",
+      "kind": "service",
+      "label": "Researcher (web)",
+      "position": {
+        "x": 960,
+        "y": 840
+      }
+    },
+    {
+      "id": "c9f25358-0652-4be4-afbb-acd06a67db15",
+      "kind": "service",
+      "label": "Stack & Cloud (AWS/Azure/GCP)",
+      "position": {
+        "x": 960,
+        "y": 960
+      }
+    },
+    {
+      "id": "cdb01535-76fb-464e-ace4-7fced575a467",
+      "kind": "storage",
+      "label": "Requirements card",
+      "position": {
+        "x": -20,
+        "y": 1660
+      }
+    },
+    {
+      "id": "4aa31cc2-ad6e-4f30-964c-a81aed11b6d0",
+      "kind": "storage",
+      "label": "Decision log → ADRs",
+      "position": {
+        "x": -20,
+        "y": 1780
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "48c40122-cc94-416b-b6b5-55a059a50ff8",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "label": "read / write findings",
+      "mode": "async"
+    },
+    {
+      "id": "f0ad638f-003e-4f94-a670-c564dc444dd9",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "fbcc280f-d920-4713-ac9f-fc6c4b08cdcc",
+      "label": "what changed?"
+    },
+    {
+      "id": "12e4d72e-118f-4685-87b4-854943ffa522",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "1f19ab20-e1c9-4d8c-b1fc-aaaba51249eb",
+      "label": "retrieve"
+    },
+    {
+      "id": "24759b04-cdba-43e7-931a-66edb1005f5d",
+      "source": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
+      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "label": "question"
+    },
+    {
+      "id": "b288b2f1-b488-4aff-a6af-e9eab409f5d1",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "review / question"
+    },
+    {
+      "id": "d516dc4a-debd-48a3-96cc-6633b3312e26",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "label": "design me X"
+    },
+    {
+      "id": "8a883208-7139-498b-9084-6586ff78c453",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "plan"
+    },
+    {
+      "id": "0268b6ae-9ad1-492e-9aac-cd718bc6bbcb",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "f95fbd2a-d7db-4033-aaec-39b0451df2b1",
+      "label": "add / connect"
+    },
+    {
+      "id": "e7aa6959-10a3-401f-a030-8edb06ebc5e8",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "label": "proposal"
+    },
+    {
+      "id": "ffb5ff84-2e1b-4047-b390-f726376dc820",
+      "source": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "target": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
+      "label": "ghost boxes",
+      "mode": "async"
+    },
+    {
+      "id": "11364e62-283f-4961-903b-9e24c36f0c7e",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "label": "decisions",
+      "mode": "async"
+    },
+    {
+      "id": "594cba60-ba76-4b3d-ade5-7228f71c47d0",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "dc13c8cb-86e9-4ccd-a0c7-77139e5a948c",
+      "label": "every agent calls it"
+    },
+    {
+      "id": "5ce0b67d-a9d0-4e53-b961-355a1ed7c38d",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "a94ab7d2-5b6c-4cea-a7f0-36a029f3d1ca",
+      "label": "needs?"
+    },
+    {
+      "id": "4758ae41-54cc-4a78-a9a0-85d7864b12a6",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "548886f8-01ea-4bb5-aa13-a83691838b82"
+    },
+    {
+      "id": "b7405409-1853-4164-b832-5c9dec5678db",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "aedd827a-1417-4ac4-bfdf-1981c257ea42"
+    },
+    {
+      "id": "a2fd70ea-1d26-44e1-a5fc-3a265e81aea3",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "3345c732-09c1-4d2e-8db8-4c20b90645f0"
+    },
+    {
+      "id": "a7aff0a9-7d49-4f7b-83f9-1118d7a119a9",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "1eb02d00-4e57-42e7-bb6d-62ac059845ad"
+    },
+    {
+      "id": "6e67175a-d9c1-41f3-8860-80db66d56487",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "d1adca11-3255-4b9a-9f11-f94724323bc7"
+    },
+    {
+      "id": "0d908d70-64dc-4119-89a0-85a6408d48f1",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "bf3f4d6e-4097-496e-bfa9-2d31afdb900b"
+    },
+    {
+      "id": "1df99620-cb3e-4300-acd8-f100560e052f",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "1753943d-5797-4ef7-b569-7d86c04d545b"
+    },
+    {
+      "id": "a050144a-705c-49da-8aa1-502bde1a8c64",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "c9f25358-0652-4be4-afbb-acd06a67db15",
+      "label": "which tech?"
+    },
+    {
+      "id": "3d27ceb9-e798-44dc-ab18-e45518773e7c",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "cdb01535-76fb-464e-ace4-7fced575a467",
+      "label": "read every time"
+    },
+    {
+      "id": "d86297cf-2c84-4b65-80a5-462ff4d6cbb5",
+      "source": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "target": "4aa31cc2-ad6e-4f30-964c-a81aed11b6d0",
+      "label": "record_decision"
+    },
+    {
+      "id": "b42d7f91-9079-4a16-873b-82ded4beabca",
+      "source": "4aa31cc2-ad6e-4f30-964c-a81aed11b6d0",
+      "target": "1f19ab20-e1c9-4d8c-b1fc-aaaba51249eb",
+      "label": "indexed",
+      "mode": "async"
+    }
+  ],
+  "zones": [
+    {
+      "id": "75e3f852-0c5b-40a8-8535-05dee5423fe6",
+      "label": "Memory (shared, in the room)",
+      "position": {
+        "x": -60,
+        "y": 1180
+      },
+      "size": {
+        "width": 280,
+        "height": 780
+      }
+    },
+    {
+      "id": "cc0a3f05-60e0-46de-8436-77d8d3e56309",
+      "label": "You",
+      "position": {
+        "x": -40,
+        "y": 240
+      },
+      "size": {
+        "width": 280,
+        "height": 180
+      }
+    },
+    {
+      "id": "7c50bbcf-aa38-430e-95e6-1e5c71150b6f",
+      "label": "Routing",
+      "position": {
+        "x": 260,
+        "y": 240
+      },
+      "size": {
+        "width": 300,
+        "height": 180
+      }
+    },
+    {
+      "id": "f4d13faa-3360-4241-acb0-c12b5d3650d6",
+      "label": "Agents",
+      "position": {
+        "x": 560,
+        "y": 40
+      },
+      "size": {
+        "width": 320,
+        "height": 780
+      }
+    },
+    {
+      "id": "6cd086bf-db4e-4627-82dc-bf4ec0f2052d",
+      "label": "Model",
+      "position": {
+        "x": 260,
+        "y": 840
+      },
+      "size": {
+        "width": 300,
+        "height": 180
+      }
+    },
+    {
+      "id": "1c7e4a2c-54cf-46c5-8e9d-21616d788dc8",
+      "label": "Lenses (their tools: Lenses board)",
+      "position": {
+        "x": 920,
+        "y": -60
+      },
+      "size": {
+        "width": 320,
+        "height": 1140
+      }
+    }
+  ]
+}

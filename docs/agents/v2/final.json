@@ -1,0 +1,668 @@
+{
+  "nodes": [
+    {
+      "id": "fd86631f-cbe8-4798-81ae-cea3e7da47bd",
+      "kind": "client",
+      "label": "You",
+      "position": {
+        "x": 400,
+        "y": 0
+      }
+    },
+    {
+      "id": "d8a9edc5-bd88-4a9d-8b61-c0a3c6ffd4f5",
+      "kind": "service",
+      "label": "Main agent",
+      "position": {
+        "x": 400,
+        "y": 170
+      }
+    },
+    {
+      "id": "f576e635-4fe2-4696-b79c-a3b567a54311",
+      "kind": "service",
+      "label": "Planner",
+      "position": {
+        "x": 400,
+        "y": 340
+      }
+    },
+    {
+      "id": "48cb69e7-7b7d-40be-aa33-fa1c14ce244f",
+      "kind": "service",
+      "label": "Fallback 9B",
+      "position": {
+        "x": 760,
+        "y": 340
+      }
+    },
+    {
+      "id": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "kind": "queue",
+      "label": "Task queue",
+      "position": {
+        "x": 400,
+        "y": 520
+      }
+    },
+    {
+      "id": "898847b6-f360-4fd9-91ca-38c0fb71d557",
+      "kind": "service",
+      "label": "Data",
+      "position": {
+        "x": 100,
+        "y": 720
+      }
+    },
+    {
+      "id": "d876e7fc-edef-404d-bf36-c58c26817a25",
+      "kind": "service",
+      "label": "Security",
+      "position": {
+        "x": 330,
+        "y": 720
+      }
+    },
+    {
+      "id": "03569a0f-7783-4564-b8e4-91147df8752c",
+      "kind": "service",
+      "label": "Cost",
+      "position": {
+        "x": 560,
+        "y": 720
+      }
+    },
+    {
+      "id": "b12c7daa-c650-45fe-92b2-c8d13d3209d5",
+      "kind": "service",
+      "label": "Stack & Cloud",
+      "position": {
+        "x": 790,
+        "y": 720
+      }
+    },
+    {
+      "id": "88c8e5c7-4161-437a-b592-e06340c61495",
+      "kind": "service",
+      "label": "Chaos",
+      "position": {
+        "x": 100,
+        "y": 860
+      }
+    },
+    {
+      "id": "ba26dbb2-76be-4bb8-a082-9b9b87f50900",
+      "kind": "service",
+      "label": "Traffic",
+      "position": {
+        "x": 330,
+        "y": 860
+      }
+    },
+    {
+      "id": "d0e6c519-1a13-49c1-9d3d-25148d71dea9",
+      "kind": "service",
+      "label": "DevOps",
+      "position": {
+        "x": 560,
+        "y": 860
+      }
+    },
+    {
+      "id": "51046cdd-c6a3-456d-b7a8-ff935532fc37",
+      "kind": "service",
+      "label": "Researcher",
+      "position": {
+        "x": 790,
+        "y": 860
+      }
+    },
+    {
+      "id": "321c049d-dac1-4688-ae16-9ed9619af494",
+      "kind": "storage",
+      "label": "Blackboard",
+      "position": {
+        "x": 400,
+        "y": 1180
+      }
+    },
+    {
+      "id": "d49be207-3662-4e55-a8f7-a32b76ecd1e9",
+      "kind": "custom",
+      "label": "Merge (code)",
+      "position": {
+        "x": 400,
+        "y": 1340
+      }
+    },
+    {
+      "id": "1f0d561e-def8-43a6-afb2-d5f60ef69d36",
+      "kind": "custom",
+      "label": "Code checks",
+      "position": {
+        "x": 400,
+        "y": 1500
+      }
+    },
+    {
+      "id": "dbcdce6c-5fb7-4d80-b1c9-188f7cd49db5",
+      "kind": "service",
+      "label": "Critic agent",
+      "position": {
+        "x": 400,
+        "y": 1660
+      }
+    },
+    {
+      "id": "7f68db47-0169-47cf-81ab-e6651bba3522",
+      "kind": "custom",
+      "label": "Answer",
+      "position": {
+        "x": 400,
+        "y": 1830
+      }
+    },
+    {
+      "id": "9958d13f-cd05-49b9-84b9-54a0de3d20bd",
+      "kind": "service",
+      "label": "Scribe",
+      "position": {
+        "x": 820,
+        "y": 1830
+      }
+    },
+    {
+      "id": "5d78c4fb-86d6-4378-94b5-5ec21a9fe981",
+      "kind": "custom",
+      "label": "Context builder",
+      "position": {
+        "x": 1180,
+        "y": 340
+      }
+    },
+    {
+      "id": "f320aecd-2977-4eb9-803e-61c18091be78",
+      "kind": "storage",
+      "label": "Requirements",
+      "position": {
+        "x": 1500,
+        "y": 170
+      }
+    },
+    {
+      "id": "a987e21f-c25c-471c-b5e5-6a355c3b40cf",
+      "kind": "database",
+      "label": "Decisions",
+      "position": {
+        "x": 1500,
+        "y": 340
+      }
+    },
+    {
+      "id": "357b0ff0-cdfa-4173-aa8b-1abb3109f0b3",
+      "kind": "database",
+      "label": "Chat history",
+      "position": {
+        "x": 1500,
+        "y": 510
+      }
+    },
+    {
+      "id": "9cd4420b-0934-4521-b031-99f72389c6a3",
+      "kind": "storage",
+      "label": "Web pages",
+      "position": {
+        "x": 1500,
+        "y": 680
+      }
+    },
+    {
+      "id": "d01f11a8-5f16-40c6-9829-d37d8973a22d",
+      "kind": "storage",
+      "label": "Global catalogue",
+      "position": {
+        "x": 1500,
+        "y": 850
+      }
+    },
+    {
+      "id": "713a61c7-1ae9-4131-95b2-f5298238ba6f",
+      "kind": "service",
+      "label": "Embeddings",
+      "position": {
+        "x": 1820,
+        "y": 510
+      }
+    },
+    {
+      "id": "a73735e1-7568-4ed3-ad58-25992dbd40dc",
+      "kind": "cache",
+      "label": "Prompt cache",
+      "position": {
+        "x": -360,
+        "y": 520
+      }
+    },
+    {
+      "id": "c31c611f-bd48-4e54-aca3-f7a395195f6e",
+      "kind": "cache",
+      "label": "Findings cache",
+      "position": {
+        "x": -360,
+        "y": 720
+      }
+    },
+    {
+      "id": "9d423b65-aa0e-43ac-bc94-75bbd6f02641",
+      "kind": "cache",
+      "label": "Embedding cache",
+      "position": {
+        "x": 1820,
+        "y": 680
+      }
+    },
+    {
+      "id": "e3d667fb-50d5-4894-8cbe-b13a5639ddea",
+      "kind": "service",
+      "label": "Ad-hoc expert",
+      "position": {
+        "x": 100,
+        "y": 1000
+      }
+    },
+    {
+      "id": "f21911bb-4671-4f87-900b-d25eb95aa7e6",
+      "kind": "storage",
+      "label": "Candidates",
+      "position": {
+        "x": 1500,
+        "y": 1020
+      }
+    },
+    {
+      "id": "6070b0ad-d7da-4d76-9952-6f6d53bfca25",
+      "kind": "custom",
+      "label": "Data sub-briefs",
+      "position": {
+        "x": -360,
+        "y": 920
+      }
+    },
+    {
+      "id": "18c93cb8-f79d-41e7-b978-f459ac27285c",
+      "kind": "custom",
+      "label": "Stack sub-briefs",
+      "position": {
+        "x": 1100,
+        "y": 1020
+      }
+    },
+    {
+      "id": "db954f62-b1be-461d-a65e-422f2da1fad5",
+      "kind": "custom",
+      "label": "Feedback",
+      "position": {
+        "x": 820,
+        "y": 2000
+      }
+    },
+    {
+      "id": "a36dca68-984b-4358-a3ee-27a25561a2f3",
+      "kind": "storage",
+      "label": "Thread summary",
+      "position": {
+        "x": -360,
+        "y": 170
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "44d0ef56-e7dc-4568-be8b-f4b74befe52f",
+      "source": "fd86631f-cbe8-4798-81ae-cea3e7da47bd",
+      "target": "d8a9edc5-bd88-4a9d-8b61-c0a3c6ffd4f5",
+      "label": "question"
+    },
+    {
+      "id": "e7322ded-e8a0-415d-8695-9ce68bb183a5",
+      "source": "d8a9edc5-bd88-4a9d-8b61-c0a3c6ffd4f5",
+      "target": "fd86631f-cbe8-4798-81ae-cea3e7da47bd",
+      "label": "answer, progress",
+      "mode": "async"
+    },
+    {
+      "id": "f8b91c37-4eca-4d60-acfe-c04486db555a",
+      "source": "d8a9edc5-bd88-4a9d-8b61-c0a3c6ffd4f5",
+      "target": "f576e635-4fe2-4696-b79c-a3b567a54311",
+      "label": "request"
+    },
+    {
+      "id": "7df9a8cd-6600-47e9-8932-5dee6032962a",
+      "source": "f576e635-4fe2-4696-b79c-a3b567a54311",
+      "target": "d8a9edc5-bd88-4a9d-8b61-c0a3c6ffd4f5",
+      "label": "question back (≤ 2 rounds)",
+      "mode": "async"
+    },
+    {
+      "id": "bcc6b2cc-09cd-480a-9f6d-c08f657c2fd0",
+      "source": "f576e635-4fe2-4696-b79c-a3b567a54311",
+      "target": "48cb69e7-7b7d-40be-aa33-fa1c14ce244f",
+      "label": "offline, limit reached",
+      "mode": "async"
+    },
+    {
+      "id": "b496edf9-92ec-4082-9d17-28de4fc79275",
+      "source": "f576e635-4fe2-4696-b79c-a3b567a54311",
+      "target": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "label": "plan: briefs per task"
+    },
+    {
+      "id": "a70f6baf-699a-4ccc-abf1-fe9da3c00c84",
+      "source": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "target": "898847b6-f360-4fd9-91ca-38c0fb71d557"
+    },
+    {
+      "id": "21b15073-1adb-4647-982f-6ade58b8a000",
+      "source": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "target": "d876e7fc-edef-404d-bf36-c58c26817a25"
+    },
+    {
+      "id": "c409e328-46aa-4199-8465-d2f167ef45d8",
+      "source": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "target": "03569a0f-7783-4564-b8e4-91147df8752c"
+    },
+    {
+      "id": "d0fc871f-79da-4102-8272-0c828dccd01d",
+      "source": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "target": "b12c7daa-c650-45fe-92b2-c8d13d3209d5"
+    },
+    {
+      "id": "83c1026d-0cd2-4be0-91a2-2f6f48b52779",
+      "source": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "target": "88c8e5c7-4161-437a-b592-e06340c61495"
+    },
+    {
+      "id": "d87c876a-bc94-4ce0-b26d-dae4ae537d1f",
+      "source": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "target": "ba26dbb2-76be-4bb8-a082-9b9b87f50900"
+    },
+    {
+      "id": "1a6717d7-4847-431b-aeb2-c5c544b16c28",
+      "source": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "target": "d0e6c519-1a13-49c1-9d3d-25148d71dea9"
+    },
+    {
+      "id": "140efd13-8476-46bf-ab2b-ea2cb83831a8",
+      "source": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "target": "51046cdd-c6a3-456d-b7a8-ff935532fc37"
+    },
+    {
+      "id": "87e5f753-97e5-4d94-85b3-56b4264f77d5",
+      "source": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "target": "321c049d-dac1-4688-ae16-9ed9619af494",
+      "label": "each task: a typed finding"
+    },
+    {
+      "id": "284747fa-ecab-4e76-b6b2-4a0eb418037a",
+      "source": "321c049d-dac1-4688-ae16-9ed9619af494",
+      "target": "d49be207-3662-4e55-a8f7-a32b76ecd1e9",
+      "label": "findings"
+    },
+    {
+      "id": "837cb356-918d-40fb-880a-5163baa1a323",
+      "source": "d49be207-3662-4e55-a8f7-a32b76ecd1e9",
+      "target": "1f0d561e-def8-43a6-afb2-d5f60ef69d36",
+      "label": "proposal"
+    },
+    {
+      "id": "baafa6e3-e731-4df4-b343-8d5372f78cf1",
+      "source": "1f0d561e-def8-43a6-afb2-d5f60ef69d36",
+      "target": "dbcdce6c-5fb7-4d80-b1c9-188f7cd49db5",
+      "label": "pass"
+    },
+    {
+      "id": "80f08b70-e6aa-451a-b497-d58944466600",
+      "source": "1f0d561e-def8-43a6-afb2-d5f60ef69d36",
+      "target": "d49be207-3662-4e55-a8f7-a32b76ecd1e9",
+      "label": "fail: back once",
+      "mode": "async"
+    },
+    {
+      "id": "70e176a1-711f-4fe5-9e11-7f14424e0c21",
+      "source": "dbcdce6c-5fb7-4d80-b1c9-188f7cd49db5",
+      "target": "d49be207-3662-4e55-a8f7-a32b76ecd1e9",
+      "label": "revise: back once",
+      "mode": "async"
+    },
+    {
+      "id": "99153d41-9f51-4407-bf33-dd38741c5792",
+      "source": "dbcdce6c-5fb7-4d80-b1c9-188f7cd49db5",
+      "target": "7f68db47-0169-47cf-81ab-e6651bba3522",
+      "label": "pass"
+    },
+    {
+      "id": "388d957f-e8b3-47dd-877d-a7c7c640ea89",
+      "source": "7f68db47-0169-47cf-81ab-e6651bba3522",
+      "target": "9958d13f-cd05-49b9-84b9-54a0de3d20bd",
+      "label": "your decision"
+    },
+    {
+      "id": "b59e31e5-5331-4aa1-9574-b88c257770d9",
+      "source": "f320aecd-2977-4eb9-803e-61c18091be78",
+      "target": "5d78c4fb-86d6-4378-94b5-5ec21a9fe981"
+    },
+    {
+      "id": "e8cdac4f-372b-4510-a859-adcfc5febacc",
+      "source": "a987e21f-c25c-471c-b5e5-6a355c3b40cf",
+      "target": "5d78c4fb-86d6-4378-94b5-5ec21a9fe981"
+    },
+    {
+      "id": "29795ffa-eac1-4617-8587-f3e53657bad1",
+      "source": "357b0ff0-cdfa-4173-aa8b-1abb3109f0b3",
+      "target": "5d78c4fb-86d6-4378-94b5-5ec21a9fe981"
+    },
+    {
+      "id": "fddfa7fd-0c24-444f-b16c-44b273815497",
+      "source": "9cd4420b-0934-4521-b031-99f72389c6a3",
+      "target": "5d78c4fb-86d6-4378-94b5-5ec21a9fe981"
+    },
+    {
+      "id": "9b047a79-675f-4044-b166-1b716f196df3",
+      "source": "d01f11a8-5f16-40c6-9829-d37d8973a22d",
+      "target": "5d78c4fb-86d6-4378-94b5-5ec21a9fe981"
+    },
+    {
+      "id": "47864a7f-89da-4731-9bd8-754adbde25d8",
+      "source": "f576e635-4fe2-4696-b79c-a3b567a54311",
+      "target": "5d78c4fb-86d6-4378-94b5-5ec21a9fe981",
+      "label": "queries per specialist"
+    },
+    {
+      "id": "60502fa7-2ae2-4af9-97bc-3b355b1d7235",
+      "source": "5d78c4fb-86d6-4378-94b5-5ec21a9fe981",
+      "target": "f576e635-4fe2-4696-b79c-a3b567a54311",
+      "label": "context"
+    },
+    {
+      "id": "002609b2-031b-4d19-9abd-c502d4daf2e6",
+      "source": "5d78c4fb-86d6-4378-94b5-5ec21a9fe981",
+      "target": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "label": "context per task"
+    },
+    {
+      "id": "755b36a3-c871-4321-b942-d173e47a7cc5",
+      "source": "713a61c7-1ae9-4131-95b2-f5298238ba6f",
+      "target": "357b0ff0-cdfa-4173-aa8b-1abb3109f0b3",
+      "label": "hybrid search",
+      "mode": "async"
+    },
+    {
+      "id": "f05ec191-72ff-44bf-be48-e9be99b5d3bd",
+      "source": "51046cdd-c6a3-456d-b7a8-ff935532fc37",
+      "target": "9cd4420b-0934-4521-b031-99f72389c6a3",
+      "label": "pages read",
+      "mode": "async"
+    },
+    {
+      "id": "93df56a5-addb-4c03-9456-277d10604e3c",
+      "source": "9958d13f-cd05-49b9-84b9-54a0de3d20bd",
+      "target": "a987e21f-c25c-471c-b5e5-6a355c3b40cf",
+      "label": "saves decision"
+    },
+    {
+      "id": "7d0ffcd2-3c91-4da0-9864-448d0700a7bd",
+      "source": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "target": "a73735e1-7568-4ed3-ad58-25992dbd40dc",
+      "label": "shared start re-read once",
+      "mode": "async"
+    },
+    {
+      "id": "96b284af-8709-47be-8f33-ea89958e85ca",
+      "source": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "target": "c31c611f-bd48-4e54-aca3-f7a395195f6e",
+      "label": "hit: skip the agent",
+      "mode": "async"
+    },
+    {
+      "id": "1af11648-4e60-4e7c-a0cd-d80b0e30e1a9",
+      "source": "713a61c7-1ae9-4131-95b2-f5298238ba6f",
+      "target": "9d423b65-aa0e-43ac-bc94-75bbd6f02641",
+      "mode": "async"
+    },
+    {
+      "id": "27e77bb6-345c-40b4-9970-08b86af9bea9",
+      "source": "77ce1c59-1b1d-4047-ad86-5b83210f52e1",
+      "target": "e3d667fb-50d5-4894-8cbe-b13a5639ddea",
+      "label": "no specialist fits",
+      "mode": "async"
+    },
+    {
+      "id": "83709e3f-e4ef-4fae-9df3-680f0ce63800",
+      "source": "e3d667fb-50d5-4894-8cbe-b13a5639ddea",
+      "target": "f21911bb-4671-4f87-900b-d25eb95aa7e6",
+      "label": "used, accept rate",
+      "mode": "async"
+    },
+    {
+      "id": "e7722e78-3ca3-4a34-9f80-7853ddb2b656",
+      "source": "898847b6-f360-4fd9-91ca-38c0fb71d557",
+      "target": "6070b0ad-d7da-4d76-9952-6f6d53bfca25",
+      "label": "sub-briefs",
+      "mode": "async"
+    },
+    {
+      "id": "f3ec2ac8-38d8-4782-8f2c-01d4d1a4a3da",
+      "source": "b12c7daa-c650-45fe-92b2-c8d13d3209d5",
+      "target": "18c93cb8-f79d-41e7-b978-f459ac27285c",
+      "label": "sub-briefs",
+      "mode": "async"
+    },
+    {
+      "id": "b733965d-5072-41f1-8e22-135a0745498f",
+      "source": "7f68db47-0169-47cf-81ab-e6651bba3522",
+      "target": "db954f62-b1be-461d-a65e-422f2da1fad5",
+      "label": "your verdict"
+    },
+    {
+      "id": "32eba6a8-cced-42eb-aa2f-89d4c0614a93",
+      "source": "db954f62-b1be-461d-a65e-422f2da1fad5",
+      "target": "9958d13f-cd05-49b9-84b9-54a0de3d20bd",
+      "label": "rejected ideas, decisions"
+    },
+    {
+      "id": "41ce01d3-9acf-4850-a8f7-534a7d616fc3",
+      "source": "db954f62-b1be-461d-a65e-422f2da1fad5",
+      "target": "f21911bb-4671-4f87-900b-d25eb95aa7e6",
+      "label": "accept rate per agent",
+      "mode": "async"
+    },
+    {
+      "id": "44320390-0338-4136-bfce-d5bcab604aac",
+      "source": "d8a9edc5-bd88-4a9d-8b61-c0a3c6ffd4f5",
+      "target": "a36dca68-984b-4358-a3ee-27a25561a2f3",
+      "label": "compacts past ~4k tokens",
+      "mode": "async"
+    },
+    {
+      "id": "d1e5c80b-5cd4-48bf-ab42-bf64201cbbda",
+      "source": "a36dca68-984b-4358-a3ee-27a25561a2f3",
+      "target": "357b0ff0-cdfa-4173-aa8b-1abb3109f0b3",
+      "label": "original turns stay searchable",
+      "mode": "async"
+    }
+  ],
+  "zones": [
+    {
+      "id": "70670260-c3cd-447a-b8dd-e099ecf19b97",
+      "label": "Knowledge: LLM memory (D12)",
+      "position": {
+        "x": 1440,
+        "y": 110
+      },
+      "size": {
+        "width": 600,
+        "height": 860
+      }
+    },
+    {
+      "id": "30e19b4c-bb55-4f51-8ea5-da2bd5cc2315",
+      "label": "LLM cache (D16)",
+      "position": {
+        "x": -420,
+        "y": 460
+      },
+      "size": {
+        "width": 360,
+        "height": 380
+      }
+    },
+    {
+      "id": "356c96bc-f9df-4a9c-85e3-36f194024fea",
+      "label": "Level 2 · Groq 27B / gpt-oss · thinking",
+      "position": {
+        "x": 340,
+        "y": 290
+      },
+      "size": {
+        "width": 380,
+        "height": 140
+      }
+    },
+    {
+      "id": "d2a84e7e-8e62-48ce-91c4-d1f62989ab57",
+      "label": "Level 2 · Groq 27B / gpt-oss · thinking",
+      "position": {
+        "x": 340,
+        "y": 1610
+      },
+      "size": {
+        "width": 380,
+        "height": 140
+      }
+    },
+    {
+      "id": "be9a71ce-9d57-42f6-a37a-f20c17646778",
+      "label": "Level 3 · specialists · local 9B · one at a time",
+      "position": {
+        "x": 60,
+        "y": 670
+      },
+      "size": {
+        "width": 960,
+        "height": 420
+      }
+    },
+    {
+      "id": "5f1f825f-28a1-481e-aa7e-593449fcb50e",
+      "label": "Level 1 · local 9B",
+      "position": {
+        "x": 340,
+        "y": 120
+      },
+      "size": {
+        "width": 380,
+        "height": 140
+      }
+    }
+  ]
+}

@@ -47,8 +47,8 @@ Answer in [learning-log.md](../learning-log.md):
 - Web: modules `board` and `chat` with pods; `core/ui` atomic kit; Zustand stores; React Query.
 - Canvas: pan, zoom, minimap; known kinds + Custom; edit label, move, delete; connect, delete edges.
 - Server: modular monolith, composition root, `health` module, `chat` module in four layers, `POST /api/chat` (SSE).
-- Agent with three tools (`add_node`, `update_node`, `connect_nodes`) and a loop limit.
-- AI gateway: OpenAI-compatible provider (Ollama), fake provider, timeouts, retries, metering.
+- Agent with three tools (`add_node`, `update_node`, `connect_nodes`) and a loop limit; from 2026-10-21 (M1c) also `check_design`, `ask_user`, `finish`, then the multi-agent chain behind a flag — [architecture-v2.md](../agents/architecture-v2.md), [tickets/agent-v2.md](../../tickets/agent-v2.md).
+- AI gateway: OpenAI-compatible provider (Ollama), fake provider, timeouts, retries, metering; from M1c also Groq and Gemini (same provider, their dialects), Claude through the official SDK (Haiku, Sonnet; spend cap), a model per role with the local fallback.
 - Chat panel with streaming text; ghost nodes with Accept / Reject.
 - Sentry (web + server); OpenTelemetry + local Grafana with one "AI reviewer" dashboard.
 - Nginx edge proxy in Docker: routing, SSE passthrough, rate limit on `/api/chat`.

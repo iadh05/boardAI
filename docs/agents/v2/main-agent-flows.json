@@ -1,0 +1,784 @@
+{
+  "nodes": [
+    {
+      "id": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "kind": "storage",
+      "label": "Blackboard: findings this session",
+      "position": {
+        "x": -20,
+        "y": 1240
+      }
+    },
+    {
+      "id": "fbcc280f-d920-4713-ac9f-fc6c4b08cdcc",
+      "kind": "storage",
+      "label": "Board history (Yjs)",
+      "position": {
+        "x": -20,
+        "y": 1380
+      }
+    },
+    {
+      "id": "1f19ab20-e1c9-4d8c-b1fc-aaaba51249eb",
+      "kind": "storage",
+      "label": "Past decisions + patterns (RAG)",
+      "position": {
+        "x": -20,
+        "y": 1520
+      }
+    },
+    {
+      "id": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
+      "kind": "client",
+      "label": "You (chat + board)",
+      "position": {
+        "x": 0,
+        "y": 300
+      }
+    },
+    {
+      "id": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "kind": "service",
+      "label": "Main agent (master): talks with you",
+      "position": {
+        "x": 300,
+        "y": 300
+      }
+    },
+    {
+      "id": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "kind": "service",
+      "label": "Planner: clarifies the request, plans",
+      "position": {
+        "x": 600,
+        "y": 100
+      }
+    },
+    {
+      "id": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "kind": "service",
+      "label": "Architect: spawns the agents, merges",
+      "position": {
+        "x": 600,
+        "y": 300
+      }
+    },
+    {
+      "id": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "kind": "service",
+      "label": "Critic: code checks (LLM later)",
+      "position": {
+        "x": 600,
+        "y": 500
+      }
+    },
+    {
+      "id": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "kind": "service",
+      "label": "Scribe (decisions, why)",
+      "position": {
+        "x": 600,
+        "y": 700
+      }
+    },
+    {
+      "id": "f95fbd2a-d7db-4033-aaec-39b0451df2b1",
+      "kind": "storage",
+      "label": "Draft board",
+      "position": {
+        "x": 600,
+        "y": 900
+      }
+    },
+    {
+      "id": "dc13c8cb-86e9-4ccd-a0c7-77139e5a948c",
+      "kind": "custom",
+      "label": "AI gateway → Qwen",
+      "position": {
+        "x": 300,
+        "y": 900
+      }
+    },
+    {
+      "id": "548886f8-01ea-4bb5-aa13-a83691838b82",
+      "kind": "service",
+      "label": "Data",
+      "position": {
+        "x": 1260,
+        "y": 120
+      }
+    },
+    {
+      "id": "aedd827a-1417-4ac4-bfdf-1981c257ea42",
+      "kind": "service",
+      "label": "Security",
+      "position": {
+        "x": 1260,
+        "y": 240
+      }
+    },
+    {
+      "id": "3345c732-09c1-4d2e-8db8-4c20b90645f0",
+      "kind": "service",
+      "label": "Traffic",
+      "position": {
+        "x": 1260,
+        "y": 360
+      }
+    },
+    {
+      "id": "1eb02d00-4e57-42e7-bb6d-62ac059845ad",
+      "kind": "service",
+      "label": "Chaos",
+      "position": {
+        "x": 1260,
+        "y": 480
+      }
+    },
+    {
+      "id": "d1adca11-3255-4b9a-9f11-f94724323bc7",
+      "kind": "service",
+      "label": "Cost (financier)",
+      "position": {
+        "x": 1260,
+        "y": 600
+      }
+    },
+    {
+      "id": "bf3f4d6e-4097-496e-bfa9-2d31afdb900b",
+      "kind": "service",
+      "label": "DevOps",
+      "position": {
+        "x": 1260,
+        "y": 720
+      }
+    },
+    {
+      "id": "1753943d-5797-4ef7-b569-7d86c04d545b",
+      "kind": "service",
+      "label": "Researcher (web)",
+      "position": {
+        "x": 1260,
+        "y": 840
+      }
+    },
+    {
+      "id": "c9f25358-0652-4be4-afbb-acd06a67db15",
+      "kind": "service",
+      "label": "Stack & Cloud (AWS/Azure/GCP)",
+      "position": {
+        "x": 1260,
+        "y": 960
+      }
+    },
+    {
+      "id": "cdb01535-76fb-464e-ace4-7fced575a467",
+      "kind": "storage",
+      "label": "Requirements card",
+      "position": {
+        "x": -20,
+        "y": 1660
+      }
+    },
+    {
+      "id": "4aa31cc2-ad6e-4f30-964c-a81aed11b6d0",
+      "kind": "storage",
+      "label": "Decision log → ADRs",
+      "position": {
+        "x": -20,
+        "y": 1780
+      }
+    },
+    {
+      "id": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "kind": "queue",
+      "label": "Task queue: one at a time",
+      "position": {
+        "x": 960,
+        "y": 300
+      }
+    },
+    {
+      "id": "ecd7cc77-5839-4c55-bb42-4b0a19d96673",
+      "kind": "custom",
+      "label": "F1 Question: \"what is a CDN?\"",
+      "position": {
+        "x": 280,
+        "y": -600
+      }
+    },
+    {
+      "id": "94216542-d1cf-4a4b-9bfc-57affa2d4447",
+      "kind": "custom",
+      "label": "F2 Review: \"review my design\"",
+      "position": {
+        "x": 600,
+        "y": -600
+      }
+    },
+    {
+      "id": "406afc62-173b-479b-8bc5-60f3df380097",
+      "kind": "custom",
+      "label": "F3 Draft: \"design me Uber Eats\"",
+      "position": {
+        "x": 280,
+        "y": -490
+      }
+    },
+    {
+      "id": "52a29bf2-991a-45bc-8b5f-34ebad7b71a6",
+      "kind": "custom",
+      "label": "F4 Change: \"add a cache\"",
+      "position": {
+        "x": 600,
+        "y": -490
+      }
+    },
+    {
+      "id": "e2786ea0-4a59-4333-8e57-9b356b6406cc",
+      "kind": "custom",
+      "label": "F5 Deep dive: \"is it secure?\"",
+      "position": {
+        "x": 280,
+        "y": -380
+      }
+    },
+    {
+      "id": "c9c236b5-9f61-45d0-82c0-75b0121dcc85",
+      "kind": "custom",
+      "label": "F6 Decision: Accept / Reject",
+      "position": {
+        "x": 600,
+        "y": -380
+      }
+    },
+    {
+      "id": "aab7949d-8f9e-4395-9aa1-b3a5e51f6039",
+      "kind": "custom",
+      "label": "F7 Disagree: \"keep RabbitMQ\"",
+      "position": {
+        "x": 280,
+        "y": -270
+      }
+    },
+    {
+      "id": "dfa8e420-31a4-473a-bb10-833944b0393d",
+      "kind": "custom",
+      "label": "F8 Recall: \"what did we decide?\"",
+      "position": {
+        "x": 600,
+        "y": -270
+      }
+    },
+    {
+      "id": "b9a9253a-0266-4344-8f65-43deba24f65a",
+      "kind": "custom",
+      "label": "Clarify: ≤ 2 rounds · ≤ 3 questions · then assume + say so",
+      "position": {
+        "x": 280,
+        "y": -40
+      }
+    },
+    {
+      "id": "56e67456-cec1-493e-8d49-a2114b3f770d",
+      "kind": "storage",
+      "label": "Task card: specialist, boxes, question",
+      "position": {
+        "x": 960,
+        "y": 420
+      }
+    },
+    {
+      "id": "b44d54ae-0865-4e98-8f0d-ea0344727a74",
+      "kind": "custom",
+      "label": "Limits: ≤ 6 tasks · 60 s each · Stop cancels all",
+      "position": {
+        "x": 960,
+        "y": 540
+      }
+    },
+    {
+      "id": "2dac2ab9-bedd-4489-8ee4-6b65ff465644",
+      "kind": "storage",
+      "label": "Finding: specialist, boxes, severity, problem, fix",
+      "position": {
+        "x": 960,
+        "y": 820
+      }
+    },
+    {
+      "id": "3655c38b-9715-44f4-a374-caafbdd88696",
+      "kind": "custom",
+      "label": "Merge rules: dedupe, severity, conflicts",
+      "position": {
+        "x": 960,
+        "y": 960
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "48c40122-cc94-416b-b6b5-55a059a50ff8",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "label": "read / write findings",
+      "mode": "async"
+    },
+    {
+      "id": "f0ad638f-003e-4f94-a670-c564dc444dd9",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "fbcc280f-d920-4713-ac9f-fc6c4b08cdcc",
+      "label": "what changed?"
+    },
+    {
+      "id": "12e4d72e-118f-4685-87b4-854943ffa522",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "1f19ab20-e1c9-4d8c-b1fc-aaaba51249eb",
+      "label": "retrieve"
+    },
+    {
+      "id": "0268b6ae-9ad1-492e-9aac-cd718bc6bbcb",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "f95fbd2a-d7db-4033-aaec-39b0451df2b1",
+      "label": "add / connect"
+    },
+    {
+      "id": "e7aa6959-10a3-401f-a030-8edb06ebc5e8",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "label": "proposal"
+    },
+    {
+      "id": "ffb5ff84-2e1b-4047-b390-f726376dc820",
+      "source": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "target": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
+      "label": "ghost boxes",
+      "mode": "async"
+    },
+    {
+      "id": "11364e62-283f-4961-903b-9e24c36f0c7e",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "label": "decisions",
+      "mode": "async"
+    },
+    {
+      "id": "594cba60-ba76-4b3d-ade5-7228f71c47d0",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "dc13c8cb-86e9-4ccd-a0c7-77139e5a948c",
+      "label": "every agent calls it"
+    },
+    {
+      "id": "3d27ceb9-e798-44dc-ab18-e45518773e7c",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "cdb01535-76fb-464e-ace4-7fced575a467",
+      "label": "read every time"
+    },
+    {
+      "id": "d86297cf-2c84-4b65-80a5-462ff4d6cbb5",
+      "source": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "target": "4aa31cc2-ad6e-4f30-964c-a81aed11b6d0",
+      "label": "record_decision"
+    },
+    {
+      "id": "b42d7f91-9079-4a16-873b-82ded4beabca",
+      "source": "4aa31cc2-ad6e-4f30-964c-a81aed11b6d0",
+      "target": "1f19ab20-e1c9-4d8c-b1fc-aaaba51249eb",
+      "label": "indexed",
+      "mode": "async"
+    },
+    {
+      "id": "6ceb880d-4d74-43ab-9e99-0bc89197d698",
+      "source": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
+      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "label": "question"
+    },
+    {
+      "id": "1540548f-4520-443d-9ef1-3e1714ff7348",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "4d7fcf45-f34b-497a-b5a6-910f67ae571e",
+      "label": "answer, progress",
+      "mode": "async"
+    },
+    {
+      "id": "c1a86d9b-d0f8-45dc-a90b-bd29899d935b",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "label": "your request"
+    },
+    {
+      "id": "2b6b2bc2-a089-4fda-9f1a-59e70d5d9567",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "label": "question back (ambiguous)",
+      "mode": "async"
+    },
+    {
+      "id": "7223851d-9888-460e-b3fa-5a727d610ecb",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "cdb01535-76fb-464e-ace4-7fced575a467",
+      "label": "needs"
+    },
+    {
+      "id": "0b6084cf-6206-4de3-9fac-38e5493b6640",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "plan: flow + tasks"
+    },
+    {
+      "id": "4b4d70a9-f83d-472e-9876-38e0a120fc7b",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "label": "spawn tasks"
+    },
+    {
+      "id": "2a327870-6af0-4c65-997d-4f503a2fb1c7",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "548886f8-01ea-4bb5-aa13-a83691838b82"
+    },
+    {
+      "id": "d1f1eec1-e7b5-4a77-94a0-5630deec4ef6",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "aedd827a-1417-4ac4-bfdf-1981c257ea42"
+    },
+    {
+      "id": "81273601-9b46-445c-8038-767b3c7892dc",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "3345c732-09c1-4d2e-8db8-4c20b90645f0"
+    },
+    {
+      "id": "bfe1a324-a1de-4007-8364-69a6df33dece",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "1eb02d00-4e57-42e7-bb6d-62ac059845ad"
+    },
+    {
+      "id": "684c5563-342a-49d7-805f-8ef7e1184d37",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "d1adca11-3255-4b9a-9f11-f94724323bc7"
+    },
+    {
+      "id": "a9d6775f-2446-40b1-a483-96f711d992e6",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "bf3f4d6e-4097-496e-bfa9-2d31afdb900b"
+    },
+    {
+      "id": "ded49437-208c-4f68-8f66-a3165d971ab3",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "1753943d-5797-4ef7-b569-7d86c04d545b"
+    },
+    {
+      "id": "47f492a8-d495-4038-8c23-eac1ad8d0ecf",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "c9f25358-0652-4be4-afbb-acd06a67db15"
+    },
+    {
+      "id": "f71a5792-19aa-4064-a2da-f37d471698fb",
+      "source": "548886f8-01ea-4bb5-aa13-a83691838b82",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "30946f2c-8373-4977-a672-3ad9ca5c8dbf",
+      "source": "aedd827a-1417-4ac4-bfdf-1981c257ea42",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "b817ed5c-446c-48d0-8319-a3c6ce943057",
+      "source": "3345c732-09c1-4d2e-8db8-4c20b90645f0",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "ba1c777b-d786-4280-972f-5861aed1ffce",
+      "source": "1eb02d00-4e57-42e7-bb6d-62ac059845ad",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "c44529ae-35ba-4844-92c1-53c18a895888",
+      "source": "d1adca11-3255-4b9a-9f11-f94724323bc7",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "4839feae-3c7f-4b7c-a630-fe11644831fc",
+      "source": "bf3f4d6e-4097-496e-bfa9-2d31afdb900b",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "d9a3a061-f62e-4eed-ba03-a4cd59cdf604",
+      "source": "1753943d-5797-4ef7-b569-7d86c04d545b",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "22da9633-9757-4d21-b958-cc181138e191",
+      "source": "c9f25358-0652-4be4-afbb-acd06a67db15",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "mode": "async"
+    },
+    {
+      "id": "02cec902-8ed4-4d95-8219-ffd861811777",
+      "source": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "typed findings"
+    },
+    {
+      "id": "95411da7-64bb-47ac-9b9b-a3951238a13a",
+      "source": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "label": "checked proposal"
+    },
+    {
+      "id": "f6759742-be33-4c0f-9c8f-6c916381abda",
+      "source": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34",
+      "label": "Accept / Reject",
+      "mode": "async"
+    },
+    {
+      "id": "a88bbb17-5c75-4c9f-bf11-32fb562b62a8",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "ecd7cc77-5839-4c55-bb42-4b0a19d96673"
+    },
+    {
+      "id": "c046986a-8056-4cb7-8252-3796a2ab0b44",
+      "source": "ecd7cc77-5839-4c55-bb42-4b0a19d96673",
+      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "label": "answer"
+    },
+    {
+      "id": "199d05d0-2993-4f1a-a866-0c9cb61960b9",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "94216542-d1cf-4a4b-9bfc-57affa2d4447"
+    },
+    {
+      "id": "a7c24ee4-f6d6-48be-a6af-7395a926fa58",
+      "source": "94216542-d1cf-4a4b-9bfc-57affa2d4447",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b"
+    },
+    {
+      "id": "18d80607-e945-4d44-a9e4-542229c01f5d",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "406afc62-173b-479b-8bc5-60f3df380097"
+    },
+    {
+      "id": "c7a8c503-dd16-4864-893d-8589f6b25237",
+      "source": "406afc62-173b-479b-8bc5-60f3df380097",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "needs first"
+    },
+    {
+      "id": "5f301e1f-2d98-47e8-b4a2-957660b2f25a",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "52a29bf2-991a-45bc-8b5f-34ebad7b71a6"
+    },
+    {
+      "id": "16520f77-c9b3-4ad1-bcbc-d96af7bbd5b8",
+      "source": "52a29bf2-991a-45bc-8b5f-34ebad7b71a6",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "just that"
+    },
+    {
+      "id": "823b943a-def9-4ac7-b7bc-a40f0bb8f490",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "e2786ea0-4a59-4333-8e57-9b356b6406cc"
+    },
+    {
+      "id": "5b0d1fd8-ac54-4655-8ab1-6da655e692e8",
+      "source": "e2786ea0-4a59-4333-8e57-9b356b6406cc",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "one specialist"
+    },
+    {
+      "id": "003fa2c6-a895-4e7b-a05a-49e959bd0553",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "c9c236b5-9f61-45d0-82c0-75b0121dcc85"
+    },
+    {
+      "id": "0495733e-6dbb-4f3d-940a-0670e61cf33f",
+      "source": "c9c236b5-9f61-45d0-82c0-75b0121dcc85",
+      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34"
+    },
+    {
+      "id": "882d1081-0388-4f15-8430-e87afa1a590e",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "aab7949d-8f9e-4395-9aa1-b3a5e51f6039"
+    },
+    {
+      "id": "39f9166a-7732-489f-bf47-87e4a4e23bd4",
+      "source": "aab7949d-8f9e-4395-9aa1-b3a5e51f6039",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "with memory"
+    },
+    {
+      "id": "ee060ca6-74be-49df-b646-35d9c62e85be",
+      "source": "7ef9bf15-4ea0-460c-ab91-c1f7231cc429",
+      "target": "dfa8e420-31a4-473a-bb10-833944b0393d"
+    },
+    {
+      "id": "71f7c2d0-49ab-45d5-beb7-9c3344f7ba60",
+      "source": "dfa8e420-31a4-473a-bb10-833944b0393d",
+      "target": "916d0f1a-f61d-47d3-beb4-f1d7aa4e5a34"
+    },
+    {
+      "id": "9ede245f-c3d5-4248-8c1f-709fbd38fd37",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "56e67456-cec1-493e-8d49-a2114b3f770d",
+      "label": "one per task"
+    },
+    {
+      "id": "15bdeed9-689d-4442-853f-3fd56c197853",
+      "source": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "target": "4e9b80c4-3d8f-4c0c-b009-98470417648c",
+      "label": "progress",
+      "mode": "async"
+    },
+    {
+      "id": "0593a329-3e9c-4f6f-a7b1-c35c64cf4609",
+      "source": "2dac2ab9-bedd-4489-8ee4-6b65ff465644",
+      "target": "63dca966-eb64-489f-8986-ebeb22b35dfa",
+      "label": "stored as",
+      "mode": "async"
+    },
+    {
+      "id": "9d059c45-6ed0-40ce-b0fb-2f24802eadde",
+      "source": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "target": "3655c38b-9715-44f4-a374-caafbdd88696",
+      "label": "merge"
+    },
+    {
+      "id": "6e9f99b9-e7f5-400a-8940-5cce50b941a5",
+      "source": "5b452a3d-99f7-4faa-9b45-0ab8e153284f",
+      "target": "68581d1a-c7f0-4eaf-81c4-aa7a2499fa7b",
+      "label": "fails → fix once",
+      "mode": "async"
+    },
+    {
+      "id": "66d9526d-e75c-4066-b75a-5bd4194f8e1a",
+      "source": "c9f25358-0652-4be4-afbb-acd06a67db15",
+      "target": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "label": "sub-tasks",
+      "mode": "async"
+    },
+    {
+      "id": "a8aff186-e108-4d3d-b480-1b829d51dfa5",
+      "source": "548886f8-01ea-4bb5-aa13-a83691838b82",
+      "target": "5d07544f-5e73-46bf-bdd3-024ca79eae01",
+      "label": "sub-tasks",
+      "mode": "async"
+    }
+  ],
+  "zones": [
+    {
+      "id": "75e3f852-0c5b-40a8-8535-05dee5423fe6",
+      "label": "Memory (shared, in the room)",
+      "position": {
+        "x": -60,
+        "y": 1180
+      },
+      "size": {
+        "width": 280,
+        "height": 780
+      }
+    },
+    {
+      "id": "cc0a3f05-60e0-46de-8436-77d8d3e56309",
+      "label": "You",
+      "position": {
+        "x": -40,
+        "y": 240
+      },
+      "size": {
+        "width": 280,
+        "height": 180
+      }
+    },
+    {
+      "id": "7c50bbcf-aa38-430e-95e6-1e5c71150b6f",
+      "label": "Main agent",
+      "position": {
+        "x": 260,
+        "y": 240
+      },
+      "size": {
+        "width": 300,
+        "height": 180
+      }
+    },
+    {
+      "id": "f4d13faa-3360-4241-acb0-c12b5d3650d6",
+      "label": "Agents",
+      "position": {
+        "x": 560,
+        "y": 40
+      },
+      "size": {
+        "width": 320,
+        "height": 780
+      }
+    },
+    {
+      "id": "6cd086bf-db4e-4627-82dc-bf4ec0f2052d",
+      "label": "Model",
+      "position": {
+        "x": 260,
+        "y": 840
+      },
+      "size": {
+        "width": 300,
+        "height": 180
+      }
+    },
+    {
+      "id": "1c7e4a2c-54cf-46c5-8e9d-21616d788dc8",
+      "label": "Specialist agents (one task at a time)",
+      "position": {
+        "x": 1220,
+        "y": -60
+      },
+      "size": {
+        "width": 320,
+        "height": 1140
+      }
+    },
+    {
+      "id": "bcb6e7ca-abcf-435b-9be3-a96f24a57490",
+      "label": "Task queue",
+      "position": {
+        "x": 920,
+        "y": 200
+      },
+      "size": {
+        "width": 280,
+        "height": 520
+      }
+    },
+    {
+      "id": "8b86bf78-9381-4d3d-b87d-aac4670bf1f3",
+      "label": "Flows (picked by the Planner)",
+      "position": {
+        "x": 240,
+        "y": -660
+      },
+      "size": {
+        "width": 680,
+        "height": 520
+      }
+    },
+    {
+      "id": "70dec1b6-6558-4f05-8846-9ff81a62c3db",
+      "label": "Contracts (code)",
+      "position": {
+        "x": 920,
+        "y": 760
+      },
+      "size": {
+        "width": 280,
+        "height": 340
+      }
+    }
+  ]
+}

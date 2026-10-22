@@ -284,6 +284,8 @@ export default tseslint.config(
       'pnpm-lock.yaml',
       // Deliberately broken code; linted only by tooling/lint's tests.
       'tooling/lint/fixtures/**',
+      // Plain-JS dev scripts that load the server's yjs at run time: no types for the typed rules.
+      'scripts/*.mjs',
     ],
   },
   js.configs.recommended,

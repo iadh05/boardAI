@@ -1,0 +1,555 @@
+{
+  "nodes": [
+    {
+      "id": "07d7ce05-95a9-4d8e-916f-5f6257670ce1",
+      "kind": "service",
+      "label": "Stack: which technology?",
+      "position": {
+        "x": 920,
+        "y": 1240
+      }
+    },
+    {
+      "id": "df4e82dc-bbaf-42c3-b375-f4ec670124a0",
+      "kind": "service",
+      "label": "Cloud: which service, which cloud?",
+      "position": {
+        "x": 920,
+        "y": 1380
+      }
+    },
+    {
+      "id": "77768cd7-e71a-45b3-98f6-ca91a13881e4",
+      "kind": "service",
+      "label": "Data model: entities, keys",
+      "position": {
+        "x": 280,
+        "y": 1240
+      }
+    },
+    {
+      "id": "e7a867e5-c381-4ad1-b803-3aca6b41f57e",
+      "kind": "service",
+      "label": "Storage choice: SQL, NoSQL, cache",
+      "position": {
+        "x": 280,
+        "y": 1360
+      }
+    },
+    {
+      "id": "cfdf7cdf-294c-4be8-84e1-6b75e389f706",
+      "kind": "service",
+      "label": "Consistency: replicas, events",
+      "position": {
+        "x": 280,
+        "y": 1480
+      }
+    },
+    {
+      "id": "11d37a51-0efc-4a49-92d6-da4153d19c92",
+      "kind": "service",
+      "label": "Interviewer",
+      "position": {
+        "x": 920,
+        "y": 0
+      }
+    },
+    {
+      "id": "00a15993-bfd6-466c-a652-0fb54cb3a066",
+      "kind": "service",
+      "label": "Data",
+      "position": {
+        "x": 920,
+        "y": 120
+      }
+    },
+    {
+      "id": "1777c349-29ce-49b7-a3a9-3c7dca394e76",
+      "kind": "service",
+      "label": "Security",
+      "position": {
+        "x": 920,
+        "y": 240
+      }
+    },
+    {
+      "id": "9a776317-fffe-4cf2-bda7-e54cf0a8ef4b",
+      "kind": "service",
+      "label": "Traffic",
+      "position": {
+        "x": 920,
+        "y": 360
+      }
+    },
+    {
+      "id": "1e6d5e60-522a-4fa7-97b8-46720150ffe2",
+      "kind": "service",
+      "label": "Chaos",
+      "position": {
+        "x": 920,
+        "y": 480
+      }
+    },
+    {
+      "id": "1b5855dc-d659-43b6-98cb-0927f0ade39c",
+      "kind": "service",
+      "label": "Cost (financier)",
+      "position": {
+        "x": 920,
+        "y": 600
+      }
+    },
+    {
+      "id": "7564112d-2a9b-4f86-9caf-450b1c89c12c",
+      "kind": "service",
+      "label": "DevOps",
+      "position": {
+        "x": 920,
+        "y": 720
+      }
+    },
+    {
+      "id": "7cb87e31-20b3-4ab6-873b-1f9ca215581e",
+      "kind": "service",
+      "label": "Researcher (web)",
+      "position": {
+        "x": 920,
+        "y": 840
+      }
+    },
+    {
+      "id": "ac15e134-0aa8-444d-b77b-e705924a7d66",
+      "kind": "storage",
+      "label": "Requirements card",
+      "position": {
+        "x": 1260,
+        "y": 0
+      }
+    },
+    {
+      "id": "5deaf00d-6cf6-40a5-9f66-b7fc4a2f37a5",
+      "kind": "custom",
+      "label": "Design rules (code)",
+      "position": {
+        "x": 1260,
+        "y": 240
+      }
+    },
+    {
+      "id": "3b38af29-8615-4d82-8023-f8f55c108619",
+      "kind": "custom",
+      "label": "Simulator",
+      "position": {
+        "x": 1260,
+        "y": 420
+      }
+    },
+    {
+      "id": "61a820c9-07be-4914-8f2b-9c3b47cd8236",
+      "kind": "storage",
+      "label": "Price table",
+      "position": {
+        "x": 1260,
+        "y": 600
+      }
+    },
+    {
+      "id": "87352823-8d2a-4913-be52-6ff2fc7bbc95",
+      "kind": "custom",
+      "label": "SearXNG (self-hosted)",
+      "position": {
+        "x": 1260,
+        "y": 840
+      }
+    },
+    {
+      "id": "14522445-9d24-4625-b28e-4f9b6ae71b8f",
+      "kind": "storage",
+      "label": "Decision log → ADRs",
+      "position": {
+        "x": 1260,
+        "y": 1000
+      }
+    },
+    {
+      "id": "42bbd8cd-66b1-41f9-9f93-dc7e37205913",
+      "kind": "service",
+      "label": "Stack & Cloud (AWS/Azure/GCP)",
+      "position": {
+        "x": 920,
+        "y": 960
+      }
+    },
+    {
+      "id": "ddf3427a-2cb1-4e77-973c-005d7de3fe1a",
+      "kind": "storage",
+      "label": "Service catalogue",
+      "position": {
+        "x": 1260,
+        "y": 1160
+      }
+    },
+    {
+      "id": "d40dca75-6585-4fb6-8e37-d688bc159bce",
+      "kind": "custom",
+      "label": "→ Cloud catalogue board",
+      "position": {
+        "x": 1520,
+        "y": 1220
+      }
+    },
+    {
+      "id": "f8ae6924-88ed-4087-897a-cd4e9fba3555",
+      "kind": "custom",
+      "label": "→ Orchestration board",
+      "position": {
+        "x": 1520,
+        "y": 60
+      }
+    },
+    {
+      "id": "a1e7fcf1-a429-43d0-b071-d60ec7db5c71",
+      "kind": "custom",
+      "label": "→ Orchestration board",
+      "position": {
+        "x": 1520,
+        "y": 1060
+      }
+    },
+    {
+      "id": "ee29ada5-1015-4544-8c0b-5d43457f9e81",
+      "kind": "custom",
+      "label": "→ Orchestration board",
+      "position": {
+        "x": 1180,
+        "y": 60
+      }
+    },
+    {
+      "id": "ee147e5a-adb5-4e54-af86-db10ef9f5d66",
+      "kind": "custom",
+      "label": "→ Orchestration board",
+      "position": {
+        "x": 1180,
+        "y": 180
+      }
+    },
+    {
+      "id": "a5508a6d-d56e-40ad-8543-37472738875f",
+      "kind": "custom",
+      "label": "→ Orchestration board",
+      "position": {
+        "x": 1180,
+        "y": 300
+      }
+    },
+    {
+      "id": "2d79de4c-d09d-432a-a47c-a0c8d549f285",
+      "kind": "custom",
+      "label": "→ Orchestration board",
+      "position": {
+        "x": 1180,
+        "y": 420
+      }
+    },
+    {
+      "id": "1850bf08-8508-454d-ad43-8dd89aed365b",
+      "kind": "custom",
+      "label": "→ Orchestration board",
+      "position": {
+        "x": 1180,
+        "y": 540
+      }
+    },
+    {
+      "id": "2f6a7d5d-c772-457d-9e16-934b16e68f05",
+      "kind": "custom",
+      "label": "→ Orchestration board",
+      "position": {
+        "x": 1180,
+        "y": 660
+      }
+    },
+    {
+      "id": "e436dc84-f397-4179-b677-e05af78d4588",
+      "kind": "custom",
+      "label": "→ Orchestration board",
+      "position": {
+        "x": 1180,
+        "y": 780
+      }
+    },
+    {
+      "id": "07772a59-9499-4970-8094-7efa76ab7a32",
+      "kind": "custom",
+      "label": "→ Orchestration board",
+      "position": {
+        "x": 1180,
+        "y": 900
+      }
+    },
+    {
+      "id": "130d8511-5fc3-458f-b4ed-250fb371a82f",
+      "kind": "custom",
+      "label": "→ Orchestration board",
+      "position": {
+        "x": 1180,
+        "y": 1020
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "56dc0b40-223a-4cb4-baa4-8460808ebc6a",
+      "source": "ddf3427a-2cb1-4e77-973c-005d7de3fe1a",
+      "target": "d40dca75-6585-4fb6-8e37-d688bc159bce",
+      "label": "maps each kind"
+    },
+    {
+      "id": "9bef624e-d799-459d-88b8-f5afa0902a71",
+      "source": "ddf3427a-2cb1-4e77-973c-005d7de3fe1a",
+      "target": "d40dca75-6585-4fb6-8e37-d688bc159bce"
+    },
+    {
+      "id": "48069f59-4171-4198-b5fe-db43d7138a8f",
+      "source": "ddf3427a-2cb1-4e77-973c-005d7de3fe1a",
+      "target": "d40dca75-6585-4fb6-8e37-d688bc159bce"
+    },
+    {
+      "id": "df7bee8a-d7b6-4aba-bb1a-9532857f7d6c",
+      "source": "42bbd8cd-66b1-41f9-9f93-dc7e37205913",
+      "target": "07d7ce05-95a9-4d8e-916f-5f6257670ce1",
+      "label": "Postgres or Mongo? Kafka or RabbitMQ?"
+    },
+    {
+      "id": "f9435bb3-1ac7-4fec-912f-7c4f4ab84c62",
+      "source": "42bbd8cd-66b1-41f9-9f93-dc7e37205913",
+      "target": "df4e82dc-bbaf-42c3-b375-f4ec670124a0",
+      "label": "map to Azure / AWS / GCP"
+    },
+    {
+      "id": "0fe8e727-8bf3-47cb-8f76-c799292243fe",
+      "source": "07d7ce05-95a9-4d8e-916f-5f6257670ce1",
+      "target": "ac15e134-0aa8-444d-b77b-e705924a7d66",
+      "label": "load, consistency, skills"
+    },
+    {
+      "id": "6d7827b2-4282-45f7-808d-72b575c9c8fc",
+      "source": "df4e82dc-bbaf-42c3-b375-f4ec670124a0",
+      "target": "ddf3427a-2cb1-4e77-973c-005d7de3fe1a",
+      "label": "service_catalog"
+    },
+    {
+      "id": "62a6e2fa-22cc-4efe-9ce6-08d98beb78d4",
+      "source": "df4e82dc-bbaf-42c3-b375-f4ec670124a0",
+      "target": "61a820c9-07be-4914-8f2b-9c3b47cd8236",
+      "label": "prices"
+    },
+    {
+      "id": "d4b27bf9-1534-4378-b843-57a118bb489b",
+      "source": "00a15993-bfd6-466c-a652-0fb54cb3a066",
+      "target": "77768cd7-e71a-45b3-98f6-ca91a13881e4",
+      "label": "what is stored?"
+    },
+    {
+      "id": "a1154b1d-cebf-4c36-b4dc-6be6ad6683d0",
+      "source": "00a15993-bfd6-466c-a652-0fb54cb3a066",
+      "target": "e7a867e5-c381-4ad1-b803-3aca6b41f57e",
+      "label": "where?"
+    },
+    {
+      "id": "cd167476-7e52-434d-8a4d-98c939296520",
+      "source": "00a15993-bfd6-466c-a652-0fb54cb3a066",
+      "target": "cfdf7cdf-294c-4be8-84e1-6b75e389f706",
+      "label": "what if two writes collide?"
+    },
+    {
+      "id": "6a827bc9-e795-4c5d-8981-590dcb8303ff",
+      "source": "cfdf7cdf-294c-4be8-84e1-6b75e389f706",
+      "target": "5deaf00d-6cf6-40a5-9f66-b7fc4a2f37a5",
+      "label": "check_data"
+    },
+    {
+      "id": "82731985-2a65-4e9e-a082-b1c7abf3c6d9",
+      "source": "f8ae6924-88ed-4087-897a-cd4e9fba3555",
+      "target": "ac15e134-0aa8-444d-b77b-e705924a7d66",
+      "label": "read every time"
+    },
+    {
+      "id": "3f14e514-21e8-482b-b10b-559c565fd43c",
+      "source": "14522445-9d24-4625-b28e-4f9b6ae71b8f",
+      "target": "a1e7fcf1-a429-43d0-b071-d60ec7db5c71",
+      "label": "indexed",
+      "mode": "async"
+    },
+    {
+      "id": "6b872c39-91a6-48e3-8745-b8f9497725c6",
+      "source": "ee29ada5-1015-4544-8c0b-5d43457f9e81",
+      "target": "11d37a51-0efc-4a49-92d6-da4153d19c92",
+      "label": "needs?"
+    },
+    {
+      "id": "694e6c16-a362-4cf3-8f73-0cd7d6b882e7",
+      "source": "ee147e5a-adb5-4e54-af86-db10ef9f5d66",
+      "target": "00a15993-bfd6-466c-a652-0fb54cb3a066"
+    },
+    {
+      "id": "42e99912-6bfb-4cea-9599-3ef0f2b5389e",
+      "source": "a5508a6d-d56e-40ad-8543-37472738875f",
+      "target": "1777c349-29ce-49b7-a3a9-3c7dca394e76"
+    },
+    {
+      "id": "e422cc39-439f-48fe-b556-667259985f3c",
+      "source": "2d79de4c-d09d-432a-a47c-a0c8d549f285",
+      "target": "9a776317-fffe-4cf2-bda7-e54cf0a8ef4b"
+    },
+    {
+      "id": "00a60ebe-6a4c-4801-8813-c4b7192e22bb",
+      "source": "1850bf08-8508-454d-ad43-8dd89aed365b",
+      "target": "1e6d5e60-522a-4fa7-97b8-46720150ffe2"
+    },
+    {
+      "id": "ee06cf91-5433-42f9-ac6b-1c8d871b66ba",
+      "source": "2f6a7d5d-c772-457d-9e16-934b16e68f05",
+      "target": "1b5855dc-d659-43b6-98cb-0927f0ade39c"
+    },
+    {
+      "id": "19ba8f7d-da7a-44bf-91a7-fd5ecf05cb66",
+      "source": "e436dc84-f397-4179-b677-e05af78d4588",
+      "target": "7564112d-2a9b-4f86-9caf-450b1c89c12c"
+    },
+    {
+      "id": "256d18b9-c146-4844-8914-d781187154e3",
+      "source": "07772a59-9499-4970-8094-7efa76ab7a32",
+      "target": "7cb87e31-20b3-4ab6-873b-1f9ca215581e"
+    },
+    {
+      "id": "61a5bbfb-379b-4f63-82c1-20e69ffa90a4",
+      "source": "11d37a51-0efc-4a49-92d6-da4153d19c92",
+      "target": "ac15e134-0aa8-444d-b77b-e705924a7d66",
+      "label": "set_requirements"
+    },
+    {
+      "id": "338358f6-d365-44c0-9459-785991169ed8",
+      "source": "00a15993-bfd6-466c-a652-0fb54cb3a066",
+      "target": "5deaf00d-6cf6-40a5-9f66-b7fc4a2f37a5",
+      "label": "check_data"
+    },
+    {
+      "id": "23804f71-f91b-41d0-bb18-4303ec4331bc",
+      "source": "1777c349-29ce-49b7-a3a9-3c7dca394e76",
+      "target": "5deaf00d-6cf6-40a5-9f66-b7fc4a2f37a5",
+      "label": "check_security"
+    },
+    {
+      "id": "9755b1e5-fec0-4ffa-9af9-d090b9d582aa",
+      "source": "7564112d-2a9b-4f86-9caf-450b1c89c12c",
+      "target": "5deaf00d-6cf6-40a5-9f66-b7fc4a2f37a5",
+      "label": "check_ops"
+    },
+    {
+      "id": "df4a3911-6009-42d0-a498-2e32956fc834",
+      "source": "9a776317-fffe-4cf2-bda7-e54cf0a8ef4b",
+      "target": "3b38af29-8615-4d82-8023-f8f55c108619",
+      "label": "simulate"
+    },
+    {
+      "id": "a1bc9d4e-15ec-4f6e-8a3b-daa74a381564",
+      "source": "1e6d5e60-522a-4fa7-97b8-46720150ffe2",
+      "target": "3b38af29-8615-4d82-8023-f8f55c108619",
+      "label": "fail(component)"
+    },
+    {
+      "id": "75db3667-a714-4b11-a335-cdca3e2eb614",
+      "source": "1b5855dc-d659-43b6-98cb-0927f0ade39c",
+      "target": "61a820c9-07be-4914-8f2b-9c3b47cd8236",
+      "label": "estimate_cost"
+    },
+    {
+      "id": "f6da1f44-edc6-4f50-af06-e518ccba0535",
+      "source": "7cb87e31-20b3-4ab6-873b-1f9ca215581e",
+      "target": "87352823-8d2a-4913-be52-6ff2fc7bbc95",
+      "label": "search_web"
+    },
+    {
+      "id": "5e7d98b1-8811-4a46-873b-c0b136547b1c",
+      "source": "a1e7fcf1-a429-43d0-b071-d60ec7db5c71",
+      "target": "14522445-9d24-4625-b28e-4f9b6ae71b8f",
+      "label": "record_decision"
+    },
+    {
+      "id": "f5dd43f9-2c72-4527-86d2-a6ceaa63ba04",
+      "source": "130d8511-5fc3-458f-b4ed-250fb371a82f",
+      "target": "42bbd8cd-66b1-41f9-9f93-dc7e37205913",
+      "label": "which tech?"
+    },
+    {
+      "id": "2e02403f-d26d-44f0-8855-7b5da31cab8f",
+      "source": "42bbd8cd-66b1-41f9-9f93-dc7e37205913",
+      "target": "ddf3427a-2cb1-4e77-973c-005d7de3fe1a",
+      "label": "service_catalog"
+    },
+    {
+      "id": "337479ab-8329-4085-a230-6f6f4434c863",
+      "source": "42bbd8cd-66b1-41f9-9f93-dc7e37205913",
+      "target": "61a820c9-07be-4914-8f2b-9c3b47cd8236",
+      "label": "prices"
+    },
+    {
+      "id": "2ef2dfae-85c7-4d98-a70c-6e03b7ad2e59",
+      "source": "42bbd8cd-66b1-41f9-9f93-dc7e37205913",
+      "target": "ac15e134-0aa8-444d-b77b-e705924a7d66",
+      "label": "cloud, skills, region"
+    }
+  ],
+  "zones": [
+    {
+      "id": "553021b4-bf28-4f5c-bbfe-411088fac807",
+      "label": "Stack & Cloud sub-agents (run in parallel)",
+      "position": {
+        "x": 880,
+        "y": 1180
+      },
+      "size": {
+        "width": 320,
+        "height": 300
+      }
+    },
+    {
+      "id": "a6602a94-bd20-4f8e-8798-8cac1dae3c41",
+      "label": "Data sub-agents (run in parallel)",
+      "position": {
+        "x": 240,
+        "y": 1180
+      },
+      "size": {
+        "width": 320,
+        "height": 420
+      }
+    },
+    {
+      "id": "2065c78e-988b-4235-861d-8210cfd855bf",
+      "label": "Lenses (one prompt + its tools each)",
+      "position": {
+        "x": 880,
+        "y": -60
+      },
+      "size": {
+        "width": 320,
+        "height": 1180
+      }
+    },
+    {
+      "id": "62ded678-2a6e-4e87-bb89-29f0fee2f78b",
+      "label": "Tools and data (code)",
+      "position": {
+        "x": 1220,
+        "y": -60
+      },
+      "size": {
+        "width": 320,
+        "height": 1400
+      }
+    }
+  ]
+}

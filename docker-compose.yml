@@ -6,7 +6,9 @@ services:
   nginx:
     image: nginx:1.27-alpine
     ports:
-      - '8080:80'
+      # This machine only. To open the app from a phone on a trusted network, set EDGE_BIND=0.0.0.0
+      # in the root .env: anyone on that network can then use the app and its GPU.
+      - '${EDGE_BIND:-127.0.0.1}:8080:80'
     volumes:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     extra_hosts:
@@ -20,8 +22,8 @@ services:
   lgtm:
     image: grafana/otel-lgtm:0.34.0
     ports:
-      # Bound to this machine only: Grafana's login is admin / admin, and anyone reaching :4318
-      # could push fake data. Host 3001: our server already has 3000.
+      # Bound to this machine only: anyone reaching :4318 could push fake data. Host 3001: our
+      # server already has 3000.
       - '127.0.0.1:3001:3000' # Grafana UI
       - '127.0.0.1:4318:4318' # OTLP over HTTP: traces, metrics, logs
     volumes:
@@ -32,6 +34,9 @@ services:
       # Alert rules (M1-26e): firing ones show in Alerting and on the overview's Alerts panel.
       - ./infra/grafana/alerting.yaml:/otel-lgtm/grafana/conf/provisioning/alerting/designroom.yaml:ro
     environment:
+      # Set GRAFANA_ADMIN_PASSWORD in the root .env; admin / admin when unset. Grafana reads it only
+      # when its data volume is new: on an existing one, change it in Grafana (Profile → Change password).
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
       # Grafana opens on the "god eye" (M1-26e) instead of its welcome page.
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /otel-lgtm/grafana/conf/provisioning/dashboards/designroom/overview.json
     restart: unless-stopped
