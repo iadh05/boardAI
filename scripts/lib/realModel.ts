@@ -5,7 +5,10 @@ import { randomUUID } from 'node:crypto';
 import { createAgent } from '../../packages/agent/src/index.ts';
 import {
   createGateway,
+  createHostedProvider,
   createOpenAiCompatibleProvider,
+  HOSTED_PROVIDER_NAMES,
+  HOSTED_PROVIDERS,
 } from '../../packages/ai-gateway/src/index.ts';
 import type { AgentOp, Board, ChatMessage, NodeKind } from '../../packages/domain/src/index.ts';
 
@@ -33,12 +36,31 @@ export const boardOf = (
   return { board: { nodes, edges }, idOf };
 };
 
+/**
+ * Where a model runs: the local Ollama, or a hosted provider from the gateway's catalogue (AV2-02).
+ * Hosted keys come from the environment: `node --env-file=apps/server/.env scripts/… --provider …`.
+ */
+export const PROVIDER_NAMES = ['ollama', ...HOSTED_PROVIDER_NAMES] as const;
+export type ProviderName = (typeof PROVIDER_NAMES)[number];
+
+const providerOf = (provider: ProviderName, model: string) => {
+  if (provider === 'ollama')
+    return createOpenAiCompatibleProvider({ baseUrl: `${OLLAMA}/v1`, model });
+  const { keyVar } = HOSTED_PROVIDERS[provider];
+  const apiKey = process.env[keyVar];
+  if (!apiKey) throw new Error(`${keyVar} is not set (use --env-file).`);
+  return createHostedProvider({ provider, model, apiKey });
+};
+
 /** The model, through the same gateway and agent the server uses. */
-export const connectRealModel = (model: string) => {
+export const connectRealModel = (model: string, provider: ProviderName = 'ollama') => {
   const llm = createGateway({
-    provider: createOpenAiCompatibleProvider({ baseUrl: `${OLLAMA}/v1`, model }),
+    provider: providerOf(provider, model),
     timeoutMs: 60_000,
-    retries: 1,
+    // Hosted free tiers answer 429 with a wait (Groq up to ~25 s, Gemini ~31 s, measured): an eval
+    // can wait a whole minute for one; the server doesn't (the gateway's 20 s default).
+    retries: provider === 'ollama' ? 1 : 4,
+    ...(provider === 'ollama' ? {} : { maxRetryWaitMs: 65_000 }),
   });
   // A canary, like the server's: the measured agent is the one users get.
   const canary = `dr-${randomUUID().slice(0, 8)}`;

@@ -12,6 +12,13 @@ import { designroomPlugin } from './tooling/lint/src/index.ts';
 
 const internalPackage = (name, why) => ({ name: `@designroom/${name}`, message: why });
 
+/**
+ * Model ids and hosted-provider URLs: as an esquery regex, for the no-magic-strings rule below.
+ * Matches the families we use (Claude, gpt-oss, Gemini, Qwen on Groq) and the providers' hosts.
+ */
+const MAGIC_MODEL_STRINGS =
+  '/(claude-(haiku|sonnet|opus|fable)|gpt-oss|gemini-[0-9]|qwen\\u002f|api\\.groq\\.com|generativelanguage\\.googleapis|api\\.anthropic\\.com)/';
+
 /** The diagram engine lives behind @designroom/diagram; the app never touches it (ADR-004). */
 const DIAGRAM_ENGINES = ['@xyflow/react', 'libavoid-js'].map((name) => ({
   name,
@@ -338,6 +345,28 @@ export default tseslint.config(
           object: 'process',
           property: 'env',
           message: 'Read env only in core/config.ts (zod-validated at startup).',
+        },
+      ],
+    },
+  },
+  {
+    // docs/rules/general.md — no magic strings: model ids and provider URLs live in the gateway's
+    // catalogue only; code reads them there. Which model a role uses is configuration (LLM_ROLE_*).
+    // Tests and recorded fixtures may name models: they describe one.
+    files: ['**/apps/**/*.ts', '**/packages/**/*.ts', '**/scripts/**/*.ts'],
+    ignores: ['**/packages/ai-gateway/src/catalogue.ts', '**/*.test.ts', '**/apps/web/e2e/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: `Literal[value=${MAGIC_MODEL_STRINGS}]`,
+          message:
+            'A model id or provider URL: read it from the catalogue (packages/ai-gateway/src/catalogue.ts), or configure it.',
+        },
+        {
+          selector: `TemplateElement[value.raw=${MAGIC_MODEL_STRINGS}]`,
+          message:
+            'A model id or provider URL: read it from the catalogue (packages/ai-gateway/src/catalogue.ts), or configure it.',
         },
       ],
     },

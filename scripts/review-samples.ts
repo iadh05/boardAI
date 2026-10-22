@@ -2,6 +2,7 @@
 // its proposal fixes it — the seed of the M5 evals. Never part of `pnpm test`: it needs Ollama.
 //
 //   node scripts/review-samples.ts [--runs 3] [--model designroom-qwen] [--verbose] [--save out.json]
+//   node --env-file=apps/server/.env scripts/review-samples.ts --provider groq --model qwen/qwen3.8-27b
 //
 // Each board runs several times (a small model varies); a sample passes when most runs pass.
 
@@ -12,7 +13,9 @@ import {
   boardOf,
   connectRealModel,
   oneLine,
+  PROVIDER_NAMES,
   runReview,
+  type ProviderName,
   type Run,
 } from './lib/realModel.ts';
 
@@ -23,6 +26,9 @@ const flag = (name: string, fallback: string) => {
 };
 const RUNS = Number(flag('--runs', '3'));
 const MODEL = flag('--model', 'designroom-qwen');
+const PROVIDER = flag('--provider', 'ollama');
+if (!(PROVIDER_NAMES as readonly string[]).includes(PROVIDER))
+  throw new Error(`--provider must be one of ${PROVIDER_NAMES.join(', ')}`);
 const VERBOSE = args.includes('--verbose');
 const out = (line = '') => process.stdout.write(`${line}\n`);
 
@@ -254,7 +260,7 @@ const SAMPLES: Sample[] = [
   },
 ];
 
-const { llm, agent } = connectRealModel(MODEL);
+const { llm, agent } = connectRealModel(MODEL, PROVIDER as ProviderName);
 const review = (sample: Sample): Promise<Run> =>
   runReview(
     agent,
@@ -262,7 +268,7 @@ const review = (sample: Sample): Promise<Run> =>
     sample.messages ?? [{ role: 'user', content: 'Review my design.' }],
   );
 
-await assertOnGpu(MODEL);
+if (PROVIDER === 'ollama') await assertOnGpu(MODEL);
 
 // --scope: the scope guard (M1-24b) on messages that are about the design or clearly not.
 const SCOPE_CASES: [message: string, expected: 'in' | 'out'][] = [
@@ -314,7 +320,7 @@ const percentile = (xs: number[], q: number) => {
 };
 const seconds = (ms: number) => `${Math.round(ms / 100) / 10} s`;
 
-out(`Model ${MODEL}, ${RUNS} run(s) per sample, question "Review my design."\n`);
+out(`Model ${MODEL} (${PROVIDER}), ${RUNS} run(s) per sample, question "Review my design."\n`);
 const rows: string[] = [];
 const saved: {
   sample: string;
