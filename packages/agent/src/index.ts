@@ -58,3 +58,15 @@ export {
 export { FALLBACK_PLAN, makePlan, type Flow, type Plan } from './application/planner.ts';
 // The Critic (AV2-08).
 export { reviewProposal, type CriticVerdict } from './application/critic.ts';
+// The runtime (AV2-11, ADR-011): the orchestrator's engine — state graph, checkpoints, interrupts.
+export {
+  createGraph,
+  createMemoryCheckpointer,
+  END,
+  type Checkpoint,
+  type Checkpointer,
+  type GraphEvent,
+  type Node,
+  type NodeContext,
+  type Reducers,
+} from './runtime/graph.ts';

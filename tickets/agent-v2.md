@@ -189,7 +189,7 @@ Later (not tonight): M1-32b round budget, M1-32c question card (folded into AV2-
 - [ ] ADR-011 accepted, co-written with the owner.
 
 ## AV2-11 — Our state graph: runtime, checkpoints, interrupts, streaming
-**Status:** todo · **Size:** M (split if the diff passes ~400 lines: runtime first, then V2 moved onto it) · **Depends on:** AV2-11a, AV2-09 merged
+**Status:** doing (the engine: `packages/agent/src/runtime/graph.ts`; moving V2 onto it is AV2-11b) · **Size:** M (split if the diff passes ~400 lines: runtime first, then V2 moved onto it) · **Depends on:** AV2-11a, AV2-09 merged
 
 **Tasks**
 - [ ] A small runtime in `packages/agent` (TDD, fake LLM): `StateGraph` with a zod-typed state and reducers, `addNode`, `addEdge`, `addConditionalEdges`, `interrupt()`, `compile({ checkpointer })`, `stream()`.
