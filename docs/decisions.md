@@ -241,6 +241,11 @@ Option 3: our own state graph with LangGraph's concepts and names, and **no Lang
 
 ### Design (first version)
 
+- **Three layers, kept apart (the owner, 2026-10-22):**
+  1. **The orchestrator owns the state** — the request state, the graph (who runs next), checkpoints, pause / resume, and the events to the chat. It is the only code that changes the state.
+  2. **The agents are the chain, and only agents** — Main, Planner, specialists, Architect, Critic, Scribe. Each is a node with no state of its own: it reads what it needs from the state and returns a result; the orchestrator merges it.
+  3. **The queue is infrastructure, not an agent and not in the chain** — every model call an agent makes goes through the queue of its hardware (below), then the provider chain of its role.
+
 - **State:** one zod-typed object per request: `{ status, plan, cards[], findings[], proposal?, pending? }`. Nodes return a partial update; reducers merge it (e.g. findings are appended).
 - **States:** `scoping → planning → asking | awaiting_approval → running → writing → critiquing → done`, and `stopped | failed` from any state. An edge not in the graph is a test failure.
 - **Checkpoints:** the state is saved after every node, per conversation: in memory now, in the room's Yjs document in M2, in Postgres in M3. Your next message resumes a paused request from its checkpoint.

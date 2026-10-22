@@ -30,19 +30,24 @@ The Architect's *plan* and *merge* are code (the Planner's plan lists the tasks;
 ## The chain
 
 ```
-You ⇄ Main agent ──▶ Planner ──▶ Architect ──▶ Task queue ──▶ specialist agents (one at a time)
-          ▲             │            ▲                              │
-          │   question back          └──── typed findings ◀── Blackboard
-          └──── checked proposal ◀── Critic ◀── Architect
+Orchestrator (owns the state: plan, findings, proposal · the graph · checkpoints · events)
+  │ calls each agent as a node, merges what it returns
+  ▼
+You ⇄ Main agent ──▶ Planner ──▶ specialist agents ──▶ Architect ──▶ Critic ──▶ Main ──▶ Scribe
+                        │ question back (pause, resume)        ▲ revise once │
+
+Under every agent, not in the chain: each model call waits in the queue of its hardware
+(local GPU: one at a time; hosted: a few, under the rate limit), then the provider chain of its role.
 ```
 
 | Agent | Owns | Hands over |
 |---|---|---|
 | **Main agent** (master) | The conversation: your language, the thread across turns, progress ("Security ✓ · Cost running · 2 left"), the final answer | Your request → Planner; Accept / Reject → Scribe |
-| **Planner** | The prompt: what you really ask, what's ambiguous (it asks back, and challenges assumptions — the Interviewer's job), your needs (requirements card), the flow, the plan | A plan: flow + the tasks → Architect |
-| **Architect** | The design: spawns one task per specialist the plan needs, merges their findings, resolves their conflicts, writes the proposal | Tasks → queue; proposal → Critic |
-| **Task queue** | Order and limits: one task at a time, a per-task timeout, a budget per request, cancel on Stop | Each task → its specialist |
-| **Specialists** | One concern each (Data, Security, Traffic, Chaos, Cost, DevOps, Researcher, Stack & Cloud) | A **typed finding** → blackboard |
+| **Planner** | The prompt: what you really ask, what's ambiguous (it asks back, and challenges assumptions — the Interviewer's job), your needs (requirements card), the flow, the plan | A plan: flow + the tasks → the orchestrator's state |
+| **Architect** | The design: explains the merged findings, resolves their conflicts, writes the proposal | Proposal → Critic |
+| *Orchestrator* (not an agent) | **The state**: the graph runs the plan's tasks (≤ 6, 60 s each, Stop), merges findings in code (D8), checkpoints, pause / resume, events (D6, D20) | Each task → its specialist node |
+| *Queue* (not an agent) | **The hardware**: when a model call runs (local GPU one at a time; hosted under its rate limit) | — |
+| **Specialists** | One concern each (Data, Security, Traffic, Chaos, Cost, DevOps, Researcher, Stack & Cloud) | A **typed finding** → the orchestrator's state |
 | **Critic** | Checks the proposal before you see it: code checks, then an LLM Critic on another model (D14) | Checked proposal → Main |
 | **Scribe** | Decisions and why | Decision log, ADRs |
 
