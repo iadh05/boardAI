@@ -116,6 +116,45 @@ describe('state graph', () => {
     expect(events.filter((e) => e.type === 'custom').map((e) => e.data)).toEqual(['one', 'two']);
   });
 
+  it('keeps everything a node emits after an await, right before it returns', async () => {
+    const graph = createGraph<State>({ reducers })
+      .addNode('critic', async (_s, ctx) => {
+        ctx.emit('checking');
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        for (const word of ['a', 'b', 'c']) ctx.emit(word);
+        return {};
+      })
+      .addEdge('critic', END)
+      .compile({ start: 'critic' });
+
+    const events = await collect(graph.stream('t1', initial()));
+    expect(events.filter((e) => e.type === 'custom').map((e) => e.data)).toEqual([
+      'checking',
+      'a',
+      'b',
+      'c',
+    ]);
+  });
+
+  it('keeps the last events of a node that finishes while a slow reader holds an earlier one', async () => {
+    const graph = createGraph<State>({ reducers })
+      .addNode('critic', async (_s, ctx) => {
+        ctx.emit('checking');
+        await Promise.resolve();
+        for (const word of ['a', 'b']) ctx.emit(word);
+        return {};
+      })
+      .addEdge('critic', END)
+      .compile({ start: 'critic' });
+
+    const seen: unknown[] = [];
+    for await (const event of graph.stream('t1', initial())) {
+      if (event.type === 'custom') seen.push(event.data);
+      await new Promise((resolve) => setTimeout(resolve, 1)); // the reader takes its time
+    }
+    expect(seen).toEqual(['checking', 'a', 'b']);
+  });
+
   it('saves a checkpoint after every node', async () => {
     const checkpointer = createMemoryCheckpointer<State>();
     const graph = createGraph<State>({ reducers })

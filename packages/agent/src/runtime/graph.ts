@@ -172,12 +172,14 @@ export const createGraph = <S extends object>(options: { reducers?: Reducers<S> 
               channel.push(undefined); // wake the loop
             });
           running.catch(() => undefined); // read below
-          // Stream what the node emits while it runs, then whatever came with its last breath.
+          // Stream what the node emits while it runs. `finished` is read before draining: a node can
+          // finish while the reader holds an event, and what it emitted last must still come out.
           for (;;) {
             await channel.wait();
+            const last = finished;
             for (const data of channel.drain())
               if (data !== undefined) yield { type: 'custom', node: current, data };
-            if (finished) break;
+            if (last) break;
           }
           let result: Partial<S> | Interrupt;
           try {
