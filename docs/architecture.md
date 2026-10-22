@@ -150,7 +150,7 @@ type AgentOp =
 
 interface Proposal { id: string; summary: string; ops: AgentOp[]; traceId?: string }  // traceId: links Accept/Reject feedback to the agent trace
 
-applyOps(board: Board, ops: AgentOp[]): Result<Board>   // all-or-nothing
+applyOps(board: Board, ops: AgentOp[]): Result<Board>   // all-or-nothing, per change (ADR-013)
 ```
 
 `applyOps` runs on the server (validation, dry-run) and in the browser (on Accept) — **same code**.
@@ -242,6 +242,7 @@ src/
 3. AI-added nodes have no position; `placement` puts them right of `near`, else at viewport centre, never on a box or under the toolbar (LLMs are bad at coordinates). Placed once when the proposal arrives; the ghost preview and Accept use the same placements.
 4. **Accept** → `applyOps(currentBoard, ops)`; if it no longer fits (you edited meanwhile) → "proposal out of date", nothing applied.
 5. **Reject** → cleared.
+6. **Agent V2 (ADR-013, D23):** a proposal is a list of **changes**, each accepted or rejected on its own; where specialists conflict, the Architect sends one composed change. Steps 4–5 then apply per change.
 
 ## 6. Back end — `apps/server`
 

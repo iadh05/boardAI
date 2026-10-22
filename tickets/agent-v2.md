@@ -219,6 +219,20 @@ Later (not tonight): M1-32b round budget, M1-32c question card (folded into AV2-
 - [ ] Unit tests with the fake LLM: a re-plan adds a card within budget; two invalid plans run the default; a `needs: user` pauses and resumes.
 - [ ] A run on the sample boards printed step by step (state after each node).
 
+## AV2-14 — Proposals as separate changes; the Architect aligns conflicts (ADR-013, D23)
+**Status:** todo · **Size:** L — split: (a) contract + Accept per change, (b) the Architect's grouping and align step, (c) the card, feedback and memory per change · **Depends on:** AV2-11b
+
+**Tasks**
+- [ ] `Proposal { changes[] }` and `Change` in `@designroom/domain` (zod), with `dependsOn` and `composed`; `applyOps` per change, in order, against the current board.
+- [ ] From the merged findings: agreeing ones → one change each; conflicting ones (D8) → the Architect's align step → one composed change (why + what it replaced).
+- [ ] Dependencies computed from the ops (a connect to a box another change adds).
+- [ ] Chat card: one checkbox per change, hover highlights its ghost boxes, "Accept selected" / "Reject all"; each accepted change its own undo step.
+- [ ] Feedback (D18) and room memory (D12) per change.
+
+**Acceptance criteria**
+- [ ] Unit: three agreeing findings → three changes; a Cost vs Chaos conflict → one composed change; rejecting a change unticks the one depending on it.
+- [ ] e2e: accept DevOps' change, reject Cost's: only DevOps' boxes land; the feedback names each agent.
+
 ## AV2-12 — Ad-hoc expert (D17)
 **Status:** todo · **Size:** M · **Depends on:** AV2-11
 

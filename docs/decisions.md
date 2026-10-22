@@ -286,3 +286,41 @@ Option 2. `wire/openaiChat/` is the OpenAI Chat Completions format only (request
 
 - **Easier:** a provider change touches one folder; the chain is readable and per role; `llm_fallback_total{from, to, reason}` shows how often it moves.
 - **Harder:** one more layer (policies) to wire in the composition root.
+
+## ADR-013 — A proposal is a list of changes; the Architect aligns conflicts
+
+- **Date:** 2026-10-22
+- **Status:** accepted (the owner)
+- **Milestone:** M1c (agent V2)
+- **Changes:** architecture §4.3 / §5.4 (one all-or-nothing proposal)
+
+### Context
+
+The Architect merges every specialist's fixes into **one** proposal, and Accept / Reject applies to all of it (`applyOps` is all-or-nothing). With several specialists the user can't keep DevOps' change and refuse Cost's: rejecting one means rejecting all, and the feedback can't tell which agent was wrong.
+
+### Options considered
+
+1. One proposal, accepted or rejected whole — simple, but all or nothing.
+2. Every specialist's fix as its own change, conflicts included — the user referees every disagreement alone.
+3. **Separate changes; the Architect aligns only where specialists conflict** (the owner's choice).
+
+### Decision
+
+A proposal is a **list of changes** the user accepts or rejects **one by one**. Where the findings agree, each fix goes to the user as **its own change**. Where they **conflict** (the same boxes, opposite kinds — detected in code, D8), the **Architect aligns them into one composed change**, saying why and what it replaced, so both sides stay visible.
+
+### Design
+
+- **Contract** (`@designroom/domain`): `Proposal { id, changes: Change[] }`, `Change { id, title, why, from: { agents, findingKinds }, ops: AgentOp[], dependsOn?: changeId[], composed?: { replaced: string[] } }`.
+- **Conflicts in code first:** the merge (D8) marks conflicting findings; only those go to the Architect's *align* step. Agreeing findings are turned into changes without a long model round.
+- **Dependencies:** a change whose ops connect to a box another change adds depends on it; rejecting the first unticks the second, with the reason shown ("needs the cache").
+- **Accept:** `applyOps` per accepted change, in order, each against the current board; one change out of date doesn't block the others. Each accepted change is its own undo step.
+- **Feedback (D18):** one verdict per change, to the agents in `from`; a rejected composed change is the Architect's.
+- **Memory (D12):** a rejected change is kept in the room's memory, so that agent doesn't propose it again.
+- **Critic (D14):** checks each change, and the accepted set together.
+- **UI:** the proposal card lists the changes with a checkbox each; hovering one highlights its ghost boxes; "Accept selected" and "Reject all".
+
+### Consequences
+
+- **Easier:** keeping the good part of an answer; precise feedback per agent; fewer Architect rounds when nothing conflicts.
+- **Harder:** a new proposal contract (domain, server, web, e2e); dependency tracking between changes; the card and the board's ghost layer grow.
+- **Replaces:** architecture §4.3's "all-or-nothing" and §5.4's single Accept / Reject for agent V2. V1 keeps one proposal (one change) until V2 is the default.
