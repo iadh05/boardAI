@@ -4,6 +4,7 @@
 // rule: Haiku and Sonnet only, with a daily budget so the $100 cap can't be blown by a loop.
 
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODELS, HOSTED_PROVIDERS, MODELS } from '../catalogue.ts';
 import { cancelledError, LlmError } from '../errors.ts';
 import type {
   LlmMessage,
@@ -13,15 +14,14 @@ import type {
   ToolDefinition,
 } from '../types.ts';
 
-/** $ per million tokens, input / output (prompts under 100K tokens), 2026-10. */
-const PRICES = {
-  'claude-haiku-5-5': { input: 0.1, output: 0.5 },
-  'claude-sonnet-5-5': { input: 2, output: 10 },
-} as const;
-type ClaudeModel = keyof typeof PRICES;
-export const CLAUDE_MODELS = Object.keys(PRICES) as ClaudeModel[];
-
-const isClaudeModel = (model: string): model is ClaudeModel => model in PRICES;
+/** A Claude model the catalogue lists, with what this provider needs from its entry. */
+const profileOf = (model: string) => {
+  const profile = MODELS[model];
+  if (profile?.provider !== 'claude' || !profile.priceUsdPerM || !profile.claudeThinkingOff)
+    return undefined;
+  return { price: profile.priceUsdPerM, thinkingOff: profile.claudeThinkingOff };
+};
+type ClaudeProfile = NonNullable<ReturnType<typeof profileOf>>;
 
 export type AnthropicOptions = {
   apiKey: string;
@@ -71,17 +71,11 @@ export const createSpendTracker = ({
   };
 };
 
-/** Thinking off as each model takes it: Haiku "disabled", Sonnet 5.5 only "between_tools". */
-const thinkingOf = (model: ClaudeModel, thinking: AnthropicOptions['thinking']) =>
+/** Thinking off as the catalogue says each model takes it (Sonnet 5.5 only "between_tools"). */
+const thinkingOf = (profile: ClaudeProfile, thinking: AnthropicOptions['thinking']) =>
   thinking
     ? { thinking: { type: 'adaptive' as const }, output_config: { effort: thinking.effort } }
-    : {
-        thinking:
-          model === 'claude-sonnet-5-5'
-            ? { type: 'between_tools' as const }
-            : { type: 'disabled' as const },
-        output_config: { effort: 'low' as const },
-      };
+    : { thinking: { type: profile.thinkingOff }, output_config: { effort: 'low' as const } };
 
 /** Arguments as an object, as the API expects a tool_use input (text kept under `_raw`). */
 const asObject = (args: unknown): Record<string, unknown> =>
@@ -177,11 +171,13 @@ const toLlmError = (error: unknown, signal: AbortSignal): LlmError => {
 
 export const createAnthropicProvider = (options: AnthropicOptions): LlmProvider => {
   const { model } = options;
-  if (!isClaudeModel(model))
+  const defaultProfile = profileOf(model);
+  if (!defaultProfile)
     throw new Error(
       `Claude model "${model}" is not allowed: use one of ${CLAUDE_MODELS.join(', ')}.`,
     );
   const client = new Anthropic({
+    baseURL: HOSTED_PROVIDERS.claude.baseUrl,
     apiKey: options.apiKey,
     maxRetries: 0, // the gateway retries, with its own rules (before the first chunk only)
     ...(options.fetch ? { fetch: options.fetch } : {}),
@@ -202,8 +198,11 @@ export const createAnthropicProvider = (options: AnthropicOptions): LlmProvider 
           `Today's Claude budget ($${spend.dailyUsd}) is spent: the local model answers until tomorrow.`,
         );
       const { system, messages } = toClaude(input.messages);
-      const chosen = input.model && isClaudeModel(input.model) ? input.model : model;
-      const price = PRICES[chosen];
+      // The call's model when the catalogue allows it, else the provider's own.
+      const asked = input.model ? profileOf(input.model) : undefined;
+      const chosen = asked && input.model ? input.model : model;
+      const profile = asked ?? defaultProfile;
+      const { price } = profile;
       // Tokens as they are reported, counted in `finally`: a call cut off or abandoned was billed.
       const used = { input: 0, output: 0 };
       try {
@@ -215,7 +214,7 @@ export const createAnthropicProvider = (options: AnthropicOptions): LlmProvider 
             ...(system ? { system } : {}),
             messages,
             ...(input.tools?.length ? { tools: input.tools.map(toClaudeTool) } : {}),
-            ...thinkingOf(chosen, options.thinking),
+            ...thinkingOf(profile, options.thinking),
           },
           { signal: input.signal },
         );
