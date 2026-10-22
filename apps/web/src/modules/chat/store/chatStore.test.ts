@@ -25,6 +25,21 @@ describe('chatStore', () => {
     expect(state().error).toBeNull();
   });
 
+  it('keeps the specialists’ progress until the answer’s first word, or its end (AV2-09)', () => {
+    const state = setup();
+    state().addUserMessage('Review it');
+    state().startAnswer();
+
+    state().setProgress('Data ✓ · Security running');
+    expect(state().progress).toBe('Data ✓ · Security running');
+    state().appendToAnswer('Postgres');
+    expect(state().progress).toBeNull();
+
+    state().setProgress('Data running');
+    state().failAnswer('The model failed');
+    expect(state().progress).toBeNull();
+  });
+
   it('streams the answer into one assistant message', () => {
     const state = setup();
     state().addUserMessage('Review it');

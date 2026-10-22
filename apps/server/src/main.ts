@@ -1,9 +1,9 @@
 import { createGateway, type LlmProvider } from '@designroom/ai-gateway';
 import { Hono } from 'hono';
 import { readFileSync } from 'node:fs';
-import type { Config } from './core/config.ts';
+import type { Config, Role } from './core/config.ts';
 import { notFound, onError } from './core/errors.ts';
-import { createLlmProvider } from './core/llm.ts';
+import { createLlmProvider, createRoleProviders } from './core/llm.ts';
 import type { Logger } from './core/logger.ts';
 import {
   countErrors,
@@ -17,6 +17,7 @@ import {
   createChatModule,
   createPhoenixFeedback,
   createReviewAgent,
+  createReviewAgentV2,
 } from './modules/chat/index.ts';
 import { createCollaborationModule } from './modules/collaboration/index.ts';
 import { createDebugModule } from './modules/debug/index.ts';
@@ -37,25 +38,55 @@ export type AppDeps = {
 export const createApp = (deps: AppDeps) => {
   // Every bug is counted (overview dashboard, alert), then reported (GlitchTip, when a DSN is set).
   const reporter = countErrors(deps.reporter ?? noErrorReporter);
-  const gateway = createGateway({
-    provider:
-      deps.llmProvider ?? createLlmProvider(deps.config.llm, (path) => readFileSync(path, 'utf8')),
-    model: deps.config.llm.model, // names the LLM spans
-    timeoutMs: deps.config.llm.timeoutMs,
-    retries: 1,
-    recordContent: deps.config.traceContent, // prompts and answers in spans: local Phoenix only
-  });
+  const local =
+    deps.llmProvider ?? createLlmProvider(deps.config.llm, (path) => readFileSync(path, 'utf8'));
   // Opt-in (LLM_CALL_LOG): every model call, exactly as sent and answered, for diagnosing the agent.
   const callLog = deps.config.llmCallLog;
-  const llm = callLog
-    ? recordLlmCalls(gateway, {
-        write: appendToFile(callLog, (error) =>
-          deps.logger.warn('could not record a model call', { error: String(error) }),
-        ),
-        now: Date.now,
-        requestId: currentRequestId,
-      })
-    : gateway;
+  const gatewayFor = (provider: LlmProvider, model: string) => {
+    const gateway = createGateway({
+      provider,
+      model, // names the LLM spans
+      timeoutMs: deps.config.llm.timeoutMs,
+      retries: 1,
+      recordContent: deps.config.traceContent, // prompts and answers in spans: local Phoenix only
+    });
+    return callLog
+      ? recordLlmCalls(gateway, {
+          write: appendToFile(callLog, (error) =>
+            deps.logger.warn('could not record a model call', { error: String(error) }),
+          ),
+          now: Date.now,
+          requestId: currentRequestId,
+        })
+      : gateway;
+  };
+
+  // Agent V1, or V2 behind AGENT_MODE=v2 (AV2-09): a gateway per role, each hosted model with the
+  // local one behind it (AV2-04).
+  const roles = createRoleProviders(deps.config.roles, local, {
+    onFallback: (role, error) =>
+      deps.logger.warn('hosted model fell back to the local one', { role, code: error.code }),
+  });
+  const gatewayOf = (role: Role) =>
+    gatewayFor(roles[role], deps.config.roles[role]?.model ?? deps.config.llm.model);
+  const agent =
+    deps.config.agent.mode === 'v2'
+      ? createReviewAgentV2(
+          {
+            main: gatewayOf('main'),
+            planner: gatewayOf('planner'),
+            specialist: gatewayOf('specialist'),
+            critic: gatewayOf('critic'),
+          },
+          {
+            recordContent: deps.config.traceContent,
+            critic: deps.config.agent.critic,
+            criticModel: deps.config.roles.critic !== null,
+          },
+        )
+      : createReviewAgent(gatewayFor(local, deps.config.llm.model), {
+          recordContent: deps.config.traceContent,
+        });
 
   const app = new Hono();
   app.use(observeRequests()); // first: the request's span is the parent of everything after
@@ -66,7 +97,7 @@ export const createApp = (deps: AppDeps) => {
   app.route(
     '/api/chat',
     createChatModule({
-      agent: createReviewAgent(llm, { recordContent: deps.config.traceContent }),
+      agent,
       logger: deps.logger,
       contextTokens: deps.config.llm.contextTokens,
       reporter,

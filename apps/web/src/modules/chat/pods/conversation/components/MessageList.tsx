@@ -5,6 +5,8 @@ export type MessageListProps = {
   messages: ChatEntry[];
   streaming: boolean;
   error: string | null;
+  /** Agent V2's specialists at work (AV2-09): shown instead of "Thinking…". */
+  progress?: string | null;
 };
 
 // 85 % width: a bubble never spans the panel, so who said what reads at a glance.
@@ -18,7 +20,7 @@ const BUBBLE: Record<ChatEntry['role'], string> = {
  * finished answer once instead of every token. Before its first word, "Thinking…" (the first call
  * can take ~20 s while the model loads). Errors show inline, where the answer would have been.
  */
-export function MessageList({ messages, streaming, error }: MessageListProps) {
+export function MessageList({ messages, streaming, error, progress = null }: MessageListProps) {
   const last = messages.at(-1);
   // The answer exists from the start (empty) and fills as it streams.
   const waiting = streaming && last?.role === 'assistant' && last.content === '';
@@ -54,8 +56,8 @@ export function MessageList({ messages, streaming, error }: MessageListProps) {
         )}
       {waiting && (
         <div className="flex items-center gap-2 self-start text-muted">
-          <Spinner label="Thinking…" />
-          <span aria-hidden="true">Thinking…</span>
+          <Spinner label={progress ?? 'Thinking…'} />
+          <span aria-hidden="true">{progress ?? 'Thinking…'}</span>
         </div>
       )}
       {error && (

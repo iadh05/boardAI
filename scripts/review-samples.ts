@@ -12,6 +12,7 @@ import {
   assertOnGpu,
   boardOf,
   connectRealModel,
+  connectV2,
   oneLine,
   PROVIDER_NAMES,
   runReview,
@@ -30,6 +31,10 @@ const PROVIDER = flag('--provider', 'ollama');
 if (!(PROVIDER_NAMES as readonly string[]).includes(PROVIDER))
   throw new Error(`--provider must be one of ${PROVIDER_NAMES.join(', ')}`);
 const VERBOSE = args.includes('--verbose');
+// AV2-10: agent V1 (one agent) or V2 (the chain); V2's Planner on its own model, the Critic.
+const MODE = flag('--mode', 'v1');
+const PLANNER = flag('--planner', '');
+const CRITIC = args.includes('--critic');
 const out = (line = '') => process.stdout.write(`${line}\n`);
 
 type Sample = {
@@ -260,7 +265,13 @@ const SAMPLES: Sample[] = [
   },
 ];
 
-const { llm, agent } = connectRealModel(MODEL, PROVIDER as ProviderName);
+const { llm, agent } =
+  MODE === 'v2'
+    ? connectV2(MODEL, PROVIDER as ProviderName, {
+        ...(PLANNER ? { planner: PLANNER } : {}),
+        critic: CRITIC,
+      })
+    : connectRealModel(MODEL, PROVIDER as ProviderName);
 const review = (sample: Sample): Promise<Run> =>
   runReview(
     agent,
@@ -320,7 +331,10 @@ const percentile = (xs: number[], q: number) => {
 };
 const seconds = (ms: number) => `${Math.round(ms / 100) / 10} s`;
 
-out(`Model ${MODEL} (${PROVIDER}), ${RUNS} run(s) per sample, question "Review my design."\n`);
+out(
+  `Agent ${MODE}${MODE === 'v2' ? ` (planner: ${PLANNER || 'local'}${CRITIC ? ', critic on' : ''})` : ''}, model ${MODEL} (${PROVIDER}), ${RUNS} run(s) per sample, question "Review my design."
+`,
+);
 const rows: string[] = [];
 const saved: {
   sample: string;

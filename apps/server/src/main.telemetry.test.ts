@@ -32,6 +32,8 @@ const config = {
   traceContent: false,
   debugRoutes: false,
   llmCallLog: null,
+  roles: { main: null, planner: null, specialist: null, critic: null },
+  agent: { mode: 'v1', critic: false },
 } as const;
 
 const chat = async (script: Parameters<typeof createFakeProvider>[0], lines: string[] = []) => {
@@ -62,7 +64,7 @@ describe('telemetry of a request', () => {
         // Every answer ends with a tool call (M1-31): here, nothing to change.
         {
           type: 'toolCall',
-          call: { id: 'c1', name: 'no_change', arguments: { reason: 'The design fits.' } },
+          call: { id: 'c1', name: 'finish', arguments: { summary: 'The design fits.' } },
         },
       ],
     ]);

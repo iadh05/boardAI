@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { HOSTED_PROVIDERS, MODELS, reasoningEffortFor } from './catalogue.ts';
+import { CLAUDE_MODELS, HOSTED_PROVIDERS, MODELS, reasoningEffortFor } from './catalogue.ts';
 import { createHostedProvider } from './providers/hosted.ts';
 
 // The model catalogue (review of the AV2 PRs): every hosted provider and model we know, as data in
@@ -49,5 +49,46 @@ describe('createHostedProvider', () => {
     expect(url).toBe(`${HOSTED_PROVIDERS.groq.baseUrl}/chat/completions`);
     expect(init?.headers).toMatchObject({ authorization: 'Bearer test-key' });
     expect(JSON.parse(init?.body as string)).toMatchObject({ reasoning_effort: 'low' });
+  });
+});
+
+describe('Claude in the catalogue (AV2-03)', () => {
+  it('the allowed Claude models are the catalogue’s, each with its price and its way to turn thinking off', () => {
+    expect(CLAUDE_MODELS).toEqual(['claude-haiku-5-5', 'claude-sonnet-5-5']);
+    for (const model of CLAUDE_MODELS) {
+      const profile = MODELS[model];
+      expect(profile?.priceUsdPerM?.input).toBeGreaterThan(0);
+      expect(['disabled', 'between_tools']).toContain(profile?.claudeThinkingOff);
+    }
+  });
+
+  it('createHostedProvider builds Claude through its SDK provider', async () => {
+    const fetchFn = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ type: 'error', error: { type: 'x', message: 'no' } }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    const provider = createHostedProvider({
+      provider: 'claude',
+      model: 'claude-sonnet-5-5',
+      apiKey: 'test-key',
+      fetch: fetchFn,
+    });
+
+    const run = async () => {
+      for await (const chunk of provider.stream({
+        messages: [{ role: 'user', content: 'hi' }],
+        signal: new AbortController().signal,
+      }))
+        void chunk;
+    };
+    await expect(run()).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+
+    const [url, init] = fetchFn.mock.calls[0] ?? [];
+    expect(url as string).toContain(HOSTED_PROVIDERS.claude.baseUrl);
+    expect(JSON.parse(init?.body as string)).toMatchObject({ thinking: { type: 'between_tools' } });
   });
 });

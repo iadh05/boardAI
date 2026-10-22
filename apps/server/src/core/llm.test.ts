@@ -1,6 +1,6 @@
 import type { LlmProvider, ProviderChunk } from '@designroom/ai-gateway';
-import { describe, expect, it } from 'vitest';
-import { createLlmProvider } from './llm.ts';
+import { describe, expect, it, vi } from 'vitest';
+import { createLlmProvider, createRoleProviders } from './llm.ts';
 
 const ask = async (provider: LlmProvider, content: string) => {
   const chunks: ProviderChunk[] = [];
@@ -82,5 +82,39 @@ describe('createLlmProvider', () => {
       () => '',
     );
     expect(provider).toHaveProperty('stream');
+  });
+});
+
+describe('createRoleProviders (AV2-04)', () => {
+  const local: LlmProvider = {
+    async *stream() {
+      await Promise.resolve();
+      yield { type: 'text', delta: 'local answer' };
+    },
+  };
+  const noRoles = { main: null, planner: null, specialist: null, critic: null };
+  const offline = vi.fn<typeof fetch>(() => Promise.reject(new TypeError('fetch failed')));
+
+  it('a role with no model of its own runs on the local model', async () => {
+    const roles = createRoleProviders(noRoles, local, { fetch: offline });
+    expect(await ask(roles.planner, 'hi')).toEqual([{ type: 'text', delta: 'local answer' }]);
+  });
+
+  it('a hosted role that cannot answer falls back to the local model, and says which role', async () => {
+    const onFallback = vi.fn();
+    const roles = createRoleProviders(
+      {
+        ...noRoles,
+        planner: { provider: 'groq', model: 'qwen/qwen3.8-27b', thinking: true, apiKey: 'k' },
+        critic: { provider: 'claude', model: 'claude-haiku-5-5', thinking: false, apiKey: 'k' },
+      },
+      local,
+      { fetch: offline, onFallback },
+    );
+
+    expect(await ask(roles.planner, 'hi')).toEqual([{ type: 'text', delta: 'local answer' }]);
+    expect(await ask(roles.critic, 'hi')).toEqual([{ type: 'text', delta: 'local answer' }]);
+    expect(onFallback.mock.calls.map(([role]) => role as string)).toEqual(['planner', 'critic']);
+    expect(offline).toHaveBeenCalled(); // the hosted model was asked first
   });
 });

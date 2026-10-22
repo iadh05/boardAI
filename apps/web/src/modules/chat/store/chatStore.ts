@@ -20,6 +20,8 @@ export type ChatState = {
   streaming: boolean;
   /** What went wrong with the last answer, written for the user. */
   error: string | null;
+  /** Where agent V2's specialists are (AV2-09), until the answer's first word. */
+  progress: string | null;
 };
 
 export type ChatActions = {
@@ -27,6 +29,7 @@ export type ChatActions = {
   /** Opens an empty assistant message that the stream fills. */
   startAnswer: () => void;
   appendToAnswer: (delta: string) => void;
+  setProgress: (text: string) => void;
   finishAnswer: () => void;
   /** Ends the answer with an error; keeps any text already received. */
   failAnswer: (message: string) => void;
@@ -59,6 +62,7 @@ export const createChatStore = ({ newId }: ChatStoreDeps) =>
     messages: [],
     streaming: false,
     error: null,
+    progress: null,
 
     addUserMessage: (content) =>
       set((s) => ({
@@ -76,6 +80,7 @@ export const createChatStore = ({ newId }: ChatStoreDeps) =>
         messages: [...s.messages, { id: newId(), role: 'assistant', content: '' }],
         streaming: true,
         error: null,
+        progress: null,
       })),
 
     appendToAnswer: (delta) =>
@@ -84,14 +89,22 @@ export const createChatStore = ({ newId }: ChatStoreDeps) =>
         if (last?.role !== 'assistant') return s;
         return {
           messages: [...s.messages.slice(0, -1), { ...last, content: last.content + delta }],
+          progress: null, // the answer has started: it speaks for itself
         };
       }),
 
+    setProgress: (text) => set({ progress: text }),
+
     finishAnswer: () =>
-      set((s) => ({ messages: withoutEmptyAnswer(s.messages), streaming: false })),
+      set((s) => ({ messages: withoutEmptyAnswer(s.messages), streaming: false, progress: null })),
 
     failAnswer: (message) =>
-      set((s) => ({ messages: withoutEmptyAnswer(s.messages), streaming: false, error: message })),
+      set((s) => ({
+        messages: withoutEmptyAnswer(s.messages),
+        streaming: false,
+        error: message,
+        progress: null,
+      })),
 
     withdrawQuestion: (message) => {
       const messages = withoutEmptyAnswer(get().messages);

@@ -24,6 +24,7 @@ export function Conversation({ deps = chatAppDeps, board = useBoardStore }: Conv
   const messages = useStore(deps.chat, (s) => s.messages);
   const streaming = useStore(deps.chat, (s) => s.streaming);
   const error = useStore(deps.chat, (s) => s.error);
+  const progress = useStore(deps.chat, (s) => s.progress);
   const proposal = useStore(board, (s) => s.proposal);
   const proposalError = useStore(board, (s) => s.proposalError);
   const { send, cancel } = useSendMessage(deps);
@@ -39,7 +40,7 @@ export function Conversation({ deps = chatAppDeps, board = useBoardStore }: Conv
       footer={<MessageInput streaming={streaming} onSend={send} onStop={cancel} />}
     >
       <div className="flex flex-col gap-3">
-        <MessageList messages={messages} streaming={streaming} error={error} />
+        <MessageList messages={messages} streaming={streaming} error={error} progress={progress} />
         {proposal && (
           <ProposalCard
             summary={proposal.summary}
