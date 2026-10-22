@@ -30,19 +30,25 @@ The Architect's *plan* and *merge* are code (the Planner's plan lists the tasks;
 ## The chain
 
 ```
-You ⇄ Main agent ──▶ Planner ──▶ Architect ──▶ Task queue ──▶ specialist agents (one at a time)
-          ▲             │            ▲                              │
-          │   question back          └──── typed findings ◀── Blackboard
-          └──── checked proposal ◀── Critic ◀── Architect
+Orchestrator = Planner (the brain: decides what runs, re-plans, says when it is done)
+             + runtime (the engine: owns the state · runs the plan · checkpoints · events)
+  │ calls each agent as a node, merges what it returns
+  ▼
+You ⇄ Main agent ──▶ Planner ──▶ specialist agents ──▶ Architect ──▶ Critic ──▶ Main ──▶ Scribe
+                        │ question back (pause, resume)        ▲ revise once │
+
+Under every agent, not in the chain: each model call waits in the queue of its hardware
+(local GPU: one at a time; hosted: a few, under the rate limit), then the provider chain of its role.
 ```
 
 | Agent | Owns | Hands over |
 |---|---|---|
 | **Main agent** (master) | The conversation: your language, the thread across turns, progress ("Security ✓ · Cost running · 2 left"), the final answer | Your request → Planner; Accept / Reject → Scribe |
-| **Planner** | The prompt: what you really ask, what's ambiguous (it asks back, and challenges assumptions — the Interviewer's job), your needs (requirements card), the flow, the plan | A plan: flow + the tasks → Architect |
-| **Architect** | The design: spawns one task per specialist the plan needs, merges their findings, resolves their conflicts, writes the proposal | Tasks → queue; proposal → Critic |
-| **Task queue** | Order and limits: one task at a time, a per-task timeout, a budget per request, cancel on Stop | Each task → its specialist |
-| **Specialists** | One concern each (Data, Security, Traffic, Chaos, Cost, DevOps, Researcher, Stack & Cloud) | A **typed finding** → blackboard |
+| **Planner** | The prompt: what you really ask, what's ambiguous (it asks back, and challenges assumptions — the Interviewer's job), your needs (requirements card), the flow, the plan | A plan: flow + the tasks → the orchestrator's state |
+| **Architect** | The design: explains the merged findings, resolves their conflicts, writes the proposal | Proposal → Critic |
+| *Orchestrator* (not an agent) | **The state**: the graph runs the plan's tasks (≤ 6, 60 s each, Stop), merges findings in code (D8), checkpoints, pause / resume, events (D6, D20) | Each task → its specialist node |
+| *Queue* (not an agent) | **The hardware**: when a model call runs (local GPU one at a time; hosted under its rate limit) | — |
+| **Specialists** | One concern each (Data, Security, Traffic, Chaos, Cost, DevOps, Researcher, Stack & Cloud) | A **typed finding** → the orchestrator's state |
 | **Critic** | Checks the proposal before you see it: code checks, then an LLM Critic on another model (D14) | Checked proposal → Main |
 | **Scribe** | Decisions and why | Decision log, ADRs |
 
@@ -98,6 +104,9 @@ All drawn on the V2 board. Each is a starting value, changed by measurement.
 | D17 | **Ad-hoc expert** | When no specialist fits ("Is this GDPR compliant?"), the Planner fills **one** expert slot from a tested template — `{ role, focus, boxIds }`, never a whole prompt — counted in the 6-task budget, read-only, findings marked *ad-hoc* and checked harder by the Critic. Its definition and decisions are kept in **room** memory and reused; usage and accept rate go to a **global candidate list** (statistics only). Promotion to a real specialist is a reviewed PR with its own evals — see § Specialists | The closest specialist answers off-target (Security answers GDPR with TLS); free prompt writing is untested and injectable |
 | D18 | **Feedback** | Accept / Reject **per change**, an optional reason (*wrong · too much · already there · not now · other*), 👍 / 👎 on answers with no proposal, "forget" in the knowledge panel counted as feedback. Every change carries the finding and agent it came from, so feedback lands on the right agent. Used for: room memory (a rejected idea isn't proposed again), accept rate per agent and prompt version, D17's candidate list, new eval boards, later fine-tuning (M6). **Never changes a prompt automatically** — prompt changes stay PRs checked by evals | One verdict for a whole proposal can't tell which of six agents was wrong |
 | D19 | **Sessions and compaction** | Several chat **threads** per room ("Review v1", "GDPR check"); each has its own history and summary, all share the room memory. Past a token budget (~4k tokens of history), the Main agent keeps the last ~6 turns word for word and summarises the rest; decisions are already in room memory; the original turns stay searchable (D12). The Planner may *suggest* a new thread when the topic changes; you decide | A long chat overflows every agent's context and slows every request |
+| D21 | **Missing context** | A specialist returns what it lacks (`needs: [{ what, from }]`); the Planner fills it cheapest first (board → memory → web → you), one re-run per card, else an assumption said out loud; your answer becomes a requirement; misses are counted to improve the fetch recipes — see ADR-011 | An agent that guesses without context answers off-target |
+| D22 | **Providers apart, chain as config** | One folder per provider over a shared wire format; a role's chain is `a > b > c` in configuration, local last; spend caps, rate limits and the hardware queue are policies around providers — ADR-012 | One file held three providers' quirks; the two-step fallback was hard-wired |
+| D20 | **Our own state graph** | The agents run on our own runtime shaped like LangGraph — typed state, nodes, conditional edges, a checkpoint after every node, interrupts to pause for you and resume on your next message, events streamed to the chat — **no LangGraph or LangChain dependency**, for the graph or the context (D12 stays our own code). See ADR-011 | Pausing for the user, runtime fan-out and a live checklist need saved state; a straight line of steps can do none of it |
 
 ### The owner's answers so far (2026-10-21)
 
@@ -223,7 +232,7 @@ A cache never changes the answer, only its speed; delete it and everything still
 |---|---|---|
 | **S0 — M1-32** | Today's agent gets real tools: `check_design` (rules), `ask_user`, `finish`; nudges deleted | Demo boards ≥ 9/10 with no fake user message |
 | **Spike — Groq** | `LLM_API_KEY` in the gateway; per-role provider routing with the local fallback (D13); eval: Groq Qwen3.8 27B and gpt-oss-120b, thinking off/on, next to the table in § Models. *The owner creates the account and the key.* | Quality, speed and real free-tier limits measured |
-| **S1 — The orchestrator** | Our own small orchestrator (no LangGraph): typed state, the task queue (D4–D6), findings on the blackboard (D7), merge rules (D8), prompts ordered for the prefix cache and the findings cache (D16), every step a span in Phoenix | Unit tests with a fake LLM; a review runs through the queue with one specialist |
+| **S1 — The orchestrator** | Our own small orchestrator (no LangGraph): typed state, the task queue (D4–D6), *then AV2-11: our own state graph with checkpoints, interrupts and streaming (D20, ADR-011)*, findings on the blackboard (D7), merge rules (D8), prompts ordered for the prefix cache and the findings cache (D16), every step a span in Phoenix | Unit tests with a fake LLM; a review runs through the queue with one specialist |
 | **S2 — Main + Planner** | The Main agent and the Planner (Groq, thinking) writing briefs from templates, with the clarify loop (D2, D3); flows F2, F6, F1 | Planner eval (right agents, right facts, ≤ 2 rounds of questions); F2 at least as good as S0 |
 | **UX/UI pass** | After the agents work end to end: progress view (D6), the Room knowledge panel and citations (D15), Critic result shown, then the whole app's UX and UI | Milestone UX pass: every journey on laptop, phone and keyboard |
 | **S3 — First specialists** | Data and Security (rules first, then the agent explains), then Cost and Stack & Cloud (catalogue + prices in code) | Each with its eval boards; no regression on F2 |

@@ -61,6 +61,11 @@ Apply everywhere: `apps/*` and `packages/*`. Frontend and backend specifics: [fr
 - MUST: anything from the user or the LLM is **data, never instructions** — never `eval`, never build shell commands or HTML from it unescaped.
 - MUST: third-party GitHub Actions (anything not `actions/*` or `github/*`) are pinned to a full commit SHA with the version in a comment (`uses: owner/action@<sha> # v1.2.3`). A tag can be moved to different code; a SHA can't. Dependabot keeps the SHAs up to date.
 
+## Decisions
+
+- MUST: every decision — the owner's, or one made while building — is written down **in the same PR** that makes it, in two places: an ADR in [decisions.md](../decisions.md) (a new one, or a dated line in the ADR it changes) and the architecture doc it touches ([architecture.md](../architecture.md), or [agents/architecture-v2.md](../agents/architecture-v2.md) for the agents). A decision only in a PR description, a chat or a night note doesn't count.
+- MUST: a decision that changes an earlier one says so in both places ("replaces D5", "ADR-004 superseded by ADR-012"), so the docs never hold two answers to one question.
+
 ## Git
 
 - Branch per ticket: `m1-05-board-types`.
