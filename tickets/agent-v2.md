@@ -208,7 +208,7 @@ Later (not tonight): M1-32b round budget, M1-32c question card (folded into AV2-
 - [ ] AV2-10's eval: V2 on the graph no worse than before.
 
 ## AV2-11b — The Planner orchestrates (ADR-011)
-**Status:** todo · **Size:** M · **Depends on:** AV2-11
+**Status:** doing — V2 runs on the graph; `decideNext`; `scripts/trace-v2.ts` prints each step (first run below) · **Size:** M · **Depends on:** AV2-11
 
 **Tasks**
 - [ ] The Planner is asked at each decision point: plan, re-plan once after the cards, finished.
@@ -218,6 +218,27 @@ Later (not tonight): M1-32b round budget, M1-32c question card (folded into AV2-
 **Acceptance criteria**
 - [ ] Unit tests with the fake LLM: a re-plan adds a card within budget; two invalid plans run the default; a `needs: user` pauses and resumes.
 - [ ] A run on the sample boards printed step by step (state after each node).
+
+## AV2-11c — A conversation id: pause and resume from the checkpoint
+**Status:** todo · **Size:** S · **Depends on:** AV2-11b
+
+**Why:** the chat is stateless — each request is its own graph thread, so the Planner's questions resume from the chat history, not from the paused state (ADR-011, 2026-10-22).
+
+**Tasks**
+- [ ] `conversationId` in `ChatRequest` (domain contract), sent by the web chat.
+- [ ] The server keeps a checkpointer per conversation (in memory now, the room's Yjs doc in M2); a paused request resumes the paused node with the user's answer.
+
+**Acceptance criteria**
+- [ ] e2e: the Planner asks, the user answers, the review continues without planning again.
+
+## AV2-11d — What the first trace showed (2026-10-22)
+**Status:** todo · **Size:** S each
+
+First run of `scripts/trace-v2.ts` (local Qwen 9B, Planner with thinking): review 17 s, Planner 3.5–5 s.
+- [ ] "Is my database safe?" was planned as a full review, not a deep dive: Planner prompt + plan eval cases.
+- [ ] Security found `client-to-data` (the browser reads the database), the answer added boxes but never said the direct arrow must go — there is no delete tool (by design): the Architect must say what it can't fix.
+- [ ] "What is a CDN?" is refused by the scope guard, so the `question` flow never runs: concept questions about system design are in scope.
+- [ ] With two specialists, the Planner's "add a check?" rarely has a choice: measure it again with Cost and Stack & Cloud (S3).
 
 ## AV2-12 — Ad-hoc expert (D17)
 **Status:** todo · **Size:** M · **Depends on:** AV2-11

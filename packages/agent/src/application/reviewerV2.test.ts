@@ -183,6 +183,63 @@ describe('createReviewerV2', () => {
   });
 });
 
+describe('createReviewerV2: the Planner orchestrates (ADR-011, AV2-11b)', () => {
+  const next = (args: unknown) => [tool('next_step', args)];
+  const answer = [text('Add a replica.'), tool('finish', { summary: 'ok' })];
+
+  it('a deep dive: after the findings, the Planner adds a check once, and it runs', async () => {
+    const ran: string[] = [];
+    const { reviewer, planner } = setup({
+      planner: [
+        plan({ flow: 'deep-dive', specialists: ['data'] }),
+        next({ action: 'add', specialists: ['security'], why: 'the database may be reachable' }),
+      ],
+      architect: [answer],
+      specialists: {
+        data: () => {
+          ran.push('data');
+          return Promise.resolve([]);
+        },
+        security: () => {
+          ran.push('security');
+          return Promise.resolve([]);
+        },
+      },
+    });
+
+    await run(reviewer, 'Is my database safe?');
+
+    expect(ran).toEqual(['data', 'security']);
+    expect(planner.calls).toHaveLength(2); // the plan, then one decision — never a second re-plan
+  });
+
+  it('a deep dive the Planner says is answered: no more checks', async () => {
+    const ran: string[] = [];
+    const { reviewer } = setup({
+      planner: [
+        plan({ flow: 'deep-dive', specialists: ['data'] }),
+        next({ action: 'finish', why: 'answered' }),
+      ],
+      architect: [answer],
+      specialists: {
+        data: () => {
+          ran.push('data');
+          return Promise.resolve([]);
+        },
+        security: () => {
+          ran.push('security');
+          return Promise.resolve([]);
+        },
+      },
+    });
+
+    const events = await run(reviewer, 'Is my database safe?');
+
+    expect(ran).toEqual(['data']);
+    expect(textOf(events)).toBe('Add a replica.');
+  });
+});
+
 describe('createReviewerV2 with the Critic (AV2-08)', () => {
   const firstTry = [
     text('The load balancer should be a CDN.'),

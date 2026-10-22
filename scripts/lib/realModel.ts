@@ -6,6 +6,7 @@ import {
   createAgent,
   createReviewerV2,
   RULE_SPECIALISTS,
+  type ReviewerV2Deps,
   type ReviewerV2Event,
 } from '../../packages/agent/src/index.ts';
 import {
@@ -105,7 +106,13 @@ export const parseRole = (spec: string) => {
 export const connectV2 = (
   model: string,
   provider: ProviderName = 'ollama',
-  options: { planner?: string; critic?: boolean; criticModel?: string } = {},
+  options: {
+    planner?: string;
+    critic?: boolean;
+    criticModel?: string;
+    /** Sees every step of the graph (ADR-011): the node that ran and the state after it. */
+    onStep?: ReviewerV2Deps['onStep'];
+  } = {},
 ) => {
   const local = gatewayOf(model, provider);
   const role = (spec?: string) => {
@@ -118,6 +125,7 @@ export const connectV2 = (
     planner: role(options.planner),
     architect: createAgent({ llm: local, newId: randomUUID, canary: canary() }),
     specialists: RULE_SPECIALISTS,
+    ...(options.onStep ? { onStep: options.onStep } : {}),
     ...(options.critic
       ? { critic: options.criticModel ? { llm: role(options.criticModel) } : {} }
       : {}),
