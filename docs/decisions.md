@@ -247,7 +247,8 @@ Option 3: our own state graph with LangGraph's concepts and names, and **no Lang
 - **Interrupts:** `asking` (the Planner's questions) and `awaiting_approval` (ad-hoc expert, later your Accept / Reject) end the HTTP request with a `paused` event; the resume comes with the next message.
 - **Streaming:** every node emits `node_started`, `text`, `card` (a task's status), `finding`, `node_done` over the existing SSE stream; the chat shows a live checklist (AV2-11).
 - **Observability:** one Phoenix span per node, with the state's version; a checkpoint list makes a run replayable.
-- **Limits stay in code:** ≤ 6 cards, 60 s per card, Stop cancels the running node and drops the waiting ones.
+- **The graph decides what runs, a queue decides when (hardware):** a node that calls a model is submitted to the **queue of its resource** — the local GPU runs **one call at a time**, a hosted provider a few at once within its rate limit (D13 picks the resource by role). A fan-out marks several cards ready; on one GPU they run one after another, on a hosted model in parallel, with no change to the graph. The queue is shared by every request (fair per room in M2/M3; user-facing steps — Main, Planner — before background specialist cards), and the live checklist comes from its state ("Cost running · 2 waiting").
+- **Limits stay in code, in the queue:** ≤ 6 cards per request, 60 s per card, Stop cancels the running call and removes the request's waiting ones.
 
 ### Consequences
 

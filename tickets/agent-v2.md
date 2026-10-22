@@ -183,6 +183,7 @@ Later (not tonight): M1-32b round budget, M1-32c question card (folded into AV2-
 - [ ] Named states: `scoping → planning → asking | awaiting_approval → running → writing → critiquing → done`, and `stopped | failed` from any state. An edge not in the graph is a test failure.
 - [ ] Checkpoint after every node, per conversation (in memory now, the Yjs room doc in M2): your next message resumes a paused request.
 - [ ] Interrupts: `asking` and `awaiting_approval` end the request with a `paused` event; resume with the next message.
+- [ ] A queue per hardware resource: model calls from graph nodes wait in their resource's queue (local GPU: 1 at a time; hosted: a few, within the rate limit). Shared across requests, user-facing steps first; Stop drops a request's waiting calls. Fan-out in the graph, one-at-a-time in the queue.
 - [ ] Streaming: `node_started`, `text`, `card`, `finding`, `node_done` over the existing SSE stream (zod schemas in `@designroom/domain`); the chat shows a live checklist instead of a progress sentence.
 - [ ] Tracker (from the checkpoints): per request, the plan, each card (with `parent` and `brief`), status, timing, findings; per ad-hoc definition, proposed / accepted / used.
 - [ ] One Phoenix span per node, with the state's version.
