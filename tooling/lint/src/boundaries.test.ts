@@ -151,3 +151,12 @@ describe('server env rule', () => {
     expect(violationsOf('apps/server/src/core/config.ts')).toEqual([]);
   });
 });
+
+describe('no magic strings: model ids and provider URLs (docs/rules/general.md)', () => {
+  it('rejects a model id or a provider URL outside the gateway catalogue', () => {
+    expect(violationsOf('apps/server/src/modules/health/badModelName.ts')).toEqual([
+      'no-restricted-syntax',
+      'no-restricted-syntax',
+    ]);
+  });
+});
