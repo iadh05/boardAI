@@ -19,7 +19,6 @@ export {
   type OpenAiCompatibleOptions,
 } from './providers/openAiCompatible.ts';
 export {
-  CLAUDE_MODELS,
   createAnthropicProvider,
   createSpendTracker,
   type SpendTracker,
@@ -32,3 +31,12 @@ export {
   ScenarioFileSchema,
   type ScenarioFile,
 } from './providers/scenario.ts';
+export {
+  CLAUDE_MODELS,
+  HOSTED_PROVIDER_NAMES,
+  HOSTED_PROVIDERS,
+  MODELS,
+  reasoningEffortFor,
+  type HostedProviderName,
+} from './catalogue.ts';
+export { createHostedProvider, type HostedModel } from './providers/hosted.ts';

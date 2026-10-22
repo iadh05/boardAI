@@ -9,9 +9,11 @@ import {
   type ReviewerV2Event,
 } from '../../packages/agent/src/index.ts';
 import {
-  createAnthropicProvider,
   createGateway,
+  createHostedProvider,
   createOpenAiCompatibleProvider,
+  HOSTED_PROVIDER_NAMES,
+  HOSTED_PROVIDERS,
 } from '../../packages/ai-gateway/src/index.ts';
 import type { AgentOp, Board, ChatMessage, NodeKind } from '../../packages/domain/src/index.ts';
 
@@ -40,51 +42,38 @@ export const boardOf = (
 };
 
 /**
- * Where a model runs (AV2-02). Hosted keys come from the environment, e.g.
- * `node --env-file=apps/server/.env scripts/review-samples.ts --provider groq --model qwen/qwen3.8-27b`.
+ * Where a model runs: the local Ollama, or a hosted provider from the gateway's catalogue (AV2-02).
+ * Hosted keys come from the environment: `node --env-file=apps/server/.env scripts/… --provider …`.
  */
-export const PROVIDERS = {
-  ollama: { baseUrl: `${OLLAMA}/v1`, key: undefined },
-  groq: { baseUrl: 'https://api.groq.com/openai/v1', key: 'GROQ_API_KEY' },
-  gemini: {
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    key: 'GEMINI_API_KEY',
-  },
-  // Claude through its own SDK (AV2-03): Haiku and Sonnet only, a daily $ cap in the provider.
-  claude: { baseUrl: 'https://api.anthropic.com', key: 'CLAUDE_API_KEY' },
-} as const;
-export type ProviderName = keyof typeof PROVIDERS;
+export const PROVIDER_NAMES = ['ollama', ...HOSTED_PROVIDER_NAMES] as const;
+export type ProviderName = (typeof PROVIDER_NAMES)[number];
 
-/** Thinking off, as each model takes it: gpt-oss can't turn it off; Gemini refuses "none". */
-const reasoningEffortOf = (provider: ProviderName, model: string): string | null =>
-  provider === 'gemini' ? null : model.startsWith('openai/gpt-oss') ? 'low' : 'none';
+const isProviderName = (name: string): name is ProviderName =>
+  (PROVIDER_NAMES as readonly string[]).includes(name);
+
+const providerOf = (provider: ProviderName, model: string, thinking: boolean) => {
+  if (provider === 'ollama')
+    return createOpenAiCompatibleProvider({
+      baseUrl: `${OLLAMA}/v1`,
+      model,
+      ...(thinking ? { reasoningEffort: null } : {}),
+    });
+  const { keyVar } = HOSTED_PROVIDERS[provider];
+  const apiKey = process.env[keyVar];
+  if (!apiKey) throw new Error(`${keyVar} is not set (use --env-file).`);
+  return createHostedProvider({ provider, model, apiKey, thinking });
+};
 
 /** One model through the same gateway the server uses; `thinking` turns it on (level 2, D13). */
-export const gatewayOf = (model: string, provider: ProviderName = 'ollama', thinking = false) => {
-  const where = PROVIDERS[provider];
-  const apiKey = where.key ? process.env[where.key] : undefined;
-  if (where.key && !apiKey) throw new Error(`${where.key} is not set (use --env-file).`);
-  return createGateway({
-    provider:
-      provider === 'claude' && apiKey
-        ? createAnthropicProvider({
-            apiKey,
-            model,
-            ...(thinking ? { thinking: { effort: 'medium' } } : {}),
-          })
-        : createOpenAiCompatibleProvider({
-            baseUrl: where.baseUrl,
-            model,
-            reasoningEffort: thinking ? 'medium' : reasoningEffortOf(provider, model),
-            ...(apiKey ? { apiKey } : {}),
-          }),
+export const gatewayOf = (model: string, provider: ProviderName = 'ollama', thinking = false) =>
+  createGateway({
+    provider: providerOf(provider, model, thinking),
     timeoutMs: thinking ? 120_000 : 60_000,
     // Hosted free tiers answer 429 with a wait (Groq up to ~25 s, Gemini ~31 s, measured): an eval
     // can wait a whole minute for one; the server doesn't (the gateway's 20 s default).
     retries: provider === 'ollama' ? 1 : 4,
     ...(provider === 'ollama' ? {} : { maxRetryWaitMs: 65_000 }),
   });
-};
 
 /** A canary, like the server's: the measured agent is the one users get. */
 const canary = () => `dr-${randomUUID().slice(0, 8)}`;
@@ -95,15 +84,17 @@ export const connectRealModel = (model: string, provider: ProviderName = 'ollama
   return { llm, agent: createAgent({ llm, newId: randomUUID, canary: canary() }) };
 };
 
-/** "groq:qwen/qwen3.8-27b+think" → where a role runs (the server's LLM_ROLE_* format). */
+const THINK_SUFFIX = '+think';
+
+/** "provider:model+think" → where a role runs (the server's LLM_ROLE_* format). */
 export const parseRole = (spec: string) => {
   const at = spec.indexOf(':');
+  const provider = spec.slice(0, at);
+  if (!isProviderName(provider))
+    throw new Error(`"${spec}": the provider must be one of ${PROVIDER_NAMES.join(', ')}`);
   const rest = spec.slice(at + 1);
-  return {
-    provider: spec.slice(0, at) as ProviderName,
-    model: rest.replace(/\+think$/, ''),
-    thinking: rest.endsWith('+think'),
-  };
+  const thinking = rest.endsWith(THINK_SUFFIX);
+  return { provider, model: thinking ? rest.slice(0, -THINK_SUFFIX.length) : rest, thinking };
 };
 
 /**

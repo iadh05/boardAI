@@ -42,6 +42,19 @@ Reviewers: you (with fresh eyes, ideally the next day) + an AI review. Later, te
 - **AI review runs locally**, before the PR is opened: `/code-review` in Claude Code on the branch. Findings are fixed as `fix(review)` commits, and a short summary (what was found, what was fixed, what was skipped and why) goes into the PR description under **Review**.
 - No GitHub Action for AI review for now — it would need a token and app setup, and running it live teaches more. A GitHub-side reviewer can be added later (Claude's GitHub Action) if the repo needs one; the earlier version is in git history (commit `ffd14e2`).
 
+### Review checklist (every reviewer, AI included)
+
+The AI review is given this list with the diff; a human reviewer reads it too. Bugs first, then design:
+
+1. **Correctness** — wrong results, unhandled failures, cancel/timeout paths, every stream ends with `done` or `error`.
+2. **Tests** — written first; would they fail if the feature broke? A bug fix starts with a failing test.
+3. **Security** — user and model text is data: quoted/escaped before it goes into a prompt block; no secret in a log or an error message.
+4. **No magic strings** ([general.md](rules/general.md#no-magic-strings)) — model ids, provider URLs or names written in code; behaviour that branches on a name; the same knowledge (a URL, a list, a rule) in two places. *(Missed by the AI reviews of the AV2 PRs and found by the owner on 2026-10-22: three copies of "gpt-oss can't turn thinking off" and a `model === 'claude-sonnet-5-5'` branch. Now also a lint rule.)*
+5. **Boundaries and naming** — imports through `index.ts`, the layer rules, names that say what things are.
+6. **Docs** — the ticket, the architecture doc and `.env.example` say what the code now does.
+
+A finding the checklist would have caught but the review missed is a reason to improve the checklist (or turn it into a lint rule), not just to fix the code.
+
 Comments use **Conventional Comments** labels so the author knows what's required:
 
 | Label | Meaning | Must the author act? |
