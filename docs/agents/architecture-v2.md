@@ -30,7 +30,8 @@ The Architect's *plan* and *merge* are code (the Planner's plan lists the tasks;
 ## The chain
 
 ```
-Orchestrator (owns the state: plan, findings, proposal · the graph · checkpoints · events)
+Orchestrator = Planner (the brain: decides what runs, re-plans, says when it is done)
+             + runtime (the engine: owns the state · runs the plan · checkpoints · events)
   │ calls each agent as a node, merges what it returns
   ▼
 You ⇄ Main agent ──▶ Planner ──▶ specialist agents ──▶ Architect ──▶ Critic ──▶ Main ──▶ Scribe
@@ -103,6 +104,8 @@ All drawn on the V2 board. Each is a starting value, changed by measurement.
 | D17 | **Ad-hoc expert** | When no specialist fits ("Is this GDPR compliant?"), the Planner fills **one** expert slot from a tested template — `{ role, focus, boxIds }`, never a whole prompt — counted in the 6-task budget, read-only, findings marked *ad-hoc* and checked harder by the Critic. Its definition and decisions are kept in **room** memory and reused; usage and accept rate go to a **global candidate list** (statistics only). Promotion to a real specialist is a reviewed PR with its own evals — see § Specialists | The closest specialist answers off-target (Security answers GDPR with TLS); free prompt writing is untested and injectable |
 | D18 | **Feedback** | Accept / Reject **per change**, an optional reason (*wrong · too much · already there · not now · other*), 👍 / 👎 on answers with no proposal, "forget" in the knowledge panel counted as feedback. Every change carries the finding and agent it came from, so feedback lands on the right agent. Used for: room memory (a rejected idea isn't proposed again), accept rate per agent and prompt version, D17's candidate list, new eval boards, later fine-tuning (M6). **Never changes a prompt automatically** — prompt changes stay PRs checked by evals | One verdict for a whole proposal can't tell which of six agents was wrong |
 | D19 | **Sessions and compaction** | Several chat **threads** per room ("Review v1", "GDPR check"); each has its own history and summary, all share the room memory. Past a token budget (~4k tokens of history), the Main agent keeps the last ~6 turns word for word and summarises the rest; decisions are already in room memory; the original turns stay searchable (D12). The Planner may *suggest* a new thread when the topic changes; you decide | A long chat overflows every agent's context and slows every request |
+| D21 | **Missing context** | A specialist returns what it lacks (`needs: [{ what, from }]`); the Planner fills it cheapest first (board → memory → web → you), one re-run per card, else an assumption said out loud; your answer becomes a requirement; misses are counted to improve the fetch recipes — see ADR-011 | An agent that guesses without context answers off-target |
+| D22 | **Providers apart, chain as config** | One folder per provider over a shared wire format; a role's chain is `a > b > c` in configuration, local last; spend caps, rate limits and the hardware queue are policies around providers — ADR-012 | One file held three providers' quirks; the two-step fallback was hard-wired |
 | D20 | **Our own state graph** | The agents run on our own runtime shaped like LangGraph — typed state, nodes, conditional edges, a checkpoint after every node, interrupts to pause for you and resume on your next message, events streamed to the chat — **no LangGraph or LangChain dependency**, for the graph or the context (D12 stays our own code). See ADR-011 | Pausing for the user, runtime fan-out and a live checklist need saved state; a straight line of steps can do none of it |
 
 ### The owner's answers so far (2026-10-21)

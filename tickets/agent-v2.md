@@ -163,6 +163,19 @@ Later (not tonight): M1-32b round budget, M1-32c question card (folded into AV2-
 - [ ] One table in `docs/evals/` and architecture-v2 § Models: pass rate, wrong proposals, time p50/p95, cost.
 - [ ] Recommendation for the owner: switch the default, or not yet and why.
 
+## AV2-02b — Providers apart, the chain as configuration (ADR-012)
+**Status:** todo · **Size:** M · **Depends on:** #91 merged
+
+**Tasks**
+- [ ] `wire/openaiChat/`: the OpenAI Chat Completions format only, moved out of `openAiCompatible.ts` with its tests.
+- [ ] `providers/ollama/`, `groq/`, `gemini/`, `claude/`: each provider's quirks, fixtures and tests in its folder; the catalogue stays the one list of models.
+- [ ] `chain.ts`: `LLM_ROLE_*=a > b > c`; next link only before the first chunk; local always last; `llm_fallback_total{from, to, reason}`.
+- [ ] Policies around any provider: spend cap (out of `anthropic.ts`), rate limit.
+
+**Acceptance criteria**
+- [ ] A Gemini change touches only `providers/gemini/` (checked by reading the diff of a one-line Gemini fix).
+- [ ] Unit tests: a three-link chain moves on 429, on silence, on budget; never after the first chunk.
+
 ## AV2-11a — Read LangGraph.js's API, copy its shapes
 **Status:** todo · **Size:** XS · **Depends on:** —
 
@@ -193,6 +206,18 @@ Later (not tonight): M1-32b round budget, M1-32c question card (folded into AV2-
 - [ ] Unit tests: every transition, resume after a pause, Stop in every state, a 2-card fan-out within the 6-card budget.
 - [ ] e2e: a review shows the live checklist; a paused request resumes on the next message.
 - [ ] AV2-10's eval: V2 on the graph no worse than before.
+
+## AV2-11b — The Planner orchestrates (ADR-011)
+**Status:** todo · **Size:** M · **Depends on:** AV2-11
+
+**Tasks**
+- [ ] The Planner is asked at each decision point: plan, re-plan once after the cards, finished.
+- [ ] Its plan is zod-checked data; invalid → back once with the reason → the flow's default plan.
+- [ ] Missing context (D21): `needs` on the finding contract; fill it board → memory → web → you; one re-run per card; the answer saved as a requirement; `context_missing_total`.
+
+**Acceptance criteria**
+- [ ] Unit tests with the fake LLM: a re-plan adds a card within budget; two invalid plans run the default; a `needs: user` pauses and resumes.
+- [ ] A run on the sample boards printed step by step (state after each node).
 
 ## AV2-12 — Ad-hoc expert (D17)
 **Status:** todo · **Size:** M · **Depends on:** AV2-11
