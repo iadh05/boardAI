@@ -3,35 +3,18 @@ import type { AiGateway, LlmErrorCode, Usage } from '@designroom/ai-gateway';
 import type { Board, ChatMessage, Proposal } from '@designroom/domain';
 import { boardToText, inventoryText, quote } from '../domain/boardToText.ts';
 import type { MergedFinding } from '../domain/findings.ts';
-import { createIdRewriter } from '../domain/idRewriter.ts';
 import { createLeakWatch } from '../domain/leakWatch.ts';
 import { buildMessages, REFUSAL_WORDING, SYSTEM_PROMPT } from '../domain/prompt.ts';
 import { OUT_OF_SCOPE_REPLY, type Scope } from '../domain/scope.ts';
-import {
-  AGENT_TOOLS,
-  ASK_USER,
-  createDraft,
-  runToolCall,
-  type Draft,
-  type ToolOutcome,
-} from '../domain/tools.ts';
-import {
-  FORMAT_ERROR,
-  LEAK_STOPPED_REPLY,
-  labelOf,
-  proposalEvents,
-  streamAnswer,
-  type RoundContext,
-  type Streamed,
-  type Turn,
-} from './agentRound.ts';
+import { createDraft, type Draft } from '../domain/tools.ts';
+import { playRound, proposalEvents, type RoundContext, type Turn } from './agentRound.ts';
 import { checkScope, type ScopeQuestion } from './checkScope.ts';
-import { createAgentMetrics, markFailed, startSpan, toolLabel } from './telemetry.ts';
+import { createAgentMetrics, markFailed, startSpan } from './telemetry.ts';
 
 // The agent loop (architecture §7): the model answers; its tool calls run on a draft of the board;
 // the results go back to the model; repeat until it stops calling tools or the round limit.
 // The board is never changed here: the outcome is at most one proposal the user accepts or not.
-// Streaming the model's answer is in agentRound.ts.
+// One round's steps are in agentRound.ts.
 
 export { FORMAT_ERROR, LEAK_STOPPED_REPLY } from './agentRound.ts';
 
@@ -92,38 +75,65 @@ const findingsText = (findings: readonly MergedFinding[], draft: Draft) =>
 
 const DEFAULT_MAX_ROUNDS = 5;
 
-type GatewayError = Error & { code: LlmErrorCode };
+/** The board, the chat, the findings and the critique as the model reads them. */
+const conversationFor = (input: AgentInput, draft: Draft, canary: string | undefined) => {
+  // What exists by kind, then the listing — both inside the <board> block (M1-29).
+  const boardText = [
+    inventoryText(input.board, draft.aliases),
+    boardToText(input.board, draft.aliases),
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+  const { findings, critique } = input;
+  return buildMessages(
+    boardText,
+    input.messages,
+    canary,
+    findings?.length ? findingsText(findings, draft) : undefined,
+    critique?.length ? critique.map((issue) => `- ${issue}`).join('\n') : undefined,
+  );
+};
 
-/** The gateway throws LlmError; the agent may only import its types, so it checks the shape. */
-const isGatewayError = (error: unknown): error is GatewayError =>
-  error instanceof Error &&
-  error.name === 'LlmError' &&
-  typeof (error as GatewayError).code === 'string';
-
-const TOOL_NAMES = AGENT_TOOLS.map((t) => t.name);
+/**
+ * Scope guard first: a message about something else gets a fixed reply, and the reviewer (with its
+ * tools) never runs. Enforced here, in code — not left to the prompt.
+ */
+const guardScope = async (
+  deps: AgentDeps,
+  metered: ReturnType<typeof createAgentMetrics>,
+  input: AgentInput,
+  agent: ReturnType<typeof startSpan>,
+): Promise<Scope> => {
+  if (input.scoped) return 'in'; // the caller (agent V2's Main) already checked it
+  const { messages, signal } = input;
+  const question = messages.findLast((m) => m.role === 'user')?.content ?? '';
+  const previousAnswer = messages.findLast((m) => m.role === 'assistant')?.content;
+  const guard = startSpan('scope check', 'GUARDRAIL', agent.inside);
+  try {
+    const scope = await context.with(guard.inside, () =>
+      (deps.checkScope ?? ((q) => checkScope(deps.llm, q)))({
+        question,
+        ...(previousAnswer === undefined ? {} : { previousAnswer }),
+        ...(signal ? { signal } : {}),
+      }),
+    );
+    guard.span.setAttribute('designroom.agent.scope', scope);
+    metered.scope(scope);
+    return scope;
+  } finally {
+    guard.span.end();
+  }
+};
 
 export const createAgent = (deps: AgentDeps) => {
   const metered = createAgentMetrics();
 
-  async function* review(
-    { board, messages, signal, findings, scoped, critique }: AgentInput,
-    parent: Context,
-  ): AsyncIterable<AgentEvent> {
+  async function* review(input: AgentInput, parent: Context): AsyncIterable<AgentEvent> {
     const agent = startSpan('agent', 'AGENT', parent);
-    const draft = createDraft(board);
-    // What exists by kind, then the listing — both inside the <board> block (M1-29).
-    const boardText = [inventoryText(board, draft.aliases), boardToText(board, draft.aliases)]
-      .filter(Boolean)
-      .join('\n\n');
+    const draft = createDraft(input.board);
     const turn: Turn = {
       draft,
-      conversation: buildMessages(
-        boardText,
-        messages,
-        deps.canary,
-        findings?.length ? findingsText(findings, draft) : undefined,
-        critique?.length ? critique.map((issue) => `- ${issue}`).join('\n') : undefined,
-      ),
+      conversation: conversationFor(input, draft, deps.canary),
       spoke: false,
       finished: false,
       formatWarned: false,
@@ -131,40 +141,17 @@ export const createAgent = (deps: AgentDeps) => {
     };
     let rounds = 0;
     try {
-      // Scope guard first: a message about something else gets a fixed reply, and the reviewer
-      // (with its tools) never runs. Enforced here, in code — not left to the prompt.
-      const question = messages.findLast((m) => m.role === 'user')?.content ?? '';
-      const previousAnswer = messages.findLast((m) => m.role === 'assistant')?.content;
-      let scope: Scope = 'in'; // the caller (agent V2's Main) already checked it: `scoped`
-      if (!scoped) {
-        const guard = startSpan('scope check', 'GUARDRAIL', agent.inside);
-        try {
-          scope = await context.with(guard.inside, () =>
-            (deps.checkScope ?? ((q) => checkScope(deps.llm, q)))({
-              question,
-              ...(previousAnswer === undefined ? {} : { previousAnswer }),
-              ...(signal ? { signal } : {}),
-            }),
-          );
-          guard.span.setAttribute('designroom.agent.scope', scope);
-          metered.scope(scope);
-        } finally {
-          guard.span.end();
-        }
-      }
-      if (scope === 'out') {
+      if ((await guardScope(deps, metered, input, agent)) === 'out') {
         yield { type: 'text', delta: OUT_OF_SCOPE_REPLY };
         yield { type: 'done' };
         return;
       }
-
-      const maxRounds = deps.maxRounds ?? DEFAULT_MAX_ROUNDS;
       const ctx: RoundContext = {
         deps,
         metered,
-        board,
+        board: input.board,
         agent,
-        signal,
+        signal: input.signal,
         // Output guard: the answer is cut where it starts reciting the prompt (OWASP LLM07).
         watch: createLeakWatch({
           prompt: SYSTEM_PROMPT,
@@ -173,108 +160,11 @@ export const createAgent = (deps: AgentDeps) => {
           ...(deps.canary ? { canary: deps.canary } : {}),
         }),
       };
-      let ended: ToolOutcome['end']; // the model called finish or ask_user
-
+      const maxRounds = deps.maxRounds ?? DEFAULT_MAX_ROUNDS;
       for (let round = 1; round <= maxRounds && !turn.finished; round++) {
         rounds = round;
-        const step = startSpan('agent round', 'CHAIN', agent.inside, {
-          'designroom.agent.round': round,
-        });
-        try {
-          const hold = turn.holding; // this round answers the format error: its text waits (M1-32)
-          turn.holding = false;
-          let streamed: Streamed;
-          try {
-            streamed = yield* streamAnswer(ctx, turn, step, hold);
-          } catch (error) {
-            if (!isGatewayError(error)) throw error; // a bug, not a model failure
-            if (error.code !== 'ABORTED') {
-              markFailed(step.span, error.message);
-              markFailed(agent.span, error.message);
-            }
-            yield { type: 'round', round, usage: null, toolCalls: 0, toolErrors: 0 };
-            yield* proposalEvents(ctx, turn);
-            yield { type: 'error', code: error.code, message: error.message };
-            yield { type: 'done' };
-            return;
-          }
-          if (streamed.stopped) return;
-          const { said, calls, usage, held } = streamed;
-          // The round after the format error: its text goes out only with the calls it explains;
-          // without them it answers a message the user never saw ("Sure, …"), so it is dropped.
-          const kept = !hold || calls.length > 0;
-          if (hold && kept && held.trim()) yield { type: 'text', delta: held };
-          turn.spoke ||= kept && said.trim() !== '';
-
-          let toolErrors = 0;
-          if (calls.length > 0) {
-            turn.conversation.push({ role: 'assistant', content: said, toolCalls: calls });
-            for (const call of calls) {
-              const name = toolLabel(call.name, TOOL_NAMES);
-              const used = startSpan(`tool ${name}`, 'TOOL', step.inside, { 'tool.name': name });
-              const outcome = runToolCall(turn.draft, call, deps);
-              turn.draft = outcome.draft;
-              ended = outcome.end;
-              // The arguments and the reply can quote labels: in the trace only with content on
-              // (local Phoenix, M1-26c).
-              if (deps.recordContent)
-                used.span.setAttributes({
-                  'input.value': JSON.stringify(call.arguments),
-                  'output.value': outcome.reply,
-                });
-              if (!outcome.ok) {
-                toolErrors++;
-                markFailed(used.span, deps.recordContent ? outcome.reply : 'refused');
-              }
-              used.span.end();
-              metered.toolCall(name, outcome.ok);
-              turn.conversation.push({ role: 'tool', toolCallId: call.id, content: outcome.reply });
-              if (ended) break; // the answer is over: calls after finish or ask_user don't run
-            }
-          }
-          step.span.setAttributes({
-            'designroom.agent.tool_calls': calls.length,
-            'designroom.agent.tool_errors': toolErrors,
-          });
-          yield { type: 'round', round, usage, toolCalls: calls.length, toolErrors };
-          if (ended) {
-            // finish or ask_user ended the answer (M1-32). A question is always shown — it's what
-            // the user must answer; a summary only when the model said nothing in words. Both go
-            // through the same leak guard as any text (an attack could ask for the prompt in them).
-            turn.finished = true;
-            // "Said nothing" is this round: a preamble two rounds ago doesn't explain the changes.
-            const shown = ended.tool === ASK_USER || said.trim() === '' ? ended.text : '';
-            if (shown) {
-              if (ctx.watch.feed(shown)) {
-                agent.span.setAttribute('designroom.agent.leak_stopped', true);
-                yield { type: 'text', delta: `${turn.spoke ? '\n\n' : ''}${LEAK_STOPPED_REPLY}` };
-                yield { type: 'done' };
-                return;
-              }
-              const named = createIdRewriter(labelOf(turn));
-              yield {
-                type: 'text',
-                delta: `${turn.spoke ? '\n\n' : ''}${named.feed(shown)}${named.flush()}`,
-              };
-              turn.spoke = true;
-            }
-          } else if (calls.length === 0) {
-            // No tool call: one format-error observation, then the answer stands as it is (M1-32).
-            // Only with a round left: otherwise the user would read "I stopped here" for nothing.
-            turn.finished = turn.formatWarned || round === maxRounds;
-            if (!turn.finished) {
-              turn.formatWarned = true;
-              turn.holding = true;
-              agent.span.setAttribute('designroom.agent.format_error', true);
-              turn.conversation.push({ role: 'assistant', content: said });
-              turn.conversation.push({ role: 'user', content: FORMAT_ERROR });
-            }
-          }
-        } finally {
-          step.span.end();
-        }
+        if (yield* playRound(ctx, turn, round, round === maxRounds)) return;
       }
-
       // Cut off mid-work: say so, rather than end on "Now let me connect…".
       if (!turn.finished)
         yield {
