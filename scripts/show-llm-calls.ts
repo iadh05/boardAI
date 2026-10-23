@@ -30,32 +30,41 @@ if (args.includes('--list')) {
 const { id, calls } = callsOf(file, flag(args, '--request'));
 out(`Review ${id}: ${calls.length} model call(s)\n`);
 
-calls.forEach((call, i) => {
+type Call = (typeof calls)[number];
+type Message = Call['messages'][number];
+
+/** One call's header: what it was, how long, how many tokens, how it ended. */
+const header = (call: Call, i: number) => {
   // The scope guard is a short call with no tools; the review rounds offer the agent's tools.
   const kind = call.tools.length === 0 ? 'scope check' : 'review round';
   const tokens = call.usage
     ? ` · ${call.usage.inputTokens} in / ${call.usage.outputTokens} out`
     : '';
-  out(
-    `═══════ call ${i + 1} — ${kind} · ${call.ms} ms${tokens}${call.error ? ` · ERROR ${call.error}` : ''}${call.stopped ? ' · stopped' : ''}`,
-  );
-  for (const m of call.messages) {
-    if (m.role === 'system' && !args.includes('--full')) {
-      out(`── system (${m.content.length} chars; --full to show) ──`);
-      continue;
-    }
-    // Earlier rounds' messages repeat in each later call: show only what's new in this one.
-    if (i > 0 && calls[i - 1]?.messages.some((p) => JSON.stringify(p) === JSON.stringify(m)))
-      continue;
-    const extra =
-      m.role === 'assistant' && m.toolCalls?.length
-        ? `\n  tool calls: ${m.toolCalls.map((t) => `${t.name}(${JSON.stringify(t.arguments)})`).join(', ')}`
-        : m.role === 'tool'
-          ? ` (result of ${m.toolCallId})`
-          : '';
-    out(`── ${m.role}${extra} ──`);
-    out(m.content);
+  const error = call.error ? ` · ERROR ${call.error}` : '';
+  return `═══════ call ${i + 1} — ${kind} · ${call.ms} ms${tokens}${error}${call.stopped ? ' · stopped' : ''}`;
+};
+
+/** What a message carries besides its text: the tool calls it makes, or the call it answers. */
+const extraOf = (m: Message) => {
+  if (m.role === 'assistant' && m.toolCalls?.length)
+    return `\n  tool calls: ${m.toolCalls.map((t) => `${t.name}(${JSON.stringify(t.arguments)})`).join(', ')}`;
+  return m.role === 'tool' ? ` (result of ${m.toolCallId})` : '';
+};
+
+const printMessage = (m: Message, previous: Call | undefined) => {
+  if (m.role === 'system' && !args.includes('--full')) {
+    out(`── system (${m.content.length} chars; --full to show) ──`);
+    return;
   }
+  // Earlier rounds' messages repeat in each later call: show only what's new in this one.
+  if (previous?.messages.some((p) => JSON.stringify(p) === JSON.stringify(m))) return;
+  out(`── ${m.role}${extraOf(m)} ──`);
+  out(m.content);
+};
+
+calls.forEach((call, i) => {
+  out(header(call, i));
+  for (const m of call.messages) printMessage(m, i > 0 ? calls[i - 1] : undefined);
   out('── ANSWER ──');
   out(call.output.text || '(no text)');
   for (const t of call.output.toolCalls) out(`  → ${t.name}(${JSON.stringify(t.arguments)})`);

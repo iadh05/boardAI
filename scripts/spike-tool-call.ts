@@ -151,6 +151,17 @@ type Turn = {
   promptTokens: number;
 };
 
+/** Ollama's stream: one JSON chunk per line, lines split anywhere between network reads. */
+async function* chunks(body: ReadableStream<Uint8Array>): AsyncIterable<Chunk> {
+  let buffer = '';
+  for await (const text of body.pipeThrough(new TextDecoderStream())) {
+    buffer += text;
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines.filter(Boolean)) yield JSON.parse(line) as Chunk;
+  }
+}
+
 const chat = async (messages: Message[]): Promise<Turn> => {
   const started = performance.now();
   const res = await fetch(`${OLLAMA}/api/chat`, {
@@ -165,24 +176,17 @@ const chat = async (messages: Message[]): Promise<Turn> => {
   let thinking = '';
   const toolCalls: ToolCall[] = [];
   let last: Chunk | undefined;
-  let buffer = '';
-  for await (const text of res.body.pipeThrough(new TextDecoderStream())) {
-    buffer += text;
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-    for (const line of lines.filter(Boolean)) {
-      const chunk = JSON.parse(line) as Chunk;
-      const m = chunk.message;
-      // First token of any kind: what the user waits for (thinking counts — it is GPU time).
-      if (ttftMs < 0 && (m?.content || m?.thinking || m?.tool_calls))
-        ttftMs = performance.now() - started;
-      // First token of the answer itself (text or tool call): what the user sees appear.
-      if (answerMs < 0 && (m?.content || m?.tool_calls)) answerMs = performance.now() - started;
-      content += m?.content ?? '';
-      thinking += m?.thinking ?? '';
-      toolCalls.push(...(m?.tool_calls ?? []));
-      if (chunk.done) last = chunk;
-    }
+  for await (const chunk of chunks(res.body)) {
+    const m = chunk.message;
+    // First token of any kind: what the user waits for (thinking counts — it is GPU time).
+    if (ttftMs < 0 && (m?.content || m?.thinking || m?.tool_calls))
+      ttftMs = performance.now() - started;
+    // First token of the answer itself (text or tool call): what the user sees appear.
+    if (answerMs < 0 && (m?.content || m?.tool_calls)) answerMs = performance.now() - started;
+    content += m?.content ?? '';
+    thinking += m?.thinking ?? '';
+    toolCalls.push(...(m?.tool_calls ?? []));
+    if (chunk.done) last = chunk;
   }
   const tokPerSec =
     last?.eval_count && last.eval_duration ? last.eval_count / (last.eval_duration / 1e9) : 0;
