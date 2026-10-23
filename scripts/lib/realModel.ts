@@ -122,6 +122,8 @@ export const connectV2 = (
     critic?: boolean;
     criticModel?: string;
     wrap?: GatewayWrap;
+    /** The Planner as a ready gateway (e.g. plans written by hand), instead of `planner`. */
+    plannerGateway?: AiGateway;
   } = {},
 ) => {
   const wrap = options.wrap ?? unwrapped;
@@ -131,7 +133,12 @@ export const connectV2 = (
     const r = parseRole(spec);
     return gatewayOf(r.model, r.provider, r.thinking);
   };
-  const planner = options.planner ? wrap('planner', role(options.planner)) : local;
+  const given = options.plannerGateway;
+  const planner = given
+    ? wrap('planner', given)
+    : options.planner
+      ? wrap('planner', role(options.planner))
+      : local;
   const agent = createReviewerV2({
     main: local,
     planner,

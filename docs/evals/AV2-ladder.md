@@ -48,3 +48,28 @@ hosted 18), time (V2 is 1.5–2.5× slower from L3 up) and input tokens (8–25k
    neighbours), not when they share a kind. A test with one cache per service first.
 2. Give the Architect the Planner's brief (its assumptions and focus) next to the findings.
 3. Re-run the ladder at scale 1 and 2 after each change; the saved runs show what moved.
+
+## Follow-up: ruling out the model (2026-10-23)
+
+Same 18 questions; the L3 and L6 rules were fixed first (they failed correct answers: "a single
+Payment worker", a CDN labelled "US + EU edge"), and every saved run was re-scored.
+
+| Setup | Score |
+|---|---|
+| V2 local (all Qwen 9B) | 3/18 |
+| V2, Planner on Groq qwen3.8 27B | 8/18 |
+| V1, Qwen 9B | 9/18 |
+| V2, Planner on Claude Sonnet 5.5 | 9/18 |
+| V2, plans written by hand in the session (rest local) | 11/18 |
+| V1 on Claude Sonnet 5.5 | 13/18 |
+
+- A stronger model helps a single agent (V1: 9 → 13; L4 dual write 0/3 → 3/3).
+- A stronger Planner barely helps V2 (9/18): Sonnet's L4 plan named the dual write exactly, and
+  the answer still failed 3 times out of 3. The plan never reaches the Architect, and the Planner
+  can only pick a flow and two fixed rule specialists: it can't brief or dispatch anyone.
+- Even Sonnet as V1 misses L5/L6 twice in three: it starts with check_design, as the Architect
+  prompt says, and follows the checks before the user's problem.
+
+Conclusion: V2's main problem is the architecture, not the model: (1) the Planner as a real
+orchestrator (a brief, and which agents to call), (2) the Architect prompt (the question and the
+brief before the checks), (3) the misleading checks.

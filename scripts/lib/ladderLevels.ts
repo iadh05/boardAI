@@ -78,6 +78,12 @@ const SPOF = /single point|spof|only one|one (instance|copy)|no (replica|redunda
 const DIRECT_DB =
   /(browser|client|front.?end)[^.]{0,120}(database|\bdb\b)|direct(ly)? (access|read|connect|reach)|bypass/i;
 const LATENCY = /cdn|multi.?region|us.?(east|west|region)|read replica|edge|geo/i;
+/** The one worker, in words: "a single Payment worker", "a second worker", "two or more workers". */
+const ONE_WORKER =
+  /single (payment )?worker|one (payment )?worker|second (payment )?worker|(two|2) or more (payment )?workers/i;
+/** A new region: compute or data placed in the US. A CDN is not a region (an edge cache). */
+const NEW_REGION = /\bus\b|us-(east|west)|region/i;
+const REGION_KINDS: readonly NodeKind[] = ['api', 'service', 'database', 'loadBalancer'];
 
 export const LEVELS: Level[] = [
   {
@@ -151,7 +157,7 @@ export const LEVELS: Level[] = [
       hub: 'API 1',
     },
     messages: user('Where can this design go down completely?'),
-    pass: (r) => says(r, /payment worker|worker/i, SPOF),
+    pass: (r) => says(r, /payment worker|worker/i) && (says(r, SPOF) || says(r, ONE_WORKER)),
   },
   {
     level: 4,
@@ -248,8 +254,11 @@ export const LEVELS: Level[] = [
           'A second region is too expensive for us. What is the cheapest change that fixes the worst problem?',
       },
     ],
-    // The worst problem is the exposed database, not latency; no new region proposed.
+    // The worst problem is the exposed database, not latency; no new region proposed (a CDN is fine).
     pass: (r) =>
-      says(r, DIRECT_DB) && !r.ops.some((op) => op.op === 'addNode' && /us|region/i.test(op.label)),
+      says(r, DIRECT_DB) &&
+      !r.ops.some(
+        (op) => op.op === 'addNode' && REGION_KINDS.includes(op.kind) && NEW_REGION.test(op.label),
+      ),
   },
 ];

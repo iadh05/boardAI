@@ -8,15 +8,17 @@
 // (level, board, conversation, setup), its output (answer, proposal, verdict) and every model call
 // it made, with the role that made it (the exact messages sent and what came back, tokens, time).
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { recordLlmCalls, type LlmCallRecord } from '../apps/server/src/core/llmCallLog.ts';
+import type { AiGateway } from '../packages/ai-gateway/src/index.ts';
 import type { AgentOp, Board } from '../packages/domain/src/index.ts';
 import { boardFor, LEVELS, type Level } from './lib/ladderLevels.ts';
 import {
   assertOnGpu,
   connectRealModel,
   connectV2,
+  parseRole,
   runReview,
   type GatewayWrap,
   type Run,
@@ -33,16 +35,36 @@ const SCALE = Number(flag('--scale', '1'));
 const ONLY = flag('--levels', '').split(',').filter(Boolean).map(Number);
 /** A third setup with the Planner hosted, as LLM_ROLE_PLANNER writes it; none without the flag. */
 const HOSTED = flag('--hosted-planner', 'none');
+/** V1 on a hosted model, as "provider:model"; none without the flag. */
+const HOSTED_V1 = flag('--hosted-v1', 'none');
 const DIR = join(
   flag('--out', 'eval-runs'),
   `ladder-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`,
 );
 const out = (line = '') => process.stdout.write(`${line}\n`);
 
-type Call = LlmCallRecord & { role: string };
-type Setup = { name: string; connect: (wrap: GatewayWrap) => ReturnType<typeof connectV2> };
+/** Plans written by hand per level (JSON: { "1": { flow, specialists, questions, assumptions } }). */
+const PLANS = flag('--planner-plans', '');
+/** Only these setups, by name, comma-separated (e.g. "V2 session Planner"); all by default. */
+const ONLY_SETUPS = flag('--setups', '').split(',').filter(Boolean);
 
-const SETUPS: Setup[] = [
+type Call = LlmCallRecord & { role: string };
+type Setup = {
+  name: string;
+  connect: (wrap: GatewayWrap, level: Level) => ReturnType<typeof connectV2>;
+};
+
+/** A Planner that answers with the plan written for the level: one make_plan call, no model. */
+const scriptedPlanner = (plan: unknown): AiGateway => ({
+  // eslint-disable-next-line @typescript-eslint/require-await -- the gateway's shape is async
+  async *chat() {
+    yield { type: 'toolCall', call: { id: 'plan_0', name: 'make_plan', arguments: plan } };
+    const usage = { inputTokens: 0, outputTokens: 0, latencyMs: 0, timeToFirstTokenMs: 0 };
+    yield { type: 'usage', usage: { ...usage, attempts: 1 } };
+  },
+});
+
+const ALL_SETUPS: Setup[] = [
   { name: 'V1', connect: (wrap) => connectRealModel(MODEL, 'ollama', wrap) },
   {
     name: 'V2 local',
@@ -56,7 +78,32 @@ const SETUPS: Setup[] = [
           connect: (wrap: GatewayWrap) => connectV2(MODEL, 'ollama', { planner: HOSTED, wrap }),
         },
       ]),
+  // V1 on a hosted model ("provider:model", e.g. claude:<model>): the whole agent, no chain.
+  ...(HOSTED_V1 === 'none'
+    ? []
+    : [
+        {
+          name: 'V1 hosted',
+          connect: (wrap: GatewayWrap) => {
+            const { provider, model } = parseRole(HOSTED_V1);
+            return connectRealModel(model, provider, wrap);
+          },
+        },
+      ]),
+  ...(PLANS === ''
+    ? []
+    : [
+        {
+          name: 'V2 session Planner',
+          connect: (wrap: GatewayWrap, level: Level) => {
+            const plans = JSON.parse(readFileSync(PLANS, 'utf8')) as Record<string, unknown>;
+            const plannerGateway = scriptedPlanner(plans[String(level.level)]);
+            return connectV2(MODEL, 'ollama', { plannerGateway, wrap });
+          },
+        },
+      ]),
 ];
+const SETUPS = ALL_SETUPS.filter((s) => ONLY_SETUPS.length === 0 || ONLY_SETUPS.includes(s.name));
 
 /** Every call a role's gateway makes, kept in `calls`. */
 const recorder =
@@ -100,7 +147,7 @@ const tokens = (calls: Call[], key: 'inputTokens' | 'outputTokens') =>
 /** One review, saved with its input, output and model calls; returns its row. */
 const runOnce = async (level: Level, setup: Setup, board: Board, i: number): Promise<Result> => {
   const calls: Call[] = [];
-  const { agent } = setup.connect(recorder(calls));
+  const { agent } = setup.connect(recorder(calls), level);
   const run: Run = await runReview(agent, board, level.messages);
   const result: Result = {
     level: level.level,
