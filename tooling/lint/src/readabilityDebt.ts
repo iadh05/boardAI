@@ -6,11 +6,6 @@
 export const DEBT_AT_START = 6;
 
 export const READABILITY_DEBT: readonly string[] = [
-  // agent V2's orchestration (complexity 32, 25, 17): replaced by the harness rebuild (ADR-011,
-  // ours or XState — the spike, #94), not refactored in place
+  // agent V2's chain (complexity 32): next in CI-02
   'packages/agent/src/application/reviewerV2.ts',
-  'packages/agent/src/application/taskQueue.ts',
-  'packages/agent/src/application/orchestrator.ts',
-  // ai-gateway (complexity 25): next in CI-02
-  'packages/ai-gateway/src/providers/anthropic.ts',
 ];

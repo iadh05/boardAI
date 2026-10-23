@@ -36,6 +36,59 @@ const realTimer: Timer = (ms, fire) => {
 
 const FindingsSchema = z.array(FindingSchema);
 
+/** Rejects when `signal` aborts: raced against a task, so one that ignores its signal can't hold the queue. */
+const abortedOf = (signal: AbortSignal) => {
+  const stopped = new Promise<never>((_, reject) => {
+    const quit = () => reject(new Error('stopped'));
+    if (signal.aborted) quit();
+    else signal.addEventListener('abort', quit, { once: true });
+  });
+  stopped.catch(() => undefined); // only read when it wins the race
+  return stopped;
+};
+
+/** A task that threw: out of time, stopped by the user, or failed (with why). */
+const thrownResult = (
+  card: TaskCard,
+  error: unknown,
+  timedOut: boolean,
+  stopped: boolean,
+): TaskResult => {
+  if (timedOut) return { card, status: 'timeout', findings: [] };
+  if (stopped) return { card, status: 'cancelled', findings: [] };
+  const message = error instanceof Error ? error.message : String(error);
+  return { card, status: 'failed', findings: [], error: message };
+};
+
+/** One task within its budget; Stop aborts it too. Its output is checked against the contract. */
+const runTask = async (
+  card: TaskCard,
+  options: QueueOptions,
+  timer: Timer,
+): Promise<TaskResult> => {
+  const task = new AbortController();
+  let timedOut = false;
+  const cancelTimer = timer(card.budgetMs, () => {
+    timedOut = true;
+    task.abort();
+  });
+  const stop = () => task.abort();
+  options.signal?.addEventListener('abort', stop, { once: true });
+  try {
+    // Its late answer, after an abort, is dropped (review of AV2-05).
+    const output = await Promise.race([options.run(card, task.signal), abortedOf(task.signal)]);
+    const findings = FindingsSchema.safeParse(output);
+    return findings.success
+      ? { card, status: 'done', findings: findings.data }
+      : { card, status: 'failed', findings: [], error: 'broke the finding contract' };
+  } catch (error) {
+    return thrownResult(card, error, timedOut, options.signal?.aborted ?? false);
+  } finally {
+    cancelTimer();
+    options.signal?.removeEventListener('abort', stop);
+  }
+};
+
 export async function* runTaskQueue(
   cards: readonly TaskCard[],
   options: QueueOptions,
@@ -56,48 +109,7 @@ export async function* runTaskQueue(
       running: card.specialist,
       waiting: queued.length - i - 1,
     };
-
-    const task = new AbortController();
-    let timedOut = false;
-    const cancelTimer = timer(card.budgetMs, () => {
-      timedOut = true;
-      task.abort();
-    });
-    const stop = () => task.abort();
-    options.signal?.addEventListener('abort', stop, { once: true });
-    let result: TaskResult;
-    try {
-      // Raced against its own abort: a task that ignores its signal can't hold the queue (review
-      // of AV2-05); its late answer is dropped.
-      const stopped = new Promise<never>((_, reject) => {
-        const quit = () => reject(new Error('stopped'));
-        if (task.signal.aborted) quit();
-        else task.signal.addEventListener('abort', quit, { once: true });
-      });
-      stopped.catch(() => undefined); // only read when it wins the race
-      const output = await Promise.race([options.run(card, task.signal), stopped]);
-      const findings = FindingsSchema.safeParse(output);
-      result = findings.success
-        ? { card, status: 'done', findings: findings.data }
-        : { card, status: 'failed', findings: [], error: 'broke the finding contract' };
-    } catch (error) {
-      const status: TaskStatus = timedOut
-        ? 'timeout'
-        : options.signal?.aborted
-          ? 'cancelled'
-          : 'failed';
-      result = {
-        card,
-        status,
-        findings: [],
-        ...(status === 'failed'
-          ? { error: error instanceof Error ? error.message : String(error) }
-          : {}),
-      };
-    } finally {
-      cancelTimer();
-      options.signal?.removeEventListener('abort', stop);
-    }
+    const result = await runTask(card, options, timer);
     if (result.status === 'done') done.push(card.specialist);
     yield { type: 'result', result };
   }
