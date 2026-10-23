@@ -82,6 +82,150 @@ const questionsText = (questions: readonly string[]) =>
     ? `Before I review, one question: ${questions[0] ?? ''}`
     : `Before I review, a few questions:\n${questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`;
 
+/** What every step of one request shares. */
+type Step = {
+  deps: ReviewerV2Deps;
+  input: AgentInput;
+  question: string;
+  root: ReturnType<typeof startSpan>;
+};
+
+const inRoot = <T>(step: Step, run: () => T) => context.with(step.root.inside, run);
+const withSignal = (signal: AbortSignal | undefined) => (signal ? { signal } : {});
+
+/** Main (level 1): the scope guard, once for the chain, then a trivial turn (D3). True: answered. */
+async function* answeredByMain(step: Step): AsyncGenerator<ReviewerV2Event, boolean> {
+  const { deps, input, question, root } = step;
+  const previousAnswer = input.messages.findLast((m) => m.role === 'assistant')?.content;
+  const scope = await inRoot(step, () =>
+    (deps.checkScope ?? ((q) => checkScope(deps.main, q)))({
+      question,
+      ...(previousAnswer === undefined ? {} : { previousAnswer }),
+      ...withSignal(input.signal),
+    }),
+  );
+  if (scope === 'out') {
+    yield { type: 'text', delta: OUT_OF_SCOPE_REPLY };
+    return true;
+  }
+  if (!TRIVIAL.test(question.trim())) return false;
+  root.span.setAttribute('designroom.v2.flow', 'trivial');
+  const answer = inRoot(step, () =>
+    deps.main.chat({
+      messages: [
+        { role: 'system', content: MAIN_PROMPT },
+        { role: 'user', content: question },
+      ],
+      ...withSignal(input.signal),
+    }),
+  );
+  for await (const chunk of answer) if (chunk.type === 'text') yield chunk;
+  return true;
+}
+
+type Plan = Awaited<ReturnType<typeof makePlan>>;
+
+/**
+ * Planner (level 2): the board as it reads it (labels quoted), questions only while the chat is
+ * young. Undefined once it asked the user its questions.
+ */
+async function* planned(step: Step): AsyncGenerator<ReviewerV2Event, Plan | undefined> {
+  const { deps, input, question, root } = step;
+  const aliases = createAliases(input.board);
+  const boardText = [inventoryText(input.board, aliases), boardToText(input.board, aliases)]
+    .filter(Boolean)
+    .join('\n\n');
+  const assistantTurns = input.messages.filter((m) => m.role === 'assistant').length;
+  const plan = await inRoot(step, () =>
+    makePlan(deps.planner, {
+      question,
+      boardText,
+      allowQuestions: assistantTurns < 2, // D2: at most 2 rounds of questions
+      ...withSignal(input.signal),
+    }),
+  );
+  root.span.setAttributes({
+    'designroom.v2.flow': plan.flow,
+    'designroom.v2.specialists': plan.specialists.join(','),
+    'designroom.v2.questions': plan.questions.length,
+  });
+  if (plan.questions.length === 0) return plan;
+  yield { type: 'text', delta: questionsText(plan.questions) };
+  return undefined;
+}
+
+/**
+ * The specialists' tasks through the queue (progress for the user, D6), findings merged in code
+ * (D8). Undefined when the plan runs no specialist.
+ */
+async function* specialistFindings(
+  step: Step,
+  plan: Plan,
+  orchestrator: ReturnType<typeof createOrchestrator>,
+): AsyncGenerator<ReviewerV2Event, AgentInput['findings']> {
+  if (plan.flow === 'question' || plan.specialists.length === 0) return undefined;
+  const { input, question } = step;
+  const cards: TaskCard[] = plan.specialists.slice(0, MAX_TASKS).map((specialist) => ({
+    id: `task-${specialist}`,
+    specialist,
+    boxIds: [],
+    question,
+    budgetMs: TASK_TIMEOUT_MS,
+  }));
+  const events = inRoot(step, () =>
+    orchestrator.run({ cards, board: input.board, ...withSignal(input.signal) }),
+  );
+  let findings: AgentInput['findings'] = [];
+  for await (const event of events) {
+    if (event.type === 'progress') yield { type: 'progress', text: event.text };
+    else if (event.type === 'merged') findings = event.findings;
+  }
+  return findings;
+}
+
+type Architect = (critique?: string[]) => AsyncIterable<AgentEvent>;
+
+/** The Critic (AV2-08): the answer is held until its proposal passes; sent back once. */
+async function* criticChecked(
+  step: Step,
+  critic: NonNullable<ReviewerV2Deps['critic']>,
+  architect: Architect,
+): AsyncIterable<ReviewerV2Event> {
+  const { input, question, root } = step;
+  const { board, signal } = input;
+  const first = await collect(architect());
+  // Stopped: nothing more to check or ask — the first answer ends as it ended.
+  if (signal?.aborted) return yield* first;
+  yield { type: 'progress', text: 'Checking the proposal…' };
+  const firstVerdict = await critique(first, question, board, critic, signal);
+  if (firstVerdict.verdict === 'pass') return yield* first;
+  root.span.setAttribute('designroom.v2.critic_revised', true);
+  yield { type: 'progress', text: 'Revising the proposal…' };
+  const second = await collect(architect(firstVerdict.issues));
+  if (signal?.aborted) return yield* second;
+  const secondVerdict = await critique(second, question, board, critic, signal);
+  if (secondVerdict.verdict === 'pass') return yield* second;
+  // Still failing after its one revision: shown, with what the Critic still sees (D9).
+  const done = second.at(-1)?.type === 'done' ? second.pop() : undefined;
+  yield* second;
+  yield { type: 'text', delta: `\n\n(Checked: ${secondVerdict.issues.join(' ')})` };
+  if (done) yield done;
+}
+
+/**
+ * A model failing, or the user's Stop, ends the answer the way V1's does: an error event the user
+ * can act on, then done (review of AV2-05..09). Anything else is a bug: thrown.
+ */
+function* failed(root: Step['root'], error: unknown): Iterable<ReviewerV2Event> {
+  if (!isGatewayError(error)) {
+    markFailed(root.span, error instanceof Error ? error.message : String(error));
+    throw error;
+  }
+  if (error.code !== 'ABORTED') markFailed(root.span, error.message);
+  yield { type: 'error', code: error.code, message: error.message };
+  yield { type: 'done' };
+}
+
 export const createReviewerV2 = (deps: ReviewerV2Deps) => {
   const orchestrator = createOrchestrator({
     specialists: deps.specialists,
@@ -89,144 +233,32 @@ export const createReviewerV2 = (deps: ReviewerV2Deps) => {
   });
 
   async function* review(input: AgentInput): AsyncIterable<ReviewerV2Event> {
-    const { board, messages, signal } = input;
     const root = startSpan('agent v2', 'AGENT', context.active());
+    const question = input.messages.findLast((m) => m.role === 'user')?.content ?? '';
+    const step: Step = { deps, input, question, root };
     try {
-      const question = messages.findLast((m) => m.role === 'user')?.content ?? '';
-      const previousAnswer = messages.findLast((m) => m.role === 'assistant')?.content;
-
-      // Main: the scope guard, once for the whole chain.
-      const scope = await context.with(root.inside, () =>
-        (deps.checkScope ?? ((q) => checkScope(deps.main, q)))({
-          question,
-          ...(previousAnswer === undefined ? {} : { previousAnswer }),
-          ...(signal ? { signal } : {}),
-        }),
-      );
-      if (scope === 'out') {
-        yield { type: 'text', delta: OUT_OF_SCOPE_REPLY };
+      const plan = (yield* answeredByMain(step)) ? undefined : yield* planned(step);
+      if (!plan) {
         yield { type: 'done' };
         return;
       }
-
-      // Main: a trivial turn needs no plan (D3).
-      if (TRIVIAL.test(question.trim())) {
-        root.span.setAttribute('designroom.v2.flow', 'trivial');
-        const answer = context.with(root.inside, () =>
-          deps.main.chat({
-            messages: [
-              { role: 'system', content: MAIN_PROMPT },
-              { role: 'user', content: question },
-            ],
-            ...(signal ? { signal } : {}),
-          }),
-        );
-        for await (const chunk of answer) if (chunk.type === 'text') yield chunk;
-        yield { type: 'done' };
-        return;
-      }
-
-      // Planner: the board as it reads it (labels quoted), questions only while the chat is young.
-      const aliases = createAliases(board);
-      const boardText = [inventoryText(board, aliases), boardToText(board, aliases)]
-        .filter(Boolean)
-        .join('\n\n');
-      const assistantTurns = messages.filter((m) => m.role === 'assistant').length;
-      const plan = await context.with(root.inside, () =>
-        makePlan(deps.planner, {
-          question,
-          boardText,
-          allowQuestions: assistantTurns < 2, // D2: at most 2 rounds of questions
-          ...(signal ? { signal } : {}),
-        }),
-      );
-      root.span.setAttributes({
-        'designroom.v2.flow': plan.flow,
-        'designroom.v2.specialists': plan.specialists.join(','),
-        'designroom.v2.questions': plan.questions.length,
-      });
-      if (plan.questions.length > 0) {
-        yield { type: 'text', delta: questionsText(plan.questions) };
-        yield { type: 'done' };
-        return;
-      }
-
-      // Architect: the specialists through the queue, then the agent explains and proposes.
-      let findings: AgentInput['findings'] = [];
-      const specialistsRun = plan.flow !== 'question' && plan.specialists.length > 0;
-      if (specialistsRun) {
-        const cards: TaskCard[] = plan.specialists.slice(0, MAX_TASKS).map((specialist) => ({
-          id: `task-${specialist}`,
-          specialist,
-          boxIds: [],
-          question,
-          budgetMs: TASK_TIMEOUT_MS,
-        }));
-        const events = context.with(root.inside, () =>
-          orchestrator.run({ cards, board, ...(signal ? { signal } : {}) }),
-        );
-        for await (const event of events) {
-          if (event.type === 'progress') yield { type: 'progress', text: event.text };
-          else if (event.type === 'merged') findings = event.findings;
-        }
-      }
-      const architect = (critique?: string[]) =>
-        context.with(root.inside, () =>
+      // Architect: the specialists through the queue, then AV2-01's agent explains and proposes.
+      const findings = yield* specialistFindings(step, plan, orchestrator);
+      const architect: Architect = (critique) =>
+        inRoot(step, () =>
           deps.architect.run({
             ...input,
-            findings,
+            findings: findings ?? [],
             scoped: true,
             ...(critique ? { critique } : {}),
           }),
         );
       // What happens next, until the answer's first word: "Data ✓" said nothing about the Architect
       // or the Critic at work (review of AV2-05..09).
-      if (specialistsRun) yield { type: 'progress', text: 'Writing the answer…' };
-      if (!deps.critic) {
-        yield* architect();
-        return;
-      }
-
-      // The Critic (AV2-08): the answer is held until its proposal passes; sent back once.
-      const first = await collect(architect());
-      // Stopped: nothing more to check or ask — the first answer ends as it ended.
-      if (signal?.aborted) {
-        yield* first;
-        return;
-      }
-      yield { type: 'progress', text: 'Checking the proposal…' };
-      const firstVerdict = await critique(first, question, board, deps.critic, signal);
-      if (firstVerdict.verdict === 'pass') {
-        yield* first;
-        return;
-      }
-      root.span.setAttribute('designroom.v2.critic_revised', true);
-      yield { type: 'progress', text: 'Revising the proposal…' };
-      const second = await collect(architect(firstVerdict.issues));
-      if (signal?.aborted) {
-        yield* second;
-        return;
-      }
-      const secondVerdict = await critique(second, question, board, deps.critic, signal);
-      if (secondVerdict.verdict === 'pass') {
-        yield* second;
-        return;
-      }
-      // Still failing after its one revision: shown, with what the Critic still sees (D9).
-      const done = second.at(-1)?.type === 'done' ? second.pop() : undefined;
-      yield* second;
-      yield { type: 'text', delta: `\n\n(Checked: ${secondVerdict.issues.join(' ')})` };
-      if (done) yield done;
+      if (findings) yield { type: 'progress', text: 'Writing the answer…' };
+      yield* deps.critic ? criticChecked(step, deps.critic, architect) : architect();
     } catch (error) {
-      // A model failing, or the user's Stop, ends the answer the way V1's does: an error event the
-      // user can act on, then done (review of AV2-05..09). Anything else is a bug: thrown.
-      if (!isGatewayError(error)) {
-        markFailed(root.span, error instanceof Error ? error.message : String(error));
-        throw error;
-      }
-      if (error.code !== 'ABORTED') markFailed(root.span, error.message);
-      yield { type: 'error', code: error.code, message: error.message };
-      yield { type: 'done' };
+      yield* failed(root, error);
     } finally {
       root.span.end();
     }
