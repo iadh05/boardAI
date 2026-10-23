@@ -94,50 +94,93 @@ const toClaude = (messages: readonly LlmMessage[]) => {
     .map((m) => m.content)
     .join('\n\n');
   const wire: Anthropic.MessageParam[] = [];
-  const openUserBlocks = () => {
-    const last = wire.at(-1);
-    return last?.role === 'user' && Array.isArray(last.content) ? last.content : undefined;
-  };
   for (const message of messages) {
-    if (message.role === 'system') continue;
-    if (message.role === 'tool') {
-      const result: Anthropic.ToolResultBlockParam = {
+    if (message.role === 'tool')
+      addToUserTurn(wire, {
         type: 'tool_result',
         tool_use_id: message.toolCallId,
         content: message.content,
-      };
-      const blocks = openUserBlocks();
-      if (blocks) blocks.push(result);
-      else wire.push({ role: 'user', content: [result] });
-    } else if (message.role === 'user') {
-      const blocks = openUserBlocks();
-      if (blocks) blocks.push({ type: 'text', text: message.content });
-      else wire.push({ role: 'user', content: message.content });
-    } else if (message.role === 'assistant') {
-      const calls = message.toolCalls ?? [];
-      // Claude refuses an empty text block: a turn with nothing said is a placeholder.
-      const text = message.content.trim() ? message.content : calls.length ? '' : '(no answer)';
-      // The thinking blocks this turn came with, first and unchanged (preserved thinking).
-      const thinking = calls.flatMap((call) => {
-        const blocks = call.providerData?.claudeBlocks;
-        return Array.isArray(blocks) ? (blocks as Anthropic.ContentBlockParam[]) : [];
       });
-      wire.push({
-        role: 'assistant',
-        content: [
-          ...thinking,
-          ...(text ? [{ type: 'text' as const, text }] : []),
-          ...calls.map((call) => ({
-            type: 'tool_use' as const,
-            id: call.id,
-            name: call.name,
-            input: asObject(call.arguments),
-          })),
-        ],
-      });
-    }
+    else if (message.role === 'user') addToUserTurn(wire, message.content);
+    else if (message.role === 'assistant') wire.push(assistantTurn(message));
   }
   return { system, messages: wire };
+};
+
+/**
+ * A tool result or a user's text, added to the user turn of blocks the wire ends with (the
+ * results of the last turn), or as a turn of its own.
+ */
+const addToUserTurn = (
+  wire: Anthropic.MessageParam[],
+  content: string | Anthropic.ToolResultBlockParam,
+) => {
+  const last = wire.at(-1);
+  const blocks = last?.role === 'user' && Array.isArray(last.content) ? last.content : undefined;
+  const block = typeof content === 'string' ? { type: 'text' as const, text: content } : content;
+  if (blocks) blocks.push(block);
+  else wire.push({ role: 'user', content: typeof content === 'string' ? content : [content] });
+};
+
+/** An assistant turn: its thinking blocks, its text, its tool calls. */
+const assistantTurn = (
+  message: Extract<LlmMessage, { role: 'assistant' }>,
+): Anthropic.MessageParam => {
+  const calls = message.toolCalls ?? [];
+  // Claude refuses an empty text block: a turn with nothing said is a placeholder.
+  const text = message.content.trim() ? message.content : calls.length ? '' : '(no answer)';
+  // The thinking blocks this turn came with, first and unchanged (preserved thinking).
+  const thinking = calls.flatMap((call) => {
+    const blocks = call.providerData?.claudeBlocks;
+    return Array.isArray(blocks) ? (blocks as Anthropic.ContentBlockParam[]) : [];
+  });
+  return {
+    role: 'assistant',
+    content: [
+      ...thinking,
+      ...(text ? [{ type: 'text' as const, text }] : []),
+      ...calls.map((call) => ({
+        type: 'tool_use' as const,
+        id: call.id,
+        name: call.name,
+        input: asObject(call.arguments),
+      })),
+    ],
+  };
+};
+
+type Used = { input: number; output: number };
+
+/** Counts the tokens an event reports; returns the text it adds, if any. */
+const readEvent = (event: Anthropic.MessageStreamEvent, used: Used) => {
+  if (event.type === 'message_start') used.input = event.message.usage.input_tokens;
+  else if (event.type === 'message_delta') used.output = event.usage.output_tokens;
+  else if (event.type === 'content_block_delta' && event.delta.type === 'text_delta')
+    return event.delta.text;
+  return undefined;
+};
+
+/** The finished answer's tool calls; the thinking blocks ride on the first (opaque to the agent). */
+const toolCallChunks = (message: Anthropic.Message): ProviderChunk[] => {
+  if (message.stop_reason === 'refusal')
+    throw new LlmError('BAD_RESPONSE', 'Claude declined to answer this request.');
+  const thinking = message.content.filter(
+    (b) => b.type === 'thinking' || b.type === 'redacted_thinking',
+  );
+  // A tool input cut off at the token limit may parse but be incomplete: not run.
+  const calls =
+    message.stop_reason === 'max_tokens'
+      ? []
+      : message.content.flatMap((b) => (b.type === 'tool_use' ? [b] : []));
+  return calls.map((block, i) => {
+    const call: LlmToolCall = {
+      id: block.id,
+      name: block.name,
+      arguments: block.input,
+      ...(i === 0 && thinking.length ? { providerData: { claudeBlocks: thinking } } : {}),
+    };
+    return { type: 'toolCall', call };
+  });
 };
 
 const toClaudeTool = (tool: ToolDefinition): Anthropic.Tool => ({
@@ -204,7 +247,7 @@ export const createAnthropicProvider = (options: AnthropicOptions): LlmProvider 
       const profile = asked ?? defaultProfile;
       const { price } = profile;
       // Tokens as they are reported, counted in `finally`: a call cut off or abandoned was billed.
-      const used = { input: 0, output: 0 };
+      const used: Used = { input: 0, output: 0 };
       try {
         // No temperature: Haiku and Sonnet 5.5 refuse any but the default (review of AV2-03).
         const stream = client.messages.stream(
@@ -219,32 +262,10 @@ export const createAnthropicProvider = (options: AnthropicOptions): LlmProvider 
           { signal: input.signal },
         );
         for await (const event of stream) {
-          if (event.type === 'message_start') used.input = event.message.usage.input_tokens;
-          else if (event.type === 'message_delta') used.output = event.usage.output_tokens;
-          else if (event.type === 'content_block_delta' && event.delta.type === 'text_delta')
-            yield { type: 'text', delta: event.delta.text };
+          const text = readEvent(event, used);
+          if (text !== undefined) yield { type: 'text', delta: text };
         }
-        const message = await stream.finalMessage();
-        if (message.stop_reason === 'refusal')
-          throw new LlmError('BAD_RESPONSE', 'Claude declined to answer this request.');
-        // Thinking blocks go back with the tool calls they came before (opaque to the agent).
-        const thinking = message.content.filter(
-          (b) => b.type === 'thinking' || b.type === 'redacted_thinking',
-        );
-        // A tool input cut off at the token limit may parse but be incomplete: not run.
-        const calls =
-          message.stop_reason === 'max_tokens'
-            ? []
-            : message.content.flatMap((b) => (b.type === 'tool_use' ? [b] : []));
-        for (const [i, block] of calls.entries()) {
-          const call: LlmToolCall = {
-            id: block.id,
-            name: block.name,
-            arguments: block.input,
-            ...(i === 0 && thinking.length ? { providerData: { claudeBlocks: thinking } } : {}),
-          };
-          yield { type: 'toolCall', call } satisfies ProviderChunk;
-        }
+        yield* toolCallChunks(await stream.finalMessage());
         yield { type: 'tokens', inputTokens: used.input, outputTokens: used.output };
       } catch (error) {
         throw toLlmError(error, input.signal);
