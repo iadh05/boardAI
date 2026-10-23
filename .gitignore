@@ -21,3 +21,6 @@ playwright/.cache/
 
 # Model-call log (LLM_CALL_LOG): boards and conversations, never committed
 llm-calls*.jsonl
+
+# Eval runs (scripts/ladder-eval.ts): boards, chats and model calls, never committed
+eval-runs/
