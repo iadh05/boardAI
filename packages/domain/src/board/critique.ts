@@ -22,46 +22,63 @@ const quoted = (label: string) => escaped(JSON.stringify(label));
 /** New boxes in one proposal (the same cap as the agent's tools). */
 const MAX_NEW_BOXES = 3;
 
+type AddNodeOp = Extract<AgentOp, { op: 'addNode' }>;
+
+/** Existing boxes turned into another kind: a new box should do that. */
+const kindChanges = (board: Board, ops: readonly AgentOp[]): CritiqueIssue[] =>
+  ops.flatMap((op): CritiqueIssue[] => {
+    if (op.op !== 'updateNode' || op.kind === undefined) return [];
+    const before = board.nodes.find((n) => n.id === op.nodeId);
+    if (!before || before.kind === op.kind) return [];
+    return [
+      {
+        check: 'kind-changed',
+        nodeIds: [op.nodeId],
+        problem: `turns the ${before.kind} ${quoted(before.label)} into a ${op.kind}: a new box should do that`,
+      },
+    ];
+  });
+
+/** What's wrong with one new box: no arrow reaches it, or it repeats a one-of-a-kind job. */
+const newBoxIssues = (board: Board, op: AddNodeOp, linked: ReadonlySet<string>) => {
+  const issues: CritiqueIssue[] = [];
+  if (!linked.has(op.nodeId))
+    issues.push({
+      check: 'floating',
+      nodeIds: [op.nodeId],
+      problem: `${quoted(op.label)} has no arrow`,
+    });
+  const job = oneOfAKindJob(op.kind, op.label);
+  const existing = job && board.nodes.find((n) => oneOfAKindJob(n.kind, n.label) === job);
+  if (existing)
+    issues.push({
+      check: 'duplicate',
+      nodeIds: [op.nodeId],
+      problem: `${quoted(op.label)} does the job of ${quoted(existing.label)}, already on the board`,
+    });
+  return issues;
+};
+
+const tooManyBoxes = (added: readonly AddNodeOp[]): CritiqueIssue[] =>
+  added.length > MAX_NEW_BOXES
+    ? [
+        {
+          check: 'too-many-boxes',
+          nodeIds: added.map((op) => op.nodeId),
+          problem: `${added.length} new boxes: a review proposes the few fixes that matter (at most ${MAX_NEW_BOXES})`,
+        },
+      ]
+    : [];
+
 export const critiqueProposal = (board: Board, ops: readonly AgentOp[]): CritiqueIssue[] => {
   const applied = applyOps(board, ops);
   if (!applied.ok)
     return [{ check: 'invalid', nodeIds: [], problem: escaped(applied.error.message) }];
-
   const added = ops.flatMap((op) => (op.op === 'addNode' ? [op] : []));
   const linked = new Set(ops.flatMap((op) => (op.op === 'connect' ? [op.source, op.target] : [])));
-  const issues: CritiqueIssue[] = [];
-
-  for (const op of ops)
-    if (op.op === 'updateNode' && op.kind !== undefined) {
-      const before = board.nodes.find((n) => n.id === op.nodeId);
-      if (before && before.kind !== op.kind)
-        issues.push({
-          check: 'kind-changed',
-          nodeIds: [op.nodeId],
-          problem: `turns the ${before.kind} ${quoted(before.label)} into a ${op.kind}: a new box should do that`,
-        });
-    }
-  for (const op of added) {
-    if (!linked.has(op.nodeId))
-      issues.push({
-        check: 'floating',
-        nodeIds: [op.nodeId],
-        problem: `${quoted(op.label)} has no arrow`,
-      });
-    const job = oneOfAKindJob(op.kind, op.label);
-    const existing = job && board.nodes.find((n) => oneOfAKindJob(n.kind, n.label) === job);
-    if (existing)
-      issues.push({
-        check: 'duplicate',
-        nodeIds: [op.nodeId],
-        problem: `${quoted(op.label)} does the job of ${quoted(existing.label)}, already on the board`,
-      });
-  }
-  if (added.length > MAX_NEW_BOXES)
-    issues.push({
-      check: 'too-many-boxes',
-      nodeIds: added.map((op) => op.nodeId),
-      problem: `${added.length} new boxes: a review proposes the few fixes that matter (at most ${MAX_NEW_BOXES})`,
-    });
-  return issues;
+  return [
+    ...kindChanges(board, ops),
+    ...added.flatMap((op) => newBoxIssues(board, op, linked)),
+    ...tooManyBoxes(added),
+  ];
 };
