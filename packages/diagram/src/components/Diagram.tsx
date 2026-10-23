@@ -1,6 +1,4 @@
 import {
-  applyEdgeChanges,
-  applyNodeChanges,
   Background,
   BackgroundVariant,
   ConnectionMode,
@@ -8,30 +6,24 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
-  useReactFlow,
-  type Edge,
-  type EdgeChange,
   type EdgeTypes,
-  type NodeChange,
   type NodeTypes,
 } from '@xyflow/react';
-import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { canvasChanges, commitMoves, mergeEdges, mergeNodes } from '../flow/changes.ts';
-import { createZoneDrag, type DragItem } from '../flow/zoneDrag.ts';
-import { toReactFlow, type BoxNode, type FlowNode } from '../flow/toReactFlow.ts';
-import type { DiagramEdge, DiagramNode, DiagramPosition, DiagramZone } from '../types.ts';
-import { NODE_SIZE } from './nodeSize.ts';
-import { ZoneContext } from './ZoneContext.ts';
-import { ZoneView } from './ZoneView.tsx';
-import { BoxNodeView } from './BoxNodeView.tsx';
+import { useState, type ReactNode } from 'react';
 import type { DiagramRouter } from '../router/types.ts';
+import type { DiagramEdge, DiagramNode, DiagramPosition, DiagramZone } from '../types.ts';
+import { BoxNodeView } from './BoxNodeView.tsx';
 import { DiagramContext } from './DiagramContext.ts';
 import { EdgeEditContext } from './EdgeEditContext.ts';
 import { RoutedEdge } from './RoutedEdge.tsx';
 import { RoutesContext } from './RoutesContext.ts';
+import { useCanvasEvents } from './useCanvasEvents.ts';
+import { useCanvasNodes } from './useCanvasNodes.ts';
 import { useEditContexts } from './useEditContexts.ts';
 import { useFitToContent } from './useFitToContent.ts';
 import { useRoutes } from './useRoutes.ts';
+import { ZoneContext } from './ZoneContext.ts';
+import { ZoneView } from './ZoneView.tsx';
 import '../styles.css';
 
 export type DiagramProps = {
@@ -124,135 +116,42 @@ export function Diagram(props: DiagramProps) {
   );
 }
 
-function DiagramCanvas({
-  nodes: nodesProp,
-  edges: edgesProp,
-  ariaLabel = 'Diagram',
-  editingNodeId = null,
-  maxLabelLength = 100,
-  canConnect,
-  onConnect,
-  onNodeMove,
-  onDelete,
-  onEditStart,
-  onLabelCommit,
-  onEditEnd,
-  editingEdgeId = null,
-  maxEdgeLabelLength = 40,
-  dashedLabel = 'Dashed',
-  onEdgeEditStart,
-  onEdgeLabelCommit,
-  onEdgeDashedChange,
-  onEdgeEditEnd,
-  zones: zonesProp = NO_ZONES,
-  editingZoneId = null,
-  minZoneSize = DEFAULT_MIN_ZONE,
-  onZoneMove,
-  onZoneResize,
-  onZoneEditStart,
-  onZoneLabelCommit,
-  onZoneEditEnd,
-  onPointerMove,
-  fitKey,
-  router,
-  snapGrid = 20,
-  minimap = true,
-  children,
-}: DiagramProps) {
+/** The editing contexts' inputs, with the defaults. */
+const editOptions = (p: DiagramProps) => ({
+  editingNodeId: p.editingNodeId ?? null,
+  maxLabelLength: p.maxLabelLength ?? 100,
+  editingEdgeId: p.editingEdgeId ?? null,
+  maxEdgeLabelLength: p.maxEdgeLabelLength ?? 40,
+  dashedLabel: p.dashedLabel ?? 'Dashed',
+  editingZoneId: p.editingZoneId ?? null,
+  minZoneSize: p.minZoneSize ?? DEFAULT_MIN_ZONE,
+  onZoneLabelCommit: p.onZoneLabelCommit,
+  onZoneEditEnd: p.onZoneEditEnd,
+  onZoneResize: p.onZoneResize,
+  onLabelCommit: p.onLabelCommit,
+  onEditEnd: p.onEditEnd,
+  onEdgeLabelCommit: p.onEdgeLabelCommit,
+  onEdgeDashedChange: p.onEdgeDashedChange,
+  onEdgeEditEnd: p.onEdgeEditEnd,
+});
+
+function DiagramCanvas(props: DiagramProps) {
+  const { nodes: nodesProp, edges: edgesProp, zones = NO_ZONES, fitKey, router, children } = props;
+  const { ariaLabel = 'Diagram', snapGrid = 20, minimap = true } = props;
   // Decided once, at mount: did the diagram open with something to look at?
-  const [fitOnOpen] = useState(() => nodesProp.length > 0 || zonesProp.length > 0);
-  // useMemo: keeps the mapped arrays stable while the props are, so the merge below runs only
-  // when the app actually changed something.
-  const flow = useMemo(
-    () => toReactFlow(nodesProp, edgesProp, zonesProp),
-    [nodesProp, edgesProp, zonesProp],
-  );
-
-  // Canvas-local copy: React Flow updates it during drags, selection and measuring; the props
-  // are merged in when they change ("adjust state when a prop changes" — React docs).
-  const [nodes, setNodes] = useState<FlowNode[]>(flow.nodes);
-  const [edges, setEdges] = useState<Edge[]>(flow.edges);
-  const [mergedFrom, setMergedFrom] = useState(flow);
-  if (mergedFrom !== flow) {
-    setMergedFrom(flow);
-    setNodes((current) => mergeNodes(flow.nodes, current));
-    setEdges((current) => mergeEdges(flow.edges, current));
-  }
-
-  // From the live positions, so arrows follow a node while it's dragged.
-  // Zones are not obstacles: arrows may cross them.
-  const boxes = useMemo(() => nodes.filter((n): n is BoxNode => n.type === 'box'), [nodes]);
-  const routes = useRoutes(boxes, edges, router);
-
-  // While a zone is dragged, what was inside it when the drag started moves along, live.
-  const [zoneDrag] = useState(createZoneDrag);
-  const toDragItem = (n: FlowNode): DragItem => ({
-    id: n.id,
-    zone: n.type === 'zone',
-    x: n.position.x,
-    y: n.position.y,
-    width: n.measured?.width ?? n.width ?? NODE_SIZE.width,
-    height: n.measured?.height ?? n.height ?? NODE_SIZE.height,
+  const [fitOnOpen] = useState(() => nodesProp.length > 0 || zones.length > 0);
+  const canvas = useCanvasNodes({
+    nodes: nodesProp,
+    edges: edgesProp,
+    zones,
+    onNodeMove: props.onNodeMove,
+    onZoneMove: props.onZoneMove,
   });
-
-  const onNodesChange = (changes: NodeChange<FlowNode>[]) => {
-    const moves = changes.flatMap((c) => (c.type === 'position' ? [c] : []));
-    const { carried, ended } = zoneDrag.step(moves, nodes.map(toDragItem));
-    const carriedChanges = carried.map((c): NodeChange<FlowNode> => ({
-      type: 'position',
-      id: c.id,
-      position: c.position,
-    }));
-    setNodes((current) =>
-      applyNodeChanges([...canvasChanges(changes), ...carriedChanges], current),
-    );
-    for (const zone of ended) onZoneMove?.(zone.id, zone.position);
-    const isZone = (id: string) => zonesProp.some((z) => z.id === id);
-    if (onNodeMove)
-      commitMoves(
-        moves.filter((c) => !isZone(c.id)),
-        onNodeMove,
-      );
-  };
-  const onEdgesChange = (changes: EdgeChange[]) => {
-    setEdges((current) => applyEdgeChanges(canvasChanges(changes), current));
-  };
-
-  const isEditable = (id: string) => nodesProp.some((n) => n.id === id && !n.ghost);
-  const isZoneId = (id: string) => zonesProp.some((z) => z.id === id);
-  const isEditableEdge = (id: string) => edgesProp.some((e) => e.id === id && !e.ghost);
-  // React Flow's wrapper around each node or edge is what gets focus; Enter bubbles up to here.
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const { target } = event;
-    if (event.key !== 'Enter' || !(target instanceof Element)) return;
-    const id = target.getAttribute('data-id');
-    if (!id) return;
-    if (target.classList.contains('react-flow__node-box') && isEditable(id)) onEditStart?.(id);
-    if (target.classList.contains('react-flow__node-zone') && isZoneId(id)) onZoneEditStart?.(id);
-    if (target.classList.contains('react-flow__edge') && isEditableEdge(id)) onEdgeEditStart?.(id);
-  };
-
-  const { context, edgeContext, zoneContext } = useEditContexts({
-    editingNodeId,
-    maxLabelLength,
-    editingEdgeId,
-    maxEdgeLabelLength,
-    dashedLabel,
-    editingZoneId,
-    minZoneSize,
-    onZoneLabelCommit,
-    onZoneEditEnd,
-    onZoneResize,
-    onLabelCommit,
-    onEditEnd,
-    onEdgeLabelCommit,
-    onEdgeDashedChange,
-    onEdgeEditEnd,
-  });
-
-  const { screenToFlowPosition } = useReactFlow();
-  const hasContent = nodesProp.length > 0 || zonesProp.length > 0;
+  const routes = useRoutes(canvas.boxes, canvas.edges, router);
+  const { context, edgeContext, zoneContext } = useEditContexts(editOptions(props));
+  const hasContent = nodesProp.length > 0 || zones.length > 0;
   const fitAroundPanels = useFitToContent(fitKey, hasContent, fitOnOpen, FIT_VIEW);
+  const events = useCanvasEvents(props, zones);
 
   return (
     <DiagramContext value={context}>
@@ -261,31 +160,15 @@ function DiagramCanvas({
           <RoutesContext value={routes}>
             <ReactFlow
               className="dr-diagram"
-              nodes={nodes}
-              edges={edges}
+              nodes={canvas.nodes}
+              edges={canvas.edges}
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
+              onNodesChange={canvas.onNodesChange}
+              onEdgesChange={canvas.onEdgesChange}
               // Any side can start or end an arrow (handles on 4 sides).
               connectionMode={ConnectionMode.Loose}
-              isValidConnection={({ source, target }) => canConnect?.(source, target) ?? true}
-              onConnect={({ source, target }) => onConnect?.(source, target)}
-              onDelete={({ nodes: gone, edges: goneEdges }) =>
-                onDelete?.(
-                  gone.filter((n) => n.type !== 'zone').map((n) => n.id),
-                  goneEdges.map((e) => e.id),
-                  gone.filter((n) => n.type === 'zone').map((n) => n.id),
-                )
-              }
-              onNodeDoubleClick={(_, node) => {
-                if (node.type === 'zone') onZoneEditStart?.(node.id);
-                else if (isEditable(node.id)) onEditStart?.(node.id);
-              }}
-              onEdgeDoubleClick={(_, edge) => {
-                if (isEditableEdge(edge.id)) onEdgeEditStart?.(edge.id);
-              }}
-              onKeyDown={onKeyDown}
+              {...events}
               deleteKeyCode={DELETE_KEYS}
               snapToGrid={snapGrid !== null}
               snapGrid={snapGrid === null ? undefined : [snapGrid, snapGrid]}
@@ -294,12 +177,6 @@ function DiagramCanvas({
               // places the first box where the user can see it.
               aria-label={ariaLabel}
               minZoom={MIN_ZOOM}
-              onPointerMove={
-                onPointerMove &&
-                ((event) =>
-                  onPointerMove(screenToFlowPosition({ x: event.clientX, y: event.clientY })))
-              }
-              onPointerLeave={onPointerMove && (() => onPointerMove(null))}
             >
               {/* Panels first: they come before the zoom controls when tabbing. */}
               {children}
