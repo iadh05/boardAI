@@ -224,115 +224,157 @@ const createToolCallCollector = () => {
 
 const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
 
-export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions): LlmProvider => {
-  const fetchFn = options.fetch ?? fetch;
-  // A loop, not /\/+$/: that regex is slow on long runs of "/" (CodeQL js/polynomial-redos).
-  let base = options.baseUrl;
-  while (base.endsWith('/')) base = base.slice(0, -1);
-  const url = `${base}/chat/completions`;
+type StreamChunk = z.infer<typeof StreamChunkSchema>;
+type ToolCallCollector = ReturnType<typeof createToolCallCollector>;
+
+/** A failed response as ours: a 429 or a 5xx may work a moment later, anything else won't. */
+const responseError = async (response: Response) => {
+  const failure = await providerError(response);
+  const transient = response.status === 429 || response.status >= 500;
+  const retryAfterMs = response.status === 429 ? retryAfterOf(response, failure) : undefined;
+  return new LlmError(
+    transient ? 'UNAVAILABLE' : 'BAD_REQUEST',
+    `The model answered ${response.status}: ${failure.message}`,
+    retryAfterMs === undefined ? undefined : { retryAfterMs },
+  );
+};
+
+const unreadable = (cause: unknown) =>
+  new LlmError('BAD_RESPONSE', 'The model sent a chunk we cannot read.', { cause });
+
+/**
+ * One SSE event: a chunk of the answer, or the calls Groq refused (the stream ends there; the
+ * model hears why from our check next round). Any other failure the server reports is thrown.
+ */
+const parseEvent = (data: string): StreamChunk | { refused: LlmToolCall[] } => {
+  let json: unknown;
+  try {
+    json = JSON.parse(data);
+  } catch (error) {
+    throw unreadable(error);
+  }
+  const failed = StreamErrorSchema.safeParse(json);
+  if (failed.success && failed.data.error.code === 'tool_use_failed')
+    return { refused: refusedCalls(failed.data.error) };
+  if (failed.success)
+    throw new LlmError('UNAVAILABLE', `The model failed: ${failed.data.error.message}`);
+  const parsed = StreamChunkSchema.safeParse(json);
+  if (!parsed.success) throw unreadable(parsed.error);
+  return parsed.data;
+};
+
+/** A chunk's text, and its tool calls once their choice is finished. */
+function* chunkEvents(chunk: StreamChunk, toolCalls: ToolCallCollector): Iterable<ProviderChunk> {
+  for (const choice of chunk.choices) {
+    // `delta.reasoning` (thinking) is deliberately not read: it is never the answer.
+    if (choice.delta?.content) yield { type: 'text', delta: choice.delta.content };
+    for (const delta of choice.delta?.tool_calls ?? []) toolCalls.add(delta);
+    if (choice.finish_reason) yield* toolCalls.flush();
+  }
+}
+
+/** A failure while reading the answer as ours: already ours, cancelled, or the connection. */
+const streamError = (error: unknown, signal: AbortSignal) => {
+  if (error instanceof LlmError) return error;
+  if (isAbort(error) || signal.aborted) return cancelledError(error);
+  return new LlmError('UNAVAILABLE', 'The connection to the model dropped mid-answer.', {
+    cause: error,
+  });
+};
+
+/** The answer's SSE stream as ProviderChunks, the usage last. */
+async function* readStream(
+  body: ReadableStream<Uint8Array>,
+  signal: AbortSignal,
+): AsyncIterable<ProviderChunk> {
+  const toolCalls = createToolCallCollector();
+  let usage: StreamChunk['usage'];
+  try {
+    for await (const data of readSseData(body)) {
+      if (data === '[DONE]') break;
+      const event = parseEvent(data);
+      if ('refused' in event) {
+        for (const call of event.refused) yield { type: 'toolCall', call };
+        break;
+      }
+      yield* chunkEvents(event, toolCalls);
+      // Kept, reported once at the end: Gemini repeats the running total on every chunk.
+      if (event.usage) usage = event.usage;
+    }
+  } catch (error) {
+    throw streamError(error, signal);
+  }
+  yield* toolCalls.flush();
+  if (usage)
+    yield {
+      type: 'tokens',
+      inputTokens: usage.prompt_tokens,
+      outputTokens: usage.completion_tokens,
+    };
+}
+
+/** The `reasoning_effort` sent: the model's own, else "none" unless thinking stays on. */
+const reasoningOf = (options: OpenAiCompatibleOptions) => {
   const effort =
     options.reasoningEffort !== undefined
       ? options.reasoningEffort
       : options.disableThinking === false
         ? null
         : 'none';
-  const reasoning = effort === null ? {} : { reasoning_effort: effort };
+  return effort === null ? {} : { reasoning_effort: effort };
+};
+
+type StreamInput = Parameters<LlmProvider['stream']>[0];
+
+const requestBody = (options: OpenAiCompatibleOptions, input: StreamInput) => ({
+  model: input.model ?? options.model,
+  stream: true,
+  stream_options: { include_usage: true },
+  ...reasoningOf(options),
+  max_tokens: options.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+  ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
+  messages: input.messages.map(toWireMessage),
+  ...(input.tools?.length ? { tools: input.tools.map(toWireTool) } : {}),
+});
+
+export const createOpenAiCompatibleProvider = (options: OpenAiCompatibleOptions): LlmProvider => {
+  const fetchFn = options.fetch ?? fetch;
+  // A loop, not /\/+$/: that regex is slow on long runs of "/" (CodeQL js/polynomial-redos).
+  let base = options.baseUrl;
+  while (base.endsWith('/')) base = base.slice(0, -1);
+  const url = `${base}/chat/completions`;
+
+  /** Sends the request; a network failure or a refused request becomes an LlmError. */
+  const post = async (input: StreamInput) => {
+    const body = requestBody(options, input);
+    let response: Response;
+    try {
+      response = await fetchFn(url, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(options.apiKey ? { authorization: `Bearer ${options.apiKey}` } : {}),
+        },
+        body: JSON.stringify(body),
+        signal: input.signal,
+      });
+    } catch (error) {
+      if (isAbort(error) || input.signal.aborted) throw cancelledError(error);
+      throw new LlmError(
+        'UNAVAILABLE',
+        `Can't reach the model at ${options.baseUrl} — is Ollama running?`,
+        { cause: error },
+      );
+    }
+    if (response.ok && !response.body)
+      throw new LlmError('BAD_RESPONSE', `The model answered ${response.status} with no body.`);
+    if (!response.ok || !response.body) throw await responseError(response);
+    return response.body;
+  };
 
   return {
     async *stream(input) {
-      const body = {
-        model: input.model ?? options.model,
-        stream: true,
-        stream_options: { include_usage: true },
-        ...reasoning,
-        max_tokens: options.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
-        ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
-        messages: input.messages.map(toWireMessage),
-        ...(input.tools?.length ? { tools: input.tools.map(toWireTool) } : {}),
-      };
-
-      let response: Response;
-      try {
-        response = await fetchFn(url, {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            ...(options.apiKey ? { authorization: `Bearer ${options.apiKey}` } : {}),
-          },
-          body: JSON.stringify(body),
-          signal: input.signal,
-        });
-      } catch (error) {
-        if (isAbort(error) || input.signal.aborted) throw cancelledError(error);
-        throw new LlmError(
-          'UNAVAILABLE',
-          `Can't reach the model at ${options.baseUrl} — is Ollama running?`,
-          { cause: error },
-        );
-      }
-
-      if (response.ok && !response.body)
-        throw new LlmError('BAD_RESPONSE', `The model answered ${response.status} with no body.`);
-      if (!response.ok || !response.body) {
-        const failure = await providerError(response);
-        const transient = response.status === 429 || response.status >= 500;
-        const retryAfterMs = response.status === 429 ? retryAfterOf(response, failure) : undefined;
-        throw new LlmError(
-          transient ? 'UNAVAILABLE' : 'BAD_REQUEST',
-          `The model answered ${response.status}: ${failure.message}`,
-          retryAfterMs === undefined ? undefined : { retryAfterMs },
-        );
-      }
-
-      const toolCalls = createToolCallCollector();
-      let usage: z.infer<typeof StreamChunkSchema>['usage'];
-      try {
-        for await (const data of readSseData(response.body)) {
-          if (data === '[DONE]') break;
-          let json: unknown;
-          try {
-            json = JSON.parse(data);
-          } catch (error) {
-            throw new LlmError('BAD_RESPONSE', 'The model sent a chunk we cannot read.', {
-              cause: error,
-            });
-          }
-          const failed = StreamErrorSchema.safeParse(json);
-          if (failed.success && failed.data.error.code === 'tool_use_failed') {
-            for (const call of refusedCalls(failed.data.error)) yield { type: 'toolCall', call };
-            break; // the stream ends here; the model hears why from our check next round
-          }
-          if (failed.success)
-            throw new LlmError('UNAVAILABLE', `The model failed: ${failed.data.error.message}`);
-          const parsed = StreamChunkSchema.safeParse(json);
-          if (!parsed.success)
-            throw new LlmError('BAD_RESPONSE', 'The model sent a chunk we cannot read.', {
-              cause: parsed.error,
-            });
-          const chunk = parsed.data;
-          for (const choice of chunk.choices) {
-            // `delta.reasoning` (thinking) is deliberately not read: it is never the answer.
-            if (choice.delta?.content) yield { type: 'text', delta: choice.delta.content };
-            for (const delta of choice.delta?.tool_calls ?? []) toolCalls.add(delta);
-            if (choice.finish_reason) yield* toolCalls.flush();
-          }
-          // Kept, reported once at the end: Gemini repeats the running total on every chunk.
-          if (chunk.usage) usage = chunk.usage;
-        }
-      } catch (error) {
-        if (error instanceof LlmError) throw error;
-        if (isAbort(error) || input.signal.aborted) throw cancelledError(error);
-        throw new LlmError('UNAVAILABLE', 'The connection to the model dropped mid-answer.', {
-          cause: error,
-        });
-      }
-      yield* toolCalls.flush();
-      if (usage)
-        yield {
-          type: 'tokens',
-          inputTokens: usage.prompt_tokens,
-          outputTokens: usage.completion_tokens,
-        };
+      yield* readStream(await post(input), input.signal);
     },
   };
 };

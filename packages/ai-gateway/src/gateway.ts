@@ -78,43 +78,79 @@ async function* withIdleTimeout<T>(source: AsyncIterable<T>, ms: number, call: A
   }
 }
 
+/**
+ * One attempt: the provider's stream under the idle timeout, the caller's signal forwarded. Yields
+ * the answer's chunks (`onAnswer` before each) and returns the tokens the provider reported.
+ */
+async function* attemptOnce(
+  options: GatewayOptions,
+  input: ChatInput,
+  onAnswer: () => void,
+): AsyncGenerator<LlmChunk, { inputTokens: number; outputTokens: number }> {
+  // One controller per attempt: aborted by the caller, the timeout, or when we stop.
+  const call = new AbortController();
+  const forward = () => call.abort();
+  input.signal?.addEventListener('abort', forward, { once: true });
+  const tokens = { inputTokens: 0, outputTokens: 0 };
+  try {
+    const stream = options.provider.stream({ ...input, signal: call.signal });
+    for await (const chunk of withIdleTimeout(stream, options.timeoutMs, call)) {
+      if (chunk.type === 'tokens') {
+        tokens.inputTokens += chunk.inputTokens;
+        tokens.outputTokens += chunk.outputTokens;
+        continue;
+      }
+      onAnswer();
+      yield chunk;
+    }
+    return tokens;
+  } finally {
+    call.abort(); // stopped early, failed or done: the model has nothing left to do
+    input.signal?.removeEventListener('abort', forward);
+  }
+}
+
+type RetryRules = { retries: number; backoffMs: number; maxRetryWaitMs: number };
+
+/**
+ * How long to wait before attempt `attempt + 1` (the backoff, or the wait a rate limit asks for);
+ * undefined when the error goes to the caller. Retried only before the answer started: once text
+ * reached the user, a retry repeats it.
+ */
+const retryWait = (error: unknown, attempt: number, answered: boolean, rules: RetryRules) => {
+  if (!(error instanceof LlmError) || !error.transient || answered || attempt > rules.retries)
+    return undefined;
+  const waitMs = Math.max(rules.backoffMs * 2 ** (attempt - 1), error.retryAfterMs ?? 0);
+  return waitMs > rules.maxRetryWaitMs ? undefined : waitMs;
+};
+
 export const createGateway = (options: GatewayOptions): AiGateway => {
   const now = options.now ?? (() => performance.now());
   const sleep = options.sleep ?? sleepUnlessAborted;
-  const backoffMs = options.backoffMs ?? 500;
-  const maxRetryWaitMs = options.maxRetryWaitMs ?? 20_000;
+  const rules: RetryRules = {
+    retries: options.retries,
+    backoffMs: options.backoffMs ?? 500,
+    maxRetryWaitMs: options.maxRetryWaitMs ?? 20_000,
+  };
   const metered = createLlmMetrics();
 
   /** The call itself: retries, timeout, cancellation, usage. */
   async function* call(input: ChatInput): AsyncIterable<LlmChunk> {
     const started = now();
-    let firstTokenAt: number | null = null;
-    let waitMs: number | undefined; // before the next attempt: the backoff, or a rate limit's wait
-
+    const timing: { firstTokenAt: number | null } = { firstTokenAt: null };
+    const onAnswer = () => {
+      timing.firstTokenAt ??= now();
+    };
     for (let attempt = 1; ; attempt++) {
       if (input.signal?.aborted) throw cancelledError();
-      // One controller per attempt: aborted by the caller, the timeout, or when we stop.
-      const call = new AbortController();
-      const forward = () => call.abort();
-      input.signal?.addEventListener('abort', forward, { once: true });
-      let inputTokens = 0;
-      let outputTokens = 0;
+      let waitMs: number | undefined;
       try {
-        const stream = options.provider.stream({ ...input, signal: call.signal });
-        for await (const chunk of withIdleTimeout(stream, options.timeoutMs, call)) {
-          if (chunk.type === 'tokens') {
-            inputTokens += chunk.inputTokens;
-            outputTokens += chunk.outputTokens;
-            continue;
-          }
-          firstTokenAt ??= now();
-          yield chunk;
-        }
+        const tokens = yield* attemptOnce(options, input, onAnswer);
+        const { firstTokenAt } = timing;
         yield {
           type: 'usage',
           usage: {
-            inputTokens,
-            outputTokens,
+            ...tokens,
             latencyMs: now() - started,
             timeToFirstTokenMs: firstTokenAt === null ? null : firstTokenAt - started,
             attempts: attempt,
@@ -123,18 +159,10 @@ export const createGateway = (options: GatewayOptions): AiGateway => {
         return;
       } catch (error) {
         if (input.signal?.aborted) throw cancelledError(error);
-        // Retry only before the answer started: once text reached the user, a retry repeats it.
-        const answered = firstTokenAt !== null;
-        const retry =
-          error instanceof LlmError && error.transient && !answered && attempt <= options.retries;
-        if (!retry) throw error;
-        waitMs = Math.max(backoffMs * 2 ** (attempt - 1), error.retryAfterMs ?? 0);
-        if (waitMs > maxRetryWaitMs) throw error;
-      } finally {
-        call.abort(); // stopped early, failed or done: the model has nothing left to do
-        input.signal?.removeEventListener('abort', forward);
+        waitMs = retryWait(error, attempt, timing.firstTokenAt !== null, rules);
+        if (waitMs === undefined) throw error;
       }
-      await sleep(waitMs ?? backoffMs, input.signal);
+      await sleep(waitMs, input.signal);
     }
   }
 
