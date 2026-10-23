@@ -70,37 +70,45 @@ export const readBoard = (doc: Y.Doc): Board => {
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
+const fieldsOf = (item: Item) => Object.entries(item).filter(([key]) => key !== 'id');
+
+/** The order after the last one in use: where items added now go. */
+const nextOrder = (map: Y.Map<unknown>) => {
+  let next = 0;
+  map.forEach((value) => {
+    const order: unknown = value instanceof Y.Map ? value.get(ORDER) : undefined;
+    if (typeof order === 'number') next = Math.max(next, order + 1);
+  });
+  return next;
+};
+
+/** Writes a new item: attached first, so the fields set after join the same transaction. */
+const createItem = (map: Y.Map<unknown>, item: Item, order: number) => {
+  const created = new Y.Map<unknown>();
+  map.set(item.id, created);
+  created.set(ORDER, order);
+  for (const [key, value] of fieldsOf(item)) created.set(key, value);
+};
+
+/** Writes only the fields that changed since `previous`; a cleared optional field is deleted. */
+const updateItem = (existing: Y.Map<unknown>, previous: Record<string, unknown>, item: Item) => {
+  for (const [key, value] of fieldsOf(item))
+    if (!same(previous[key], value)) existing.set(key, value);
+  for (const key of Object.keys(previous)) if (key !== 'id' && !(key in item)) existing.delete(key);
+};
+
 /** Writes the changes from `before` to `after` into one map: added, removed, changed fields. */
 const writeItems = (map: Y.Map<unknown>, before: readonly Item[], after: readonly Item[]) => {
   const old = new Map(before.map((item) => [item.id, item]));
   const kept = new Set(after.map((item) => item.id));
   for (const item of before) if (!kept.has(item.id)) map.delete(item.id);
 
-  let next = 0; // after the last order in use, for items added now
-  map.forEach((value) => {
-    const order: unknown = value instanceof Y.Map ? value.get(ORDER) : undefined;
-    if (typeof order === 'number') next = Math.max(next, order + 1);
-  });
-
+  let next = nextOrder(map);
   for (const item of after) {
-    const fields = Object.entries(item).filter(([key]) => key !== 'id');
     const existing = map.get(item.id);
-    if (!(existing instanceof Y.Map)) {
-      // Known before but gone from the doc: someone else deleted it. Don't bring it back.
-      if (old.has(item.id)) continue;
-      const created = new Y.Map<unknown>();
-      map.set(item.id, created); // attached first: fields set after join the same transaction
-      created.set(ORDER, next++);
-      for (const [key, value] of fields) created.set(key, value);
-      continue;
-    }
-    const previous = (old.get(item.id) ?? {}) as Record<string, unknown>;
-    for (const [key, value] of fields) {
-      if (!same(previous[key], value)) existing.set(key, value);
-    }
-    for (const key of Object.keys(previous)) {
-      if (key !== 'id' && !(key in item)) existing.delete(key); // an optional field cleared
-    }
+    if (existing instanceof Y.Map) updateItem(existing, old.get(item.id) ?? {}, item);
+    // Known before but gone from the doc: someone else deleted it. Don't bring it back.
+    else if (!old.has(item.id)) createItem(map, item, next++);
   }
 };
 
