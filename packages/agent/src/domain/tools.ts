@@ -191,69 +191,87 @@ const nodeLine = (board: Board, id: string, aliases: Aliases) => {
     : '?';
 };
 
-const plan = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
-  const resolve = (ref: string): string | undefined => draft.aliases.nodeId(ref);
-  const unknown = (ref: string) =>
-    // A range, not the full list: on a big board the list would cost hundreds of tokens per mistake.
-    refuse(`No node "${ref}". Node ids go from n1 to n${draft.aliases.nodeAliases().length}.`);
+/** A node reference the model used that isn't on the board. */
+const unknownNode = (draft: Draft, ref: string) =>
+  // A range, not the full list: on a big board the list would cost hundreds of tokens per mistake.
+  refuse(`No node "${ref}". Node ids go from n1 to n${draft.aliases.nodeAliases().length}.`);
 
+/** Why a new box can't be added, or nothing: the box cap, then the one-of-a-kind check. */
+const addNodeRefusal = (draft: Draft, kind: NodeKind, label: string): Plan | undefined => {
+  // The prompt asks for "one to three fixes"; measured, the model sometimes added 9. In code, so it
+  // holds: the model is told why, and can still connect what it added.
+  const added = draft.ops.filter((op) => op.op === 'addNode').length;
+  if (added >= MAX_NEW_BOXES)
+    return refuse(
+      `A proposal has at most ${MAX_NEW_BOXES} new boxes, and this one has them. Keep the most important fixes: connect the boxes you added, then stop.`,
+    );
+  // The prompt says "never a second queue, cache or load balancer"; measured, the model did it
+  // anyway. In code, with what to do instead (M1-29).
+  const existing = alreadyThere(draft.board, kind, label);
+  if (existing)
+    return refuse(
+      `There is already a ${oneOfAKindJob(existing.kind, existing.label) ?? existing.kind}: ${nodeLine(draft.board, existing.id, draft.aliases)}. Do not add a second one: connect to it, or rename it with update_node to show it does more (e.g. "Redis (cluster, 3 nodes)").`,
+    );
+  return undefined;
+};
+
+const planAddNode = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
+  const args = AddNodeArgs.safeParse(call.arguments);
+  if (!args.success) return refuse(argsError(call.name, args.error));
+  const { kind, label, near: nearRef } = args.data;
+  const refused = addNodeRefusal(draft, kind, label);
+  if (refused) return refused;
+  const near = nearRef === undefined ? undefined : draft.aliases.nodeId(nearRef);
+  if (nearRef !== undefined && near === undefined) return unknownNode(draft, nearRef);
+  const nodeId = deps.newId();
+  const aliases = draft.aliases.withNode(nodeId);
+  const op: AgentOp = { op: 'addNode', nodeId, kind, label };
+  if (near !== undefined) op.near = near;
+  return {
+    ok: true,
+    planned: { op, aliases, describe: (b) => `added ${nodeLine(b, nodeId, aliases)}` },
+  };
+};
+
+const planUpdateNode = (draft: Draft, call: ToolCallInput): Plan => {
+  const args = UpdateNodeArgs.safeParse(call.arguments);
+  if (!args.success) return refuse(argsError(call.name, args.error));
+  const nodeId = draft.aliases.nodeId(args.data.nodeId);
+  if (nodeId === undefined) return unknownNode(draft, args.data.nodeId);
+  const op: AgentOp = { op: 'updateNode', nodeId };
+  if (args.data.label !== undefined) op.label = args.data.label;
+  if (args.data.kind !== undefined) op.kind = args.data.kind;
+  const { aliases } = draft;
+  return {
+    ok: true,
+    planned: { op, aliases, describe: (b) => `updated ${nodeLine(b, nodeId, aliases)}` },
+  };
+};
+
+const planConnect = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
+  const args = ConnectArgs.safeParse(call.arguments);
+  if (!args.success) return refuse(argsError(call.name, args.error));
+  const source = draft.aliases.nodeId(args.data.source);
+  if (source === undefined) return unknownNode(draft, args.data.source);
+  const target = draft.aliases.nodeId(args.data.target);
+  if (target === undefined) return unknownNode(draft, args.data.target);
+  const op: AgentOp = { op: 'connect', edgeId: deps.newId(), source, target };
+  if (args.data.label !== undefined) op.label = args.data.label;
+  if (args.data.mode !== undefined) op.mode = args.data.mode;
+  const { aliases } = draft;
+  const reply = `connected ${args.data.source} -> ${args.data.target}`;
+  return { ok: true, planned: { op, aliases, describe: () => reply } };
+};
+
+/** One tool call, checked and turned into the op it would add — not applied yet. */
+const plan = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
   switch (call.name) {
-    case 'add_node': {
-      const args = AddNodeArgs.safeParse(call.arguments);
-      if (!args.success) return refuse(argsError(call.name, args.error));
-      // The prompt asks for "one to three fixes"; measured, the model sometimes added 9. In code,
-      // so it holds: the model is told why, and can still connect what it added.
-      const added = draft.ops.filter((op) => op.op === 'addNode').length;
-      if (added >= MAX_NEW_BOXES)
-        return refuse(
-          `A proposal has at most ${MAX_NEW_BOXES} new boxes, and this one has them. Keep the most important fixes: connect the boxes you added, then stop.`,
-        );
-      // The prompt says "never a second queue, cache or load balancer"; measured, the model did it
-      // anyway. In code, with what to do instead (M1-29).
-      const existing = alreadyThere(draft.board, args.data.kind, args.data.label);
-      if (existing)
-        return refuse(
-          `There is already a ${oneOfAKindJob(existing.kind, existing.label) ?? existing.kind}: ${nodeLine(draft.board, existing.id, draft.aliases)}. Do not add a second one: connect to it, or rename it with update_node to show it does more (e.g. "Redis (cluster, 3 nodes)").`,
-        );
-      const near = args.data.near === undefined ? undefined : resolve(args.data.near);
-      if (args.data.near !== undefined && near === undefined) return unknown(args.data.near);
-      const nodeId = deps.newId();
-      const aliases = draft.aliases.withNode(nodeId);
-      const op: AgentOp = { op: 'addNode', nodeId, kind: args.data.kind, label: args.data.label };
-      if (near !== undefined) op.near = near;
-      return {
-        ok: true,
-        planned: { op, aliases, describe: (b) => `added ${nodeLine(b, nodeId, aliases)}` },
-      };
-    }
-    case 'update_node': {
-      const args = UpdateNodeArgs.safeParse(call.arguments);
-      if (!args.success) return refuse(argsError(call.name, args.error));
-      const nodeId = resolve(args.data.nodeId);
-      if (nodeId === undefined) return unknown(args.data.nodeId);
-      const op: AgentOp = { op: 'updateNode', nodeId };
-      if (args.data.label !== undefined) op.label = args.data.label;
-      if (args.data.kind !== undefined) op.kind = args.data.kind;
-      const { aliases } = draft;
-      return {
-        ok: true,
-        planned: { op, aliases, describe: (b) => `updated ${nodeLine(b, nodeId, aliases)}` },
-      };
-    }
-    case 'connect_nodes': {
-      const args = ConnectArgs.safeParse(call.arguments);
-      if (!args.success) return refuse(argsError(call.name, args.error));
-      const source = resolve(args.data.source);
-      if (source === undefined) return unknown(args.data.source);
-      const target = resolve(args.data.target);
-      if (target === undefined) return unknown(args.data.target);
-      const op: AgentOp = { op: 'connect', edgeId: deps.newId(), source, target };
-      if (args.data.label !== undefined) op.label = args.data.label;
-      if (args.data.mode !== undefined) op.mode = args.data.mode;
-      const { aliases } = draft;
-      const reply = `connected ${args.data.source} -> ${args.data.target}`;
-      return { ok: true, planned: { op, aliases, describe: () => reply } };
-    }
+    case 'add_node':
+      return planAddNode(draft, call, deps);
+    case 'update_node':
+      return planUpdateNode(draft, call);
+    case 'connect_nodes':
+      return planConnect(draft, call, deps);
     default:
       return refuse(`Unknown tool "${call.name}". Available: ${TOOL_NAMES}.`);
   }
