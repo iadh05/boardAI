@@ -6,8 +6,7 @@
 export const DEBT_AT_START = 20;
 
 export const READABILITY_DEBT: readonly string[] = [
-  // agent: the worst first (cognitive complexity 106, 32, 32, 25, 17)
-  'packages/agent/src/application/runAgent.ts',
+  // agent (cognitive complexity 32, 32, 25, 17)
   'packages/agent/src/application/reviewerV2.ts',
   'packages/agent/src/domain/tools.ts',
   'packages/agent/src/application/taskQueue.ts',
