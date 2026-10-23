@@ -32,7 +32,7 @@ import { create } from 'zustand';
 import { createId } from '../../../core/lib/ids.ts';
 import { readBoard } from '../lib/boardDoc.ts';
 import { withPlacements, type Placements } from '../lib/placement.ts';
-import { bindDocument } from './documentBinding.ts';
+import { bindDocument, type Binding, type Get, type Set } from './documentBinding.ts';
 
 // The board module's single source of client state (architecture §5.3). Actions delegate every
 // rule to @designroom/domain, so the UI never re-implements them. Since M2 the board itself lives
@@ -116,15 +116,179 @@ export type BoardStoreDeps = {
   doc?: Y.Doc;
 };
 
+/** Removes what still exists of the given boxes, arrows and zones (ids already gone are skipped). */
+const removeAll = (
+  board: Board,
+  nodeIds: readonly string[],
+  edgeIds: readonly string[],
+  zoneIds: readonly string[],
+): BoardResult => {
+  let result: BoardResult = ok(board);
+  for (const id of nodeIds)
+    if (result.ok && result.value.nodes.some((n) => n.id === id))
+      result = removeNode(result.value, id);
+  for (const id of edgeIds)
+    if (result.ok && result.value.edges.some((e) => e.id === id))
+      result = removeEdge(result.value, id);
+  for (const id of zoneIds)
+    if (result.ok && result.value.zones?.some((z) => z.id === id))
+      result = removeZone(result.value, id);
+  return result;
+};
+
+type BoxAndArrowActions = Pick<
+  BoardActions,
+  | 'addNode'
+  | 'removeNode'
+  | 'connect'
+  | 'labelEdge'
+  | 'setEdgeMode'
+  | 'removeEdge'
+  | 'removeElements'
+  | 'renameNode'
+  | 'changeKind'
+  | 'moveNode'
+  | 'startEditing'
+  | 'stopEditing'
+>;
+
+const boxAndArrowActions = (
+  newId: () => string,
+  set: Set,
+  get: Get,
+  { commit }: Binding,
+): BoxAndArrowActions => ({
+  addNode: (kind, position) => {
+    const id = newId();
+    return commit(addNode(get().board, createNode(id, kind, position))) ? id : null;
+  },
+  removeNode: (id) => {
+    if (commit(removeNode(get().board, id)) && get().editingNodeId === id)
+      set({ editingNodeId: null });
+  },
+  connect: (source, target) => {
+    const id = newId();
+    return commit(connect(get().board, id, source, target)) ? id : null;
+  },
+  labelEdge: (id, label) => {
+    commit(labelEdge(get().board, id, label));
+  },
+  setEdgeMode: (id, mode) => {
+    commit(setEdgeMode(get().board, id, mode));
+  },
+  removeEdge: (id) => {
+    commit(removeEdge(get().board, id));
+  },
+  removeElements: (nodeIds, edgeIds, zoneIds = []) => {
+    if (nodeIds.length === 0 && edgeIds.length === 0 && zoneIds.length === 0) return;
+    if (!commit(removeAll(get().board, nodeIds, edgeIds, zoneIds))) return;
+    const { editingNodeId } = get();
+    if (editingNodeId !== null && nodeIds.includes(editingNodeId)) set({ editingNodeId: null });
+  },
+  renameNode: (id, label) => {
+    commit(renameNode(get().board, id, label));
+  },
+  changeKind: (id, kind) => {
+    commit(changeKind(get().board, id, kind));
+  },
+  moveNode: (id, position) => {
+    commit(moveNode(get().board, id, position), { continuous: true });
+  },
+  startEditing: (id) => {
+    if (get().board.nodes.some((n) => n.id === id)) set({ editingNodeId: id });
+  },
+  stopEditing: () => set({ editingNodeId: null }),
+});
+
+type ZoneActions = Pick<
+  BoardActions,
+  'addZone' | 'renameZone' | 'resizeZone' | 'moveZone' | 'startEditingZone' | 'stopEditingZone'
+>;
+
+const zoneActions = (
+  newId: () => string,
+  set: Set,
+  get: Get,
+  { commit }: Binding,
+): ZoneActions => ({
+  addZone: (position, size) => {
+    const id = newId();
+    if (!commit(addZone(get().board, createZone(id, position, size)))) return null;
+    set({ editingZoneId: id });
+    return id;
+  },
+  renameZone: (id, label) => {
+    commit(renameZone(get().board, id, label));
+  },
+  resizeZone: (id, size) => {
+    commit(resizeZone(get().board, id, size), { continuous: true });
+  },
+  moveZone: (id, position) => {
+    commit(moveZone(get().board, id, position), { continuous: true });
+  },
+  startEditingZone: (id) => {
+    if (get().board.zones?.some((z) => z.id === id)) set({ editingZoneId: id });
+  },
+  stopEditingZone: () => set({ editingZoneId: null }),
+});
+
+/** Missing boxes or arrows mean the board changed since the proposal; anything else, it was wrong. */
+const proposalErrorText = (error: DomainError) =>
+  ['NODE_NOT_FOUND', 'EDGE_NOT_FOUND', 'DUPLICATE_EDGE'].includes(error.code)
+    ? `This proposal is out of date: ${error.message}`
+    : `This proposal can't be applied: ${error.message}`;
+
+const NO_PROPOSAL = { proposal: null, placements: null, proposalError: null, lastError: null };
+
+type ProposalActions = Pick<
+  BoardActions,
+  'setProposal' | 'placeProposal' | 'acceptProposal' | 'rejectProposal'
+>;
+
+const proposalActions = (set: Set, get: Get, { write }: Binding): ProposalActions => ({
+  setProposal: (proposal) =>
+    set({ proposal, placements: null, proposalError: null, lastError: null }),
+  placeProposal: (placements) => {
+    if (get().proposal) set({ placements });
+  },
+  acceptProposal: () => {
+    const { proposal, board, placements } = get();
+    if (!proposal) return;
+    const result = applyOps(board, proposal.ops, withPlacements(placements));
+    if (!result.ok) {
+      // Kept visible, so the user sees what couldn't be applied.
+      set({ proposalError: proposalErrorText(result.error), lastError: null });
+      return;
+    }
+    write(result.value, false); // the proposal is its own undo step
+    set(NO_PROPOSAL);
+  },
+  rejectProposal: () => set(NO_PROPOSAL),
+});
+
+const undoActions = (
+  set: Set,
+  { history, undoState }: Binding,
+): Pick<BoardActions, 'undo' | 'redo' | 'endUndoStep'> => ({
+  // Yjs drops a step whose target is gone without any event: read the stacks after each call.
+  undo: () => {
+    history.undo();
+    set(undoState());
+  },
+  redo: () => {
+    history.redo();
+    set(undoState());
+  },
+  endUndoStep: () => history.stopCapturing(),
+});
+
 export const createBoardStore = ({
   newId,
   initialBoard = emptyBoard(),
   doc = new Y.Doc(),
 }: BoardStoreDeps) =>
   create<BoardStore>()((set, get) => {
-    // The shared document: commits, the read-back and the undo stacks (documentBinding.ts).
-    const { history, undoState, write, commit } = bindDocument(doc, initialBoard, set, get);
-
+    const binding = bindDocument(doc, initialBoard, set, get);
     return {
       board: readBoard(doc),
       proposal: null,
@@ -135,130 +299,10 @@ export const createBoardStore = ({
       editingZoneId: null,
       canUndo: false,
       canRedo: false,
-
-      addNode: (kind, position) => {
-        const id = newId();
-        return commit(addNode(get().board, createNode(id, kind, position))) ? id : null;
-      },
-      removeNode: (id) => {
-        if (commit(removeNode(get().board, id)) && get().editingNodeId === id) {
-          set({ editingNodeId: null });
-        }
-      },
-      connect: (source, target) => {
-        const id = newId();
-        return commit(connect(get().board, id, source, target)) ? id : null;
-      },
-      labelEdge: (id, label) => {
-        commit(labelEdge(get().board, id, label));
-      },
-      setEdgeMode: (id, mode) => {
-        commit(setEdgeMode(get().board, id, mode));
-      },
-      removeEdge: (id) => {
-        commit(removeEdge(get().board, id));
-      },
-      removeElements: (nodeIds, edgeIds, zoneIds = []) => {
-        if (nodeIds.length === 0 && edgeIds.length === 0 && zoneIds.length === 0) return;
-        // Ids already gone (an edge removed with its node, a stale selection) are skipped.
-        let result: BoardResult = ok(get().board);
-        for (const id of nodeIds) {
-          if (result.ok && result.value.nodes.some((n) => n.id === id)) {
-            result = removeNode(result.value, id);
-          }
-        }
-        for (const id of edgeIds) {
-          if (result.ok && result.value.edges.some((e) => e.id === id)) {
-            result = removeEdge(result.value, id);
-          }
-        }
-        for (const id of zoneIds) {
-          if (result.ok && result.value.zones?.some((z) => z.id === id)) {
-            result = removeZone(result.value, id);
-          }
-        }
-        if (!commit(result)) return;
-        const { editingNodeId } = get();
-        if (editingNodeId !== null && nodeIds.includes(editingNodeId)) set({ editingNodeId: null });
-      },
-      addZone: (position, size) => {
-        const id = newId();
-        if (!commit(addZone(get().board, createZone(id, position, size)))) return null;
-        set({ editingZoneId: id });
-        return id;
-      },
-      renameZone: (id, label) => {
-        commit(renameZone(get().board, id, label));
-      },
-      resizeZone: (id, size) => {
-        commit(resizeZone(get().board, id, size), { continuous: true });
-      },
-      moveZone: (id, position) => {
-        commit(moveZone(get().board, id, position), { continuous: true });
-      },
-      startEditingZone: (id) => {
-        if (get().board.zones?.some((z) => z.id === id)) set({ editingZoneId: id });
-      },
-      stopEditingZone: () => set({ editingZoneId: null }),
-      renameNode: (id, label) => {
-        commit(renameNode(get().board, id, label));
-      },
-      changeKind: (id, kind) => {
-        commit(changeKind(get().board, id, kind));
-      },
-      moveNode: (id, position) => {
-        commit(moveNode(get().board, id, position), { continuous: true });
-      },
-
-      setProposal: (proposal) =>
-        set({ proposal, placements: null, proposalError: null, lastError: null }),
-      placeProposal: (placements) => {
-        if (get().proposal) set({ placements });
-      },
-      acceptProposal: () => {
-        const { proposal, board, placements } = get();
-        if (!proposal) return;
-        const result = applyOps(board, proposal.ops, withPlacements(placements));
-        if (result.ok) {
-          write(result.value, false); // the proposal is its own undo step
-          set({
-            proposal: null,
-            placements: null,
-            proposalError: null,
-            lastError: null,
-          });
-          return;
-        }
-        // Keep the proposal visible so the user sees what couldn't be applied. Missing nodes or
-        // edges mean the board changed since the proposal; anything else, the proposal was wrong.
-        const outOfDate = ['NODE_NOT_FOUND', 'EDGE_NOT_FOUND', 'DUPLICATE_EDGE'].includes(
-          result.error.code,
-        );
-        set({
-          proposalError: outOfDate
-            ? `This proposal is out of date: ${result.error.message}`
-            : `This proposal can't be applied: ${result.error.message}`,
-          lastError: null,
-        });
-      },
-      rejectProposal: () =>
-        set({ proposal: null, placements: null, proposalError: null, lastError: null }),
-
-      startEditing: (id) => {
-        if (get().board.nodes.some((n) => n.id === id)) set({ editingNodeId: id });
-      },
-      stopEditing: () => set({ editingNodeId: null }),
-
-      // Yjs drops a step whose target is gone without any event: read the stacks after each call.
-      undo: () => {
-        history.undo();
-        set(undoState());
-      },
-      redo: () => {
-        history.redo();
-        set(undoState());
-      },
-      endUndoStep: () => history.stopCapturing(),
+      ...boxAndArrowActions(newId, set, get, binding),
+      ...zoneActions(newId, set, get, binding),
+      ...proposalActions(set, get, binding),
+      ...undoActions(set, binding),
     };
   });
 
