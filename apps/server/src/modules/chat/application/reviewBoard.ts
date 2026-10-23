@@ -1,4 +1,4 @@
-import { context, SpanStatusCode, trace } from '@opentelemetry/api';
+import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
 import {
   boardToText,
   createAliases,
@@ -48,6 +48,71 @@ const tracer = trace.getTracer('@designroom/server');
 /** How a chat stream ended: recorded on its span, the one place that sees the whole stream. */
 type Outcome = 'done' | 'error' | 'cancelled' | 'stopped';
 
+/** The review's span and how its stream ended: one place that sees the whole stream. */
+const startReviewSpan = (parent: Context, sent: number, kept: number) => {
+  const span = tracer.startSpan(
+    'review board',
+    {
+      attributes: {
+        'openinference.span.kind': 'CHAIN',
+        'designroom.chat.messages_sent': sent,
+        'designroom.chat.messages_kept': kept,
+      },
+    },
+    parent,
+  );
+  // Stays 'stopped' if the reader goes away (tab closed) before the end of the stream.
+  let outcome: Outcome = 'stopped';
+  return {
+    span,
+    cancelled: () => {
+      outcome = 'cancelled';
+    },
+    fail: (message: string) => {
+      outcome = 'error';
+      span.setStatus({ code: SpanStatusCode.ERROR, message });
+    },
+    finish: (): ChatEvent => {
+      if (outcome === 'stopped') outcome = 'done';
+      return { type: 'done' };
+    },
+    // The span lasts the whole stream: chat duration and outcome live here, not in the access log,
+    // which is written when the headers go out (M1-19 review).
+    end: () => {
+      span.setAttribute('designroom.chat.outcome', outcome);
+      span.end();
+    },
+  };
+};
+
+type ReviewSpan = ReturnType<typeof startReviewSpan>;
+
+/** The agent's events as the chat API's: rounds logged, model failures worded for the user. */
+async function* toChatEvents(
+  run: AsyncIterable<ReviewerV2Event>,
+  logger: Logger,
+  review: ReviewSpan,
+): AsyncGenerator<ChatEvent, boolean> {
+  for await (const event of run) {
+    if (event.type === 'done') return true;
+    if (event.type === 'round') {
+      const { type: _, usage, ...round } = event;
+      logger.info('agent round', { ...round, ...usage });
+    } else if (event.type !== 'error') yield event;
+    // A closed tab is normal use, not an outage: keep warnings for real failures.
+    else if (event.code === 'ABORTED') {
+      logger.info('chat cancelled');
+      review.cancelled();
+      yield { type: 'error', message: USER_MESSAGE[event.code] };
+    } else {
+      logger.warn('model failed', { code: event.code, error: event.message });
+      review.fail(event.message);
+      yield { type: 'error', message: USER_MESSAGE[event.code] };
+    }
+  }
+  return false;
+}
+
 export const createReviewBoard =
   ({ agent, contextTokens, reporter = noErrorReporter }: ReviewBoardDeps) =>
   (
@@ -61,81 +126,39 @@ export const createReviewBoard =
     if (!history.ok) return history;
     const kept = history.value;
     if (kept.length < request.messages.length)
-      logger.info('chat history trimmed', {
-        kept: kept.length,
-        sent: request.messages.length,
+      logger.info('chat history trimmed', { kept: kept.length, sent: request.messages.length });
+
+    /** A bug, not a model failure: reported, and the browser still gets a terminal event. */
+    const bug = (error: unknown, review: ReviewSpan): ChatEvent => {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('review failed', {
+        error: message,
+        stack: error instanceof Error ? error.stack : undefined,
       });
+      reporter.report(error, { where: 'chat stream', requestId });
+      if (error instanceof Error) review.span.recordException(error);
+      review.fail(message);
+      return { type: 'error', message: SOMETHING_WENT_WRONG };
+    };
 
     async function* events(): AsyncIterable<ChatEvent> {
-      const span = tracer.startSpan(
-        'review board',
-        {
-          attributes: {
-            'openinference.span.kind': 'CHAIN',
-            'designroom.chat.messages_sent': request.messages.length,
-            'designroom.chat.messages_kept': kept.length,
-          },
-        },
-        parent,
-      );
-      // Stays 'stopped' if the reader goes away (tab closed) before the end of the stream.
-      let outcome: Outcome = 'stopped';
-      const fail = (message: string) => {
-        outcome = 'error';
-        span.setStatus({ code: SpanStatusCode.ERROR, message });
-      };
-      const finish = (): ChatEvent => {
-        if (outcome === 'stopped') outcome = 'done';
-        return { type: 'done' };
-      };
+      const review = startReviewSpan(parent, request.messages.length, kept.length);
       try {
         try {
           // Run inside the review's span, so the agent's spans are its children.
-          const run = context.with(trace.setSpan(parent, span), () =>
+          const run = context.with(trace.setSpan(parent, review.span), () =>
             agent.run({ board: request.board, messages: kept, signal }),
           );
-          for await (const event of run) {
-            switch (event.type) {
-              case 'round': {
-                const { type: _, usage, ...round } = event;
-                logger.info('agent round', { ...round, ...usage });
-                break;
-              }
-              case 'error':
-                // A closed tab is normal use, not an outage: keep warnings for real failures.
-                if (event.code === 'ABORTED') {
-                  logger.info('chat cancelled');
-                  outcome = 'cancelled';
-                } else {
-                  logger.warn('model failed', { code: event.code, error: event.message });
-                  fail(event.message);
-                }
-                yield { type: 'error', message: USER_MESSAGE[event.code] };
-                break;
-              case 'done':
-                yield finish();
-                return;
-              default:
-                yield event;
-            }
+          if (yield* toChatEvents(run, logger, review)) {
+            yield review.finish();
+            return;
           }
         } catch (error) {
-          // A bug, not a model failure: the browser still gets a terminal event (backend.md).
-          logger.error('review failed', {
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-          });
-          reporter.report(error, { where: 'chat stream', requestId });
-          if (error instanceof Error) span.recordException(error);
-          fail(error instanceof Error ? error.message : String(error));
-          yield { type: 'error', message: SOMETHING_WENT_WRONG };
+          yield bug(error, review);
         }
-        yield finish();
+        yield review.finish();
       } finally {
-        // The span lasts the whole stream: chat duration and outcome live here, not in the access
-        // log, which is written when the headers go out (M1-19 review).
-        span.setAttribute('designroom.chat.outcome', outcome);
-        span.end();
+        review.end();
       }
     }
     return { ok: true, value: events() };
