@@ -11,8 +11,6 @@ export const READABILITY_DEBT: readonly string[] = [
   'packages/agent/src/application/reviewerV2.ts',
   'packages/agent/src/application/taskQueue.ts',
   'packages/agent/src/application/orchestrator.ts',
-  // ai-gateway (complexity 49, 25, 22): split by AV2-02b, one folder per provider (ADR-012)
-  'packages/ai-gateway/src/providers/openAiCompatible.ts',
+  // ai-gateway (complexity 25): next in CI-02
   'packages/ai-gateway/src/providers/anthropic.ts',
-  'packages/ai-gateway/src/gateway.ts',
 ];
