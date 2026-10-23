@@ -30,17 +30,15 @@ import {
 import * as Y from 'yjs';
 import { create } from 'zustand';
 import { createId } from '../../../core/lib/ids.ts';
-import { BOARD_MAPS, readBoard, writeBoard } from '../lib/boardDoc.ts';
+import { readBoard } from '../lib/boardDoc.ts';
 import { withPlacements, type Placements } from '../lib/placement.ts';
+import { bindDocument } from './documentBinding.ts';
 
 // The board module's single source of client state (architecture §5.3). Actions delegate every
 // rule to @designroom/domain, so the UI never re-implements them. Since M2 the board itself lives
 // in a shared Yjs document (ADR-010): an action computes the next board with a domain op and
 // writes the difference; every change to the document — this tab's or another's — is read back
 // into `board`. Components didn't change. The proposal, placements and editing state stay local.
-
-/** Moves within this long count as one undo step (a drag). */
-const UNDO_CAPTURE_MS = 500;
 
 export type BoardState = {
   board: Board;
@@ -124,78 +122,8 @@ export const createBoardStore = ({
   doc = new Y.Doc(),
 }: BoardStoreDeps) =>
   create<BoardStore>()((set, get) => {
-    /** Marks this tab's own writes: undo tracks only these. */
-    const mine = Symbol('this tab');
-    const maps = BOARD_MAPS.map((name) => doc.getMap(name));
-    const history = new Y.UndoManager(maps, {
-      trackedOrigins: new Set([mine]),
-      captureTimeout: UNDO_CAPTURE_MS,
-    });
-
-    // A starting board (tests) is written as no one's change, and only into an empty document:
-    // a room's board is never mixed with another.
-    const empty = (b: Board) => b.nodes.length + b.edges.length + (b.zones?.length ?? 0) === 0;
-    if (!empty(initialBoard) && empty(readBoard(doc))) writeBoard(doc, emptyBoard(), initialBoard);
-
-    /** Which boxes and zones exist: when another tab only moves things, ghosts stay put. */
-    const idsOf = (b: Board) =>
-      [...b.nodes.map((n) => n.id), '|', ...(b.zones ?? []).map((z) => z.id)].join(',');
-
-    const undoState = () => ({
-      canUndo: history.undoStack.length > 0,
-      canRedo: history.redoStack.length > 0,
-    });
-    // The buttons follow the stacks: read back with every document change (refresh), and after
-    // each undo / redo (one whose target someone else deleted changes nothing in the document).
-
-    /** A local change succeeded: its read-back also clears the last error, in the same update. */
-    let clearError = false;
-
-    // Every change to the document — this tab's, another tab's, an undo — is read back here.
-    const refresh = (_update: Uint8Array, origin: unknown) => {
-      const board = readBoard(doc);
-      const { editingNodeId, editingZoneId } = get();
-      const cleared = clearError ? { lastError: null } : {};
-      clearError = false;
-      // A waiting proposal is placed again when this tab changed the board, or boxes came or
-      // went: either may have taken one of its spots. Not on every step of someone else's drag,
-      // or the ghosts would jump around while you look at them.
-      const replace = origin === mine || idsOf(board) !== idsOf(get().board);
-      set({
-        board,
-        ...cleared,
-        ...(replace ? { placements: null } : {}),
-        ...undoState(),
-        // Someone else deleted what this tab was editing.
-        ...(editingNodeId && !board.nodes.some((n) => n.id === editingNodeId)
-          ? { editingNodeId: null }
-          : {}),
-        ...(editingZoneId && !board.zones?.some((z) => z.id === editingZoneId)
-          ? { editingZoneId: null }
-          : {}),
-      });
-    };
-    doc.on('update', refresh);
-
-    /**
-     * Commits a domain result: written to the document on success, an error on failure. Each
-     * action is its own undo step; only `continuous` ones (the steps of a drag or a resize) merge
-     * within the capture window. Without this, three boxes added in a second undid together.
-     */
-    const commit = (result: BoardResult, { continuous = false } = {}): boolean => {
-      if (result.ok) {
-        clearError = true;
-        if (!continuous) history.stopCapturing();
-        writeBoard(doc, get().board, result.value, mine);
-        if (!continuous) history.stopCapturing();
-        // Nothing changed (e.g. renamed to the same label): no read-back, clear it here.
-        if (clearError) set({ lastError: null });
-        clearError = false;
-        return true;
-      }
-      set({ lastError: result.error });
-      return false;
-    };
+    // The shared document: commits, the read-back and the undo stacks (documentBinding.ts).
+    const { history, undoState, write, commit } = bindDocument(doc, initialBoard, set, get);
 
     return {
       board: readBoard(doc),
@@ -292,9 +220,7 @@ export const createBoardStore = ({
         if (!proposal) return;
         const result = applyOps(board, proposal.ops, withPlacements(placements));
         if (result.ok) {
-          history.stopCapturing(); // the proposal is its own undo step
-          writeBoard(doc, board, result.value, mine);
-          history.stopCapturing();
+          write(result.value, false); // the proposal is its own undo step
           set({
             proposal: null,
             placements: null,

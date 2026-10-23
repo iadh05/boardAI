@@ -1,0 +1,47 @@
+{
+  "model": "designroom-qwen",
+  "hostedPlanner": "groq:qwen/qwen3.8-27b+think",
+  "runs": 1,
+  "scale": 1,
+  "results": [
+    {
+      "level": 1,
+      "setup": "V1",
+      "run": 1,
+      "pass": true,
+      "asked": false,
+      "ms": 14661,
+      "ops": 4,
+      "offTarget": 0,
+      "calls": 5,
+      "inputTokens": 7741,
+      "outputTokens": 450
+    },
+    {
+      "level": 1,
+      "setup": "V2 local",
+      "run": 1,
+      "pass": false,
+      "asked": true,
+      "ms": 5362,
+      "ops": 0,
+      "offTarget": 0,
+      "calls": 2,
+      "inputTokens": 810,
+      "outputTokens": 316
+    },
+    {
+      "level": 1,
+      "setup": "V2 hosted Planner",
+      "run": 1,
+      "pass": true,
+      "asked": false,
+      "ms": 15199,
+      "ops": 9,
+      "offTarget": 0,
+      "calls": 6,
+      "inputTokens": 12080,
+      "outputTokens": 1266
+    }
+  ]
+}
