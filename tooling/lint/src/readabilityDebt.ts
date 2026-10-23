@@ -16,7 +16,6 @@ export const READABILITY_DEBT: readonly string[] = [
   'packages/ai-gateway/src/gateway.ts',
   // scripts
   'scripts/red-team.ts',
-  'scripts/review-samples.ts',
   'scripts/show-llm-calls.ts',
   'scripts/spike-tool-call.ts',
 ];
