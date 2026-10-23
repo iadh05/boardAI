@@ -257,6 +257,8 @@ Option 3: our own state graph with LangGraph's concepts and names, and **no Lang
 - **Re-plan:** after the cards run, the Planner may add cards once ("Data found a hot table → a Cache sub-brief"), within the 6-card budget.
 - **Missing context (D21):** a specialist returns what it lacks as data — `needs: [{ what, from: board | memory | web | user }]`. The Planner fills it cheapest first: widen the card's boxes, fetch from memory, a Researcher card, or ask you (pause, resume); past the budget, it goes on with an assumption said out loud. One re-run per card. Your answer is saved as a requirement (never asked twice); `context_missing_total{agent, what}` shows which fetch recipe (D12) to improve, in a PR checked by evals.
 
+- **Spike, our runtime vs XState v5 (2026-10-22, [docs/spikes/AV2-11-xstate.md](spikes/AV2-11-xstate.md)):** the same six nodes on both — the same 14 tests pass, the same pause/resume, the same model input, < 1 ms of harness per review either way. Ours: 266 lines owned (59 of wiring), no dependency. XState: 186 lines (118 of wiring), +16 KB gzip, a visual inspector, a mature engine. Nothing measured forces the choice: **the owner decides; to be recorded here.**
+
 ### Consequences
 
 - **Easier:** pausing for the user, runtime fan-out, a live checklist, replaying a failed run, and testing every transition with the fake LLM.
