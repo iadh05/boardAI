@@ -14,6 +14,7 @@ import {
   createOpenAiCompatibleProvider,
   HOSTED_PROVIDER_NAMES,
   HOSTED_PROVIDERS,
+  type AiGateway,
 } from '../../packages/ai-gateway/src/index.ts';
 import type { AgentOp, Board, ChatMessage, NodeKind } from '../../packages/domain/src/index.ts';
 
@@ -78,9 +79,20 @@ export const gatewayOf = (model: string, provider: ProviderName = 'ollama', thin
 /** A canary, like the server's: the measured agent is the one users get. */
 const canary = () => `dr-${randomUUID().slice(0, 8)}`;
 
+/**
+ * Wraps a role's gateway, e.g. to record every call it makes (ladder-eval). `role` says which:
+ * "local" (V1, or V2's Main and Architect) or "planner".
+ */
+export type GatewayWrap = (role: 'local' | 'planner', llm: AiGateway) => AiGateway;
+const unwrapped: GatewayWrap = (_, llm) => llm;
+
 /** The model, through the same gateway and agent the server uses. */
-export const connectRealModel = (model: string, provider: ProviderName = 'ollama') => {
-  const llm = gatewayOf(model, provider);
+export const connectRealModel = (
+  model: string,
+  provider: ProviderName = 'ollama',
+  wrap: GatewayWrap = unwrapped,
+) => {
+  const llm = wrap('local', gatewayOf(model, provider));
   return { llm, agent: createAgent({ llm, newId: randomUUID, canary: canary() }) };
 };
 
@@ -105,17 +117,24 @@ export const parseRole = (spec: string) => {
 export const connectV2 = (
   model: string,
   provider: ProviderName = 'ollama',
-  options: { planner?: string; critic?: boolean; criticModel?: string } = {},
+  options: {
+    planner?: string;
+    critic?: boolean;
+    criticModel?: string;
+    wrap?: GatewayWrap;
+  } = {},
 ) => {
-  const local = gatewayOf(model, provider);
+  const wrap = options.wrap ?? unwrapped;
+  const local = wrap('local', gatewayOf(model, provider));
   const role = (spec?: string) => {
     if (!spec) return local;
     const r = parseRole(spec);
     return gatewayOf(r.model, r.provider, r.thinking);
   };
+  const planner = options.planner ? wrap('planner', role(options.planner)) : local;
   const agent = createReviewerV2({
     main: local,
-    planner: role(options.planner),
+    planner,
     architect: createAgent({ llm: local, newId: randomUUID, canary: canary() }),
     specialists: RULE_SPECIALISTS,
     ...(options.critic
