@@ -35,6 +35,17 @@ export type OrchestratorInput = {
   signal?: AbortSignal;
 };
 
+/** A task's span, closed once the queue has judged its output (status, findings). */
+const endTaskSpan = (span: Span, result: TaskResult) => {
+  span.setAttributes({
+    'designroom.task.status': result.status,
+    'designroom.task.findings': result.findings.length,
+  });
+  if (result.status === 'failed' || result.status === 'timeout')
+    markFailed(span, result.error ?? result.status);
+  span.end();
+};
+
 export const createOrchestrator = (deps: OrchestratorDeps) => {
   async function* orchestrate(
     { cards, board, signal }: OrchestratorInput,
@@ -69,16 +80,8 @@ export const createOrchestrator = (deps: OrchestratorDeps) => {
         } else {
           const { result } = event;
           const span = taskSpans.get(result.card.id);
-          if (span) {
-            span.setAttributes({
-              'designroom.task.status': result.status,
-              'designroom.task.findings': result.findings.length,
-            });
-            if (result.status === 'failed' || result.status === 'timeout')
-              markFailed(span, result.error ?? result.status);
-            span.end();
-            taskSpans.delete(result.card.id);
-          }
+          if (span) endTaskSpan(span, result);
+          taskSpans.delete(result.card.id);
           results.push(result);
           yield { type: 'task', result };
         }
