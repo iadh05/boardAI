@@ -128,3 +128,28 @@ Spec: [docs/specs/M2-multiplayer.md](../docs/specs/M2-multiplayer.md) · Archite
 
 **Acceptance criteria**
 - [ ] Copying a group with its arrows and pasting it in the same or another room gives an identical, independent copy, in one undo step, seen live by others.
+
+## M2-10 — The board is laggy on big diagrams
+**Status:** todo · **Size:** M (split by finding) · **Order:** after the agent V2 work (the owner, 2026-10-22)
+
+*Why (owner, 2026-10-22):* the front end gets very laggy with a big diagram (dragging, panning, typing a label).
+
+**Measure first** (no fix without a number)
+- [ ] Two fixture boards: the Uber board (`docs/agents/…`-sized, ~40 boxes) and a generated stress board (200 boxes, 300 arrows, 10 zones), loadable with `scripts/board-snapshot.mjs load`.
+- [ ] Chrome Performance + React Profiler on: dragging one box, panning, zooming, typing a label, a remote edit arriving (Yjs). Record frame time (p50 / p95), long tasks, which components re-render.
+- [ ] Time the router: log `route()` duration per call on both boards.
+- [ ] **Lighthouse, navigation mode:** open a big room cold → LCP (is it the bundle, React Flow, libavoid's wasm, or the board arriving over Yjs?), TBT, bundle size.
+- [ ] **Lighthouse, timespan mode** (a user flow): drag a box, pan, type a label → **INP** and TBT during real interactions — the lag the owner sees is an INP problem more than an LCP one.
+- [ ] Lighthouse scores and the Performance panel's flame chart (which function takes the time) in the PR.
+
+**Suspects, in the order the code points to them**
+- [ ] **Routing on every frame:** `packages/diagram/src/components/useRoutes.ts` re-routes **every** arrow with libavoid whenever `nodes` changes — each drag frame, on the main thread. Options: route only the arrows touching moved boxes; simple edges while dragging and libavoid on drop; libavoid in a Web Worker.
+- [ ] **Re-rendering every box:** a change to one box re-creating every node object (`toDiagram` mapper, store selectors) so React Flow redraws all of them. Check with the Profiler; stable objects per box / `memo` where the profile shows it (frontend rules: memo only with a measurement).
+- [ ] **Off-screen work:** React Flow's `onlyRenderVisibleElements` for big boards.
+- [ ] **Yjs:** a remote edit rebuilding the whole board from the document instead of the changed items.
+
+**Acceptance criteria**
+- [ ] On the 200-box board: dragging a box ≥ 50 fps (p95 frame < 20 ms); typing a label has no visible delay; the Uber board is smooth on a phone.
+- [ ] Lighthouse: INP < 200 ms during the user flow; LCP < 2.5 s opening the 200-box room.
+- [ ] The before / after numbers in the PR; a Playwright perf check on the stress board (frame-time budget) so it can't silently come back.
+- [ ] Any design choice that comes out of it (routing in a worker, routing on drop) written in ADR-004 and architecture.md, per the decisions rule.
