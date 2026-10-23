@@ -8,38 +8,29 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
-  useNodesInitialized,
   useReactFlow,
-  useStoreApi,
   type Edge,
   type EdgeChange,
   type EdgeTypes,
   type NodeChange,
   type NodeTypes,
 } from '@xyflow/react';
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from 'react';
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { canvasChanges, commitMoves, mergeEdges, mergeNodes } from '../flow/changes.ts';
-import { fitPadding } from '../flow/fitPadding.ts';
 import { createZoneDrag, type DragItem } from '../flow/zoneDrag.ts';
 import { toReactFlow, type BoxNode, type FlowNode } from '../flow/toReactFlow.ts';
 import type { DiagramEdge, DiagramNode, DiagramPosition, DiagramZone } from '../types.ts';
 import { NODE_SIZE } from './nodeSize.ts';
-import { ZoneContext, type ZoneContextValue } from './ZoneContext.ts';
+import { ZoneContext } from './ZoneContext.ts';
 import { ZoneView } from './ZoneView.tsx';
 import { BoxNodeView } from './BoxNodeView.tsx';
 import type { DiagramRouter } from '../router/types.ts';
-import { DiagramContext, type DiagramContextValue } from './DiagramContext.ts';
-import { EdgeEditContext, type EdgeEditContextValue } from './EdgeEditContext.ts';
+import { DiagramContext } from './DiagramContext.ts';
+import { EdgeEditContext } from './EdgeEditContext.ts';
 import { RoutedEdge } from './RoutedEdge.tsx';
 import { RoutesContext } from './RoutesContext.ts';
+import { useEditContexts } from './useEditContexts.ts';
+import { useFitToContent } from './useFitToContent.ts';
 import { useRoutes } from './useRoutes.ts';
 import '../styles.css';
 
@@ -241,10 +232,14 @@ function DiagramCanvas({
     if (target.classList.contains('react-flow__edge') && isEditableEdge(id)) onEdgeEditStart?.(id);
   };
 
-  // Every node reads this context, and a new value re-renders all of them — on every drag frame,
-  // since this component re-renders then. So: a stable value that changes only with the editing
-  // state, and the latest callbacks read through a ref (apps may pass inline functions).
-  const callbacks = useRef({
+  const { context, edgeContext, zoneContext } = useEditContexts({
+    editingNodeId,
+    maxLabelLength,
+    editingEdgeId,
+    maxEdgeLabelLength,
+    dashedLabel,
+    editingZoneId,
+    minZoneSize,
     onZoneLabelCommit,
     onZoneEditEnd,
     onZoneResize,
@@ -254,90 +249,10 @@ function DiagramCanvas({
     onEdgeDashedChange,
     onEdgeEditEnd,
   });
-  useLayoutEffect(() => {
-    callbacks.current = {
-      onZoneLabelCommit,
-      onZoneEditEnd,
-      onZoneResize,
-      onLabelCommit,
-      onEditEnd,
-      onEdgeLabelCommit,
-      onEdgeDashedChange,
-      onEdgeEditEnd,
-    };
-  });
-  const context = useMemo<DiagramContextValue>(
-    () => ({
-      editingNodeId,
-      maxLabelLength,
-      commitLabel: (id, label) => callbacks.current.onLabelCommit?.(id, label),
-      endEditing: () => callbacks.current.onEditEnd?.(),
-    }),
-    [editingNodeId, maxLabelLength],
-  );
-  const edgeContext = useMemo<EdgeEditContextValue>(
-    () => ({
-      editingEdgeId,
-      maxLabelLength: maxEdgeLabelLength,
-      dashedLabel,
-      commitLabel: (id, label) => callbacks.current.onEdgeLabelCommit?.(id, label),
-      setDashed: (id, dashed) => callbacks.current.onEdgeDashedChange?.(id, dashed),
-      endEditing: () => callbacks.current.onEdgeEditEnd?.(),
-    }),
-    [editingEdgeId, maxEdgeLabelLength, dashedLabel],
-  );
-  const zoneContext = useMemo<ZoneContextValue>(
-    () => ({
-      editingZoneId,
-      minSize: minZoneSize,
-      commitLabel: (id, label) => callbacks.current.onZoneLabelCommit?.(id, label),
-      endEditing: () => callbacks.current.onZoneEditEnd?.(),
-      resize: (id, size) => callbacks.current.onZoneResize?.(id, size),
-    }),
-    [editingZoneId, minZoneSize],
-  );
 
-  const { screenToFlowPosition, fitView } = useReactFlow();
-
-  // fitKey changed: fit once the boxes are measured (React Flow can't fit what it hasn't drawn).
-  const nodesDrawn = useNodesInitialized();
-  const flowStore = useStoreApi();
-  const fitFor = useRef(fitKey);
-  // Opening with content: fit once drawn (React Flow's own fit-on-open ignores the panels).
-  const fitPending = useRef(fitOnOpen);
+  const { screenToFlowPosition } = useReactFlow();
   const hasContent = nodesProp.length > 0 || zonesProp.length > 0;
-  /** Fits the diagram to the part of the pane no panel covers (the app's toolbar, …). */
-  const fitAroundPanels = () => {
-    const pane = flowStore.getState().domNode;
-    if (!pane) return void fitView(FIT_VIEW);
-    const box = pane.getBoundingClientRect();
-    const panels = [...pane.querySelectorAll('.react-flow__panel')].map((el) => {
-      const r = el.getBoundingClientRect();
-      return { x: r.left - box.left, y: r.top - box.top, width: r.width, height: r.height };
-    });
-    const pad = fitPadding({ width: box.width, height: box.height }, panels);
-    void fitView({
-      ...FIT_VIEW,
-      padding: {
-        top: `${pad.top}px`,
-        right: `${pad.right}px`,
-        bottom: `${pad.bottom}px`,
-        left: `${pad.left}px`,
-      },
-    });
-  };
-  useEffect(() => {
-    if (fitKey === fitFor.current) return;
-    fitFor.current = fitKey;
-    // Nothing to show yet: no fit later either, or the view would jump when someone adds the
-    // first box — under the hand of whoever is working on the board.
-    fitPending.current = hasContent;
-  }, [fitKey, hasContent]);
-  useEffect(() => {
-    if (!fitPending.current || !nodesDrawn) return;
-    fitPending.current = false;
-    fitAroundPanels();
-  });
+  const fitAroundPanels = useFitToContent(fitKey, hasContent, fitOnOpen, FIT_VIEW);
 
   return (
     <DiagramContext value={context}>
