@@ -3,7 +3,7 @@
 // The list only shrinks: tooling/lint/src/readabilityDebt.test.ts checks it.
 
 /** How many files were on the list at the start. Lower it as files leave; never raise it. */
-export const DEBT_AT_START = 12;
+export const DEBT_AT_START = 11;
 
 export const READABILITY_DEBT: readonly string[] = [
   // agent: the worst first (cognitive complexity 106, 32, 32, 25, 17)
@@ -20,7 +20,6 @@ export const READABILITY_DEBT: readonly string[] = [
   'packages/domain/src/board/critique.ts',
   // apps
   // scripts
-  'scripts/red-team.ts',
   'scripts/show-llm-calls.ts',
   'scripts/spike-tool-call.ts',
 ];
