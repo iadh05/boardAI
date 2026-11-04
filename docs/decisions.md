@@ -348,3 +348,27 @@ What a reviewer would catch by eye becomes a check:
 - **Harder:** bigger tickets must be split before they're built; the debt list needs paying down (CI-02).
 - **Owner's step:** add `pr-size` to `main`'s required checks (branch protection).
 - **Not yet:** acceptance criteria ↔ tests (ticket CI-03).
+
+## ADR-015 — The Planner's understanding reaches the Architect; the question comes first
+
+- **Date:** 2026-11-04
+- **Status:** proposed (agent PR, for the owner's review)
+- **Milestone:** M1c (agent V2)
+
+### Context
+
+V2 was no better than V1 (ladder: V1 9/18, V2 with a hosted Planner 8/18). The saved runs showed why: on "a customer is never charged" the hosted Planner named the dual write (save, then publish, not atomic), but `reviewerV2` passed only the specialists' findings to the Architect, and the prompt told it to explain those first. It answered "add a cache" 3 times out of 3. The rule behind most findings was wrong too: `duplicates` called one cache per service "6 boxes do the same job", and both agents merged healthy caches.
+
+A context test settled it before building: the same local 9B went from 0/5 to 5/5 on that question once it received the plan (Groq Qwen3.8 27B: 0/3 → 3/3). See [docs/evals/AV2-15-context.md](evals/AV2-15-context.md).
+
+### Decision
+
+- **The plan reaches the Architect:** the Planner's assumptions go to the Architect as a delimited, quoted `<plan>` block, before the findings. The Planner now writes the likely cause there, and reads the chat so far (last 6 messages, 400 characters each).
+- **The question comes first (prompt v5):** asked about one problem, the Architect starts with its cause on this board and the fix; findings are support. A review still starts with the checks.
+- **One rule for "already doing this job":** `competingBox` in `@designroom/domain`, used by the design check, `add_node`, the Critic and the sample eval. Queues, load balancers and CDNs stay one per design (M1-29); a cache competes only with one it overlaps (next to it, or working with the same box), so a cache per service is normal.
+
+### Consequences
+
+- **Easier:** the Planner's model choice now matters for answers, not only for routing; the same fix helps V1 (prompt v5, rule).
+- **Harder:** the Planner's assumptions are now model text inside the Architect's input: quoted, data, and capped at 6.
+- **Not yet:** knowledge cards (D12) for what neither model knows; the measurement on Groq (daily token limit) and the red team on v5.

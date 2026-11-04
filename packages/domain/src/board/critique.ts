@@ -1,6 +1,6 @@
 import { applyOps, type AgentOp } from './agentOps.ts';
 import type { Board } from './board.ts';
-import { oneOfAKindJob } from './designChecks.ts';
+import { competingBox } from './designChecks.ts';
 
 // The Critic's code checks (AV2-08, D9): what a proposal must never do, checked in code before the
 // user sees it — the same 9B that proposed can't catch its own blind spots. The tools already
@@ -21,6 +21,14 @@ const quoted = (label: string) => escaped(JSON.stringify(label));
 
 /** New boxes in one proposal (the same cap as the agent's tools). */
 const MAX_NEW_BOXES = 3;
+
+/** The boxes the proposal connects `id` to. */
+const arrowsOf = (ops: readonly AgentOp[], id: string) =>
+  ops.flatMap((o) => {
+    if (o.op !== 'connect') return [];
+    if (o.source === id) return [o.target];
+    return o.target === id ? [o.source] : [];
+  });
 
 export const critiqueProposal = (board: Board, ops: readonly AgentOp[]): CritiqueIssue[] => {
   const applied = applyOps(board, ops);
@@ -48,8 +56,8 @@ export const critiqueProposal = (board: Board, ops: readonly AgentOp[]): Critiqu
         nodeIds: [op.nodeId],
         problem: `${quoted(op.label)} has no arrow`,
       });
-    const job = oneOfAKindJob(op.kind, op.label);
-    const existing = job && board.nodes.find((n) => oneOfAKindJob(n.kind, n.label) === job);
+    // Against the board before the proposal, with the arrows the proposal gives the new box.
+    const existing = competingBox(board, op, arrowsOf(ops, op.nodeId));
     if (existing)
       issues.push({
         check: 'duplicate',

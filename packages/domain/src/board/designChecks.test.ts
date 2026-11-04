@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Board, BoardNode, NodeKind } from './board.ts';
-import { checkDesign, oneOfAKindJob } from './designChecks.ts';
+import { checkDesign, competingBox, oneOfAKindJob } from './designChecks.ts';
 
 /** A board from boxes (id = label) and arrows between them, by label. */
 const boardOf = (boxes: [NodeKind, string][], arrows: [string, string][] = []): Board => ({
@@ -232,6 +232,81 @@ describe('checkDesign (M1-30, M1-32)', () => {
       );
       expect(rulesOf(board)).not.toContain('duplicate');
     });
+
+    // Ladder eval: "6 boxes do the same job" on a normal board; both agents merged healthy caches.
+    it('one cache per service is not a duplicate: each serves its own', () => {
+      const board = boardOf(
+        [
+          ['service', 'Catalog'],
+          ['cache', 'Catalog cache'],
+          ['service', 'Search'],
+          ['cache', 'Search cache'],
+        ],
+        [
+          ['Catalog', 'Catalog cache'],
+          ['Search', 'Search cache'],
+        ],
+      );
+      expect(rulesOf(board)).not.toContain('duplicate');
+    });
+
+    // Review of AV2-15: only caches come one per service; a second queue is still a duplicate (M1-29).
+    it('a second queue on another service is still a duplicate', () => {
+      const board = boardOf(
+        [
+          ['service', 'Trips'],
+          ['queue', 'Kafka'],
+          ['service', 'Notifications'],
+          ['custom', 'RabbitMQ broker'],
+        ],
+        [
+          ['Trips', 'Kafka'],
+          ['Notifications', 'RabbitMQ broker'],
+        ],
+      );
+      expect(rulesOf(board)).toContain('duplicate');
+    });
+
+    it('two caches in front of the same service are', () => {
+      const board = boardOf(
+        [
+          ['service', 'Catalog'],
+          ['cache', 'Redis'],
+          ['cache', 'Memcached'],
+        ],
+        [
+          ['Catalog', 'Redis'],
+          ['Catalog', 'Memcached'],
+        ],
+      );
+      expect(checkDesign(board)).toEqual([
+        expect.objectContaining({ rule: 'duplicate', nodeIds: ['Redis', 'Memcached'] }),
+      ]);
+    });
+
+    it('names only the boxes that overlap, not every box of the kind', () => {
+      const board = boardOf(
+        [
+          ['service', 'Catalog'],
+          ['cache', 'Redis'],
+          ['cache', 'Memcached'],
+          ['service', 'Search'],
+          ['cache', 'Search cache'],
+        ],
+        [
+          ['Catalog', 'Redis'],
+          ['Catalog', 'Memcached'],
+          ['Search', 'Search cache'],
+        ],
+      );
+      expect(checkDesign(board)).toEqual([
+        expect.objectContaining({
+          rule: 'duplicate',
+          nodeIds: ['Redis', 'Memcached'],
+          problem: '2 boxes do the same job (cache)',
+        }),
+      ]);
+    });
   });
 
   it('every finding says the problem and the fix', () => {
@@ -268,5 +343,53 @@ describe('oneOfAKindJob', () => {
     ['api', 'Orders API', undefined],
   ] as const)('%s "%s" → %s', (kind, label, job) => {
     expect(oneOfAKindJob(kind, label)).toBe(job);
+  });
+});
+
+describe('competingBox (AV2-15): the box already doing this job, if any', () => {
+  const board = boardOf(
+    [
+      ['api', 'Orders API'],
+      ['service', 'Catalog'],
+      ['cache', 'Catalog cache'],
+      ['queue', 'Kafka'],
+    ],
+    [
+      ['Catalog', 'Catalog cache'],
+      ['Catalog', 'Kafka'],
+    ],
+  );
+  const cache = { kind: 'cache' as const, label: 'Redis' };
+
+  it('a cache next to a box with no cache: none', () => {
+    expect(competingBox(board, cache, ['Orders API'])).toBeUndefined();
+  });
+
+  it('a cache next to a box that has one: that cache', () => {
+    expect(competingBox(board, cache, ['Catalog'])?.id).toBe('Catalog cache');
+  });
+
+  it('a cache next to a cache: that cache', () => {
+    expect(competingBox(board, cache, ['Catalog cache'])?.id).toBe('Catalog cache');
+  });
+
+  it('a cache with nothing around it: any cache', () => {
+    expect(competingBox(board, cache, [])?.id).toBe('Catalog cache');
+  });
+
+  it('a queue anywhere: the queue already there', () => {
+    expect(competingBox(board, { kind: 'queue', label: 'SQS' }, ['Orders API'])?.id).toBe('Kafka');
+  });
+
+  it('never the box itself, once it is on the board', () => {
+    expect(
+      competingBox(board, { id: 'Catalog cache', kind: 'cache', label: 'Catalog cache' }, [
+        'Catalog',
+      ]),
+    ).toBeUndefined();
+  });
+
+  it('a box with no one-of-a-kind job: none', () => {
+    expect(competingBox(board, { kind: 'database', label: 'Postgres' }, [])).toBeUndefined();
   });
 });

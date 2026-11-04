@@ -129,6 +129,62 @@ describe('add_node: no second queue, cache, load balancer or CDN', () => {
     expect(second.reply).toContain('n3 [cache] "Redis"');
   });
 
+  describe('a cache per service is normal', () => {
+    // Ladder eval: the no-cache finding said "add a cache", this guard refused it, and the model
+    // spent all its rounds retrying.
+    const withCatalogCache: Board = {
+      nodes: [
+        { id: 'uuid-orders', kind: 'api', label: 'Orders API', position: { x: 0, y: 0 } },
+        { id: 'uuid-catalog', kind: 'service', label: 'Catalog', position: { x: 0, y: 0 } },
+        { id: 'uuid-redis', kind: 'cache', label: 'Catalog cache', position: { x: 0, y: 0 } },
+      ],
+      edges: [{ id: 'e1', source: 'uuid-catalog', target: 'uuid-redis' }],
+    };
+
+    it('adds a cache near a box that has none', () => {
+      const added = runToolCall(
+        createDraft(withCatalogCache),
+        call('add_node', { kind: 'cache', label: 'Orders cache', near: 'n1' }),
+        ids(),
+      );
+      expect(added.ok).toBe(true);
+    });
+
+    it('refuses a second cache near a box that has one', () => {
+      const added = runToolCall(
+        createDraft(withCatalogCache),
+        call('add_node', { kind: 'cache', label: 'Memcached', near: 'n2' }),
+        ids(),
+      );
+      expect(added.ok).toBe(false);
+      expect(added.reply).toContain('n3 [cache] "Catalog cache"');
+    });
+
+    it('refuses a cache that says nothing about what it serves', () => {
+      const added = runToolCall(
+        createDraft(withCatalogCache),
+        call('add_node', { kind: 'cache', label: 'Memcached' }),
+        ids(),
+      );
+      expect(added.ok).toBe(false);
+    });
+
+    it('still refuses a second queue near a box with no queue', () => {
+      const added = runToolCall(
+        createDraft({
+          ...withCatalogCache,
+          nodes: [
+            ...withCatalogCache.nodes,
+            { id: 'uuid-kafka', kind: 'queue', label: 'Kafka', position: { x: 0, y: 0 } },
+          ],
+        }),
+        call('add_node', { kind: 'queue', label: 'RabbitMQ', near: 'n1' }),
+        ids(),
+      );
+      expect(added.ok).toBe(false);
+    });
+  });
+
   it('lets other kinds repeat: a second database or service is a normal fix', () => {
     const replica = runToolCall(
       createDraft(withKafka),

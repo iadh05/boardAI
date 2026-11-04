@@ -2,6 +2,7 @@ import type { ToolDefinition } from '@designroom/ai-gateway';
 import {
   applyOps,
   checkDesign,
+  competingBox,
   EdgeModeSchema,
   MAX_OPS_PER_PROPOSAL,
   NodeKindSchema,
@@ -9,7 +10,6 @@ import {
   type AgentOp,
   type Board,
   type DesignFinding,
-  type NodeKind,
 } from '@designroom/domain';
 import { z } from 'zod';
 import { createAliases, type Aliases } from './aliases.ts';
@@ -147,12 +147,6 @@ const TOOL_NAMES = AGENT_TOOLS.map((t) => t.name).join(', ');
 /** New boxes in one proposal: a review proposes the few fixes that matter (owner's call, M1-24e). */
 export const MAX_NEW_BOXES = 3;
 
-/** The box already doing the job of the one the model wants to add, if any. */
-const alreadyThere = (board: Board, kind: NodeKind, label: string) => {
-  const job = oneOfAKindJob(kind, label);
-  return job && board.nodes.find((n) => oneOfAKindJob(n.kind, n.label) === job);
-};
-
 type Planned = { op: AgentOp; aliases: Aliases; describe: (board: Board) => string };
 type Plan = { ok: true; planned: Planned } | { ok: false; reply: string };
 
@@ -208,15 +202,15 @@ const plan = (draft: Draft, call: ToolCallInput, deps: ToolDeps): Plan => {
         return refuse(
           `A proposal has at most ${MAX_NEW_BOXES} new boxes, and this one has them. Keep the most important fixes: connect the boxes you added, then stop.`,
         );
+      const near = args.data.near === undefined ? undefined : resolve(args.data.near);
+      if (args.data.near !== undefined && near === undefined) return unknown(args.data.near);
       // The prompt says "never a second queue, cache or load balancer"; measured, the model did it
       // anyway. In code, with what to do instead (M1-29).
-      const existing = alreadyThere(draft.board, args.data.kind, args.data.label);
+      const existing = competingBox(draft.board, args.data, near === undefined ? [] : [near]);
       if (existing)
         return refuse(
           `There is already a ${oneOfAKindJob(existing.kind, existing.label) ?? existing.kind}: ${nodeLine(draft.board, existing.id, draft.aliases)}. Do not add a second one: connect to it, or rename it with update_node to show it does more (e.g. "Redis (cluster, 3 nodes)").`,
         );
-      const near = args.data.near === undefined ? undefined : resolve(args.data.near);
-      if (args.data.near !== undefined && near === undefined) return unknown(args.data.near);
       const nodeId = deps.newId();
       const aliases = draft.aliases.withNode(nodeId);
       const op: AgentOp = { op: 'addNode', nodeId, kind: args.data.kind, label: args.data.label };

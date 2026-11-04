@@ -7,7 +7,12 @@
 // Each board runs several times (a small model varies); a sample passes when most runs pass.
 
 import { checkScope } from '../packages/agent/src/index.ts';
-import type { Board, ChatMessage, NodeKind } from '../packages/domain/src/index.ts';
+import {
+  competingBox,
+  type Board,
+  type ChatMessage,
+  type NodeKind,
+} from '../packages/domain/src/index.ts';
 import {
   assertOnGpu,
   connectRealModel,
@@ -62,11 +67,20 @@ const SINGLE_KINDS: Partial<Record<NodeKind, RegExp>> = {
   loadBalancer: /\b(load ?balancer|api gateway)\b/i,
   cdn: /\bcdn\b/i,
 };
-/** New boxes of a kind the board already has. */
+/** The boxes a new box is connected to in the proposal. */
+const arrowsOf = (run: Run, id: string) =>
+  run.ops.flatMap((o) =>
+    o.op !== 'connect' ? [] : o.source === id ? [o.target] : o.target === id ? [o.source] : [],
+  );
+/**
+ * New boxes of a kind the board already has. A cache for a service that has none is normal
+ * (AV2-15): it counts only when the domain sees it competing with a cache already there.
+ */
 const duplicates = (run: Run, board: Board) =>
   run.ops.filter(
     (op) =>
       op.op === 'addNode' &&
+      (op.kind !== 'cache' || competingBox(board, op, arrowsOf(run, op.nodeId)) !== undefined) &&
       Object.entries(SINGLE_KINDS).some(
         ([kind, words]) =>
           board.nodes.some((n) => n.kind === kind) && (op.kind === kind || words.test(op.label)),
