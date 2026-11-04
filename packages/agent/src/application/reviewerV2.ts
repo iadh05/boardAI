@@ -136,6 +136,10 @@ export const createReviewerV2 = (deps: ReviewerV2Deps) => {
         makePlan(deps.planner, {
           question,
           boardText,
+          // The chat without the latest request (it may be followed by an assistant message).
+          history: messages.filter(
+            (_, i) => i !== messages.findLastIndex((m) => m.role === 'user'),
+          ),
           allowQuestions: assistantTurns < 2, // D2: at most 2 rounds of questions
           ...(signal ? { signal } : {}),
         }),
@@ -175,6 +179,7 @@ export const createReviewerV2 = (deps: ReviewerV2Deps) => {
           deps.architect.run({
             ...input,
             findings,
+            plan: plan.assumptions,
             scoped: true,
             ...(critique ? { critique } : {}),
           }),

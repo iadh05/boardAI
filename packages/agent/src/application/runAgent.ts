@@ -76,6 +76,8 @@ export type AgentInput = {
   signal?: AbortSignal;
   /** The specialists' merged findings (agent V2, AV2-07): the agent explains and fixes them. */
   findings?: readonly MergedFinding[];
+  /** What the Planner understood about this request (agent V2): the agent reads it first. */
+  plan?: readonly string[];
   /** The caller already ran the scope guard (agent V2's Main): not asked twice. */
   scoped?: boolean;
   /** The Critic's issues with a first proposal (AV2-08): the agent proposes again without them. */
@@ -121,7 +123,7 @@ export const createAgent = (deps: AgentDeps) => {
   const metered = createAgentMetrics();
 
   async function* review(
-    { board, messages, signal, findings, scoped, critique }: AgentInput,
+    { board, messages, signal, findings, plan, scoped, critique }: AgentInput,
     parent: Context,
   ): AsyncIterable<AgentEvent> {
     const agent = startSpan('agent', 'AGENT', parent);
@@ -160,13 +162,12 @@ export const createAgent = (deps: AgentDeps) => {
       const boardText = [inventoryText(board, draft.aliases), boardToText(board, draft.aliases)]
         .filter(Boolean)
         .join('\n\n');
-      const conversation: LlmMessage[] = buildMessages(
-        boardText,
-        messages,
-        deps.canary,
-        findings?.length ? findingsText(findings, draft) : undefined,
-        critique?.length ? critique.map((issue) => `- ${issue}`).join('\n') : undefined,
-      );
+      const conversation: LlmMessage[] = buildMessages(boardText, messages, deps.canary, {
+        // Quoted: a model wrote it, so it can't close its block or pose as instructions.
+        plan: plan?.length ? plan.map((note) => `- ${quote(note)}`).join('\n') : undefined,
+        findings: findings?.length ? findingsText(findings, draft) : undefined,
+        critique: critique?.length ? critique.map((issue) => `- ${issue}`).join('\n') : undefined,
+      });
       // Output guard: the answer is cut where it starts reciting the prompt (OWASP LLM07).
       const watch = createLeakWatch({
         prompt: SYSTEM_PROMPT,
