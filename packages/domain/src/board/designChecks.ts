@@ -112,20 +112,58 @@ const singleDatabase = (board: Board): DesignFinding[] =>
       fix: 'a replica (kind database) connected to it, or rename it to say it is replicated',
     }));
 
+/** A box that is one of `around`, or works with one of them. */
+const touches = (board: Board, box: BoardNode, around: ReadonlySet<string>) =>
+  around.has(box.id) || neighbours(board, box.id).some((n) => around.has(n.id));
+
+/**
+ * The box already doing the job of `box`, given the boxes `around` it (its arrows, or the box it is
+ * added near). The jobs are one per design (a second queue next to Kafka, M1-29), except a cache:
+ * one per service is normal (AV2-15), so a cache competes only with one it overlaps — next to it,
+ * or working with the same box. With nothing around it, any cache competes.
+ */
+export const competingBox = (
+  board: Board,
+  box: { id?: string; kind: NodeKind; label: string },
+  around: readonly string[],
+): BoardNode | undefined => {
+  const job = oneOfAKindJob(box.kind, box.label);
+  if (!job) return undefined;
+  const doing = board.nodes.filter(
+    (n) => n.id !== box.id && oneOfAKindJob(n.kind, n.label) === job,
+  );
+  if (job !== 'cache' || around.length === 0) return doing[0];
+  const near = new Set(around);
+  return doing.find((n) => touches(board, n, near));
+};
+
+/** Boxes doing one job, grouped: caches by overlap (directly or through another), the rest as one. */
+const sameJob = (board: Board, job: NodeKind, boxes: readonly BoardNode[]) =>
+  job !== 'cache'
+    ? [boxes]
+    : boxes.reduce<BoardNode[][]>((groups, box) => {
+        const around = new Set(neighbours(board, box.id).map((n) => n.id));
+        const touching = groups.filter((group) =>
+          group.some((other) => touches(board, other, new Set([...around, box.id]))),
+        );
+        return [...groups.filter((group) => !touching.includes(group)), [...touching.flat(), box]];
+      }, []);
+
 const duplicates = (board: Board): DesignFinding[] =>
-  JOBS.flatMap((job) => {
-    const doing = board.nodes.filter((n) => oneOfAKindJob(n.kind, n.label) === job);
-    return doing.length > 1
-      ? [
-          {
-            rule: 'duplicate' as const,
-            nodeIds: doing.map((n) => n.id),
-            problem: `${doing.length} boxes do the same job (${job})`,
-            fix: 'keep one: connect everything to it, and say in words which one to remove',
-          },
-        ]
-      : [];
-  });
+  JOBS.flatMap((job) =>
+    sameJob(
+      board,
+      job,
+      board.nodes.filter((n) => oneOfAKindJob(n.kind, n.label) === job),
+    )
+      .filter((group) => group.length > 1)
+      .map((group) => ({
+        rule: 'duplicate' as const,
+        nodeIds: group.map((n) => n.id),
+        problem: `${group.length} boxes do the same job (${job})`,
+        fix: 'keep one: connect everything to it, and say in words which one to remove',
+      })),
+  );
 
 const unconnected = (board: Board): DesignFinding[] =>
   board.nodes.length < 2

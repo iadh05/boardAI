@@ -52,6 +52,19 @@ describe('critiqueProposal', () => {
     ]);
   });
 
+  // Review of AV2-15: a cache per service is normal; the tools allow it, so the Critic must too.
+  it('a cache for a service that has none is not a duplicate', () => {
+    const withCatalogCache: Board = {
+      nodes: [
+        ...board.nodes,
+        { id: 'catalog', kind: 'service', label: 'Catalog', position: { x: 0, y: 0 } },
+        { id: 'cc', kind: 'cache', label: 'Catalog cache', position: { x: 0, y: 0 } },
+      ],
+      edges: [...board.edges, { id: 'e9', source: 'catalog', target: 'cc' }],
+    };
+    expect(critiqueProposal(withCatalogCache, addCache)).toEqual([]);
+  });
+
   it('more than 3 new boxes', () => {
     const ops: AgentOp[] = ['a', 'b', 'c', 'd'].flatMap((id): AgentOp[] => [
       { op: 'addNode', nodeId: id, kind: 'service', label: `S${id}` },

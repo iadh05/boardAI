@@ -15,5 +15,4 @@ export const READABILITY_DEBT: readonly string[] = [
   // ai-gateway
   'packages/ai-gateway/src/providers/anthropic.ts',
   // domain
-  'packages/domain/src/board/critique.ts',
 ];

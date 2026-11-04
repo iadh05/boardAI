@@ -24,6 +24,7 @@ The build plan of [architecture-v2.md](../docs/agents/architecture-v2.md#build-p
 | AV2-11 | S1+ | State machine + request tracker (built the way AV2-11a decides) | M | todo |
 | AV2-12 | D17 | Ad-hoc expert: proposed by the Planner, runs after your Accept | M | todo |
 | AV2-13 | D10 | Sub-specialists: one level under a specialist, as briefs | M | todo |
+| AV2-15 | D24 | The plan reaches the Architect; question first; one "same job" rule | M | in review (added 2026-11-02) |
 
 What was built, drawn: [docs/agents/v2/built-2026-10-22.json](../docs/agents/v2/built-2026-10-22.json) (`node scripts/board-snapshot.mjs load docs/agents/v2/built-2026-10-22.json`).
 
@@ -232,6 +233,21 @@ Later (not tonight): M1-32b round budget, M1-32c question card (folded into AV2-
 **Acceptance criteria**
 - [ ] Unit: three agreeing findings → three changes; a Cost vs Chaos conflict → one composed change; rejecting a change unticks the one depending on it.
 - [ ] e2e: accept DevOps' change, reject Cost's: only DevOps' boxes land; the feedback names each agent.
+
+## AV2-15 — The plan reaches the Architect; the question comes first (ADR-015, D24)
+**Status:** in review · **Size:** M · **Found in:** the ladder eval and the context test (2026-11-02)
+
+**Tasks**
+- [x] The Planner's assumptions go to the Architect as a quoted `<plan>` block; the Planner reads the chat so far.
+- [x] Prompt v5: the user's question first, findings as support; a cache per service is normal.
+- [x] `competingBox`: one domain rule for "already doing this job", used by the check, `add_node`, the Critic and the eval.
+- [x] Ladder: V1 and V2 before / after, on the local model; V2 with a hosted Planner.
+- [x] Red team on prompt v5 (label-injection judge follow-up: see the eval).
+- [ ] The ladder on Groq when its daily limit allows.
+
+**Acceptance criteria**
+- [x] Unit: the Architect receives the plan, quoted (a `</plan>` in it can't close the block); the Planner gets the chat without the latest request; one cache per service is not a duplicate, a second queue still is; the Critic accepts a cache for a service that has none.
+- [x] Eval: dual write with the plan 0/5 → 5/5 (local 9B); V2 with a hosted Planner 13/18 vs V1 9/18 before; V1 not worse (19/30 vs main 15/30). [docs/evals/AV2-15-context.md](../docs/evals/AV2-15-context.md)
 
 ## AV2-12 — Ad-hoc expert (D17)
 **Status:** todo · **Size:** M · **Depends on:** AV2-11
